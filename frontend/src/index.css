@@ -1,111 +1,404 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    /* Colors - San Fernando Heritage Platform Design System */
+    --color-surface: #fff8f5;
+    --color-surface-dim: #e0d8d5;
+    --color-surface-bright: #fff8f5;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #faf2ee;
+    --color-surface-container: #f4ece8;
+    --color-surface-container-high: #eee7e3;
+    --color-surface-container-highest: #e9e1dd;
+    --color-on-surface: #1e1b19;
+    --color-on-surface-variant: #574141;
+    --color-inverse-surface: #33302d;
+    --color-inverse-on-surface: #f7efeb;
+    --color-outline: #8a7171;
+    --color-outline-variant: #ddbfbf;
+    --color-surface-tint: #a63740;
+    --color-primary: #5e0012;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #7e1925;
+    --color-on-primary-container: #ff8b8e;
+    --color-inverse-primary: #ffb3b3;
+    --color-secondary: #9b4500;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #fd8a42;
+    --color-on-secondary-container: #682c00;
+    --color-tertiary: #2e2b24;
+    --color-on-tertiary: #ffffff;
+    --color-tertiary-container: #44413a;
+    --color-on-tertiary-container: #b3ada3;
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-error-container: #ffdad6;
+    --color-on-error-container: #93000a;
+    --color-primary-fixed: #ffdad9;
+    --color-primary-fixed-dim: #ffb3b3;
+    --color-on-primary-fixed: #400009;
+    --color-on-primary-fixed-variant: #861f2a;
+    --color-secondary-fixed: #ffdbca;
+    --color-secondary-fixed-dim: #ffb68e;
+    --color-on-secondary-fixed: #331200;
+    --color-on-secondary-fixed-variant: #763300;
+    --color-tertiary-fixed: #e9e2d7;
+    --color-tertiary-fixed-dim: #ccc6bc;
+    --color-on-tertiary-fixed: #1e1b15;
+    --color-on-tertiary-fixed-variant: #4a463f;
+    --color-background: #fff8f5;
+    --color-on-background: #1e1b19;
+    --color-surface-variant: #e9e1dd;
+
+    /* Semantic Heritage Archetype Aliases */
+    --heritage-crimson: #7e1925;
+    --heritage-crimson-deep: #5e0012;
+    --heritage-crimson-hover: #580b14;
+    --heritage-gold: #b45309;
+    --heritage-gold-amber: #9b4500;
+    --heritage-parchment: #e7e0d6;
+    --heritage-charcoal: #1e1b19;
+    --heritage-ivory: #faf2ee;
+
+    /* Typography */
+    --font-serif: 'Playfair Display', Georgia, Cambria, serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-cinzel: 'Cinzel', 'Playfair Display', Georgia, serif;
+    --font-montserrat: 'Montserrat', system-ui, -apple-system, sans-serif;
+    --font-outfit: 'Outfit', system-ui, -apple-system, sans-serif;
   }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  body {
+    font-family: var(--font-sans);
+    background-color: #fff8f5;
+    color: #1e1b19;
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-serif,
+  .font-editorial {
+    font-family: var(--font-serif);
   }
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+.font-cinzel {
+  font-family: var(--font-cinzel);
 }
 
-body {
-  margin: 0;
+.font-montserrat {
+  font-family: var(--font-montserrat);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+.font-outfit {
+  font-family: var(--font-outfit);
 }
 
-h1 {
+/* Typography Hierarchy Classes */
+.display-hero {
+  font-family: var(--font-serif);
   font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
+  font-weight: 600;
+  line-height: 68px;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+  .display-hero {
     font-size: 36px;
-    margin: 20px 0;
+    line-height: 44px;
+    letter-spacing: -0.01em;
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+.headline-lg {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 48px;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 768px) {
+  .headline-lg {
+    font-size: 28px;
+    line-height: 36px;
+    letter-spacing: 0;
   }
 }
-p {
-  margin: 0;
+
+.headline-md {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 36px;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+.headline-sm {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
 }
 
-code {
+.title-editorial {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  letter-spacing: 0.01em;
+}
+
+.body-lg {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 30px;
+}
+
+.body-md {
+  font-family: var(--font-sans);
   font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.body-sm {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.label-prominent {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.label-compact {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Archival Heritage Pattern */
+.bg-heritage-pattern {
+  background-color: #fff8f5;
+  background-image: radial-gradient(#7e1925 0.5px, transparent 0.5px), radial-gradient(#b45309 0.5px, #fff8f5 0.5px);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+  opacity: 0.96;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f4ece8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e0d8d5;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b45309;
+}
+
+/* Planar Architectural Card Style */
+.heritage-card {
+  background-color: #ffffff;
+  border: 1px solid #e7e0d6;
+  border-radius: 4px;
+  box-shadow: none;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.heritage-card:hover {
+  border-color: #7e1925;
+}
+
+/* Buttons - San Fernando Heritage Platform Design */
+.btn-primary {
+  background-color: #7e1925;
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #580b14;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: #7e1925;
+  border: 1px solid #7e1925;
+  border-radius: 4px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(126, 25, 37, 0.05);
+}
+
+/* Custom Leaflet Map Styling for San Fernando */
+.leaflet-container {
+  font-family: var(--font-sans) !important;
+  background-color: #f4ece8 !important;
+  z-index: 10 !important;
+  border-radius: 8px !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #fff8f5 !important;
+  border-radius: 4px !important;
+  border: 1px solid #e7e0d6 !important;
+  box-shadow: 0 4px 16px -4px rgba(28, 25, 23, 0.1) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  background: #fff8f5 !important;
+  border: 1px solid #e7e0d6 !important;
+}
+
+.leaflet-bar {
+  border-radius: 4px !important;
+  overflow: hidden;
+  box-shadow: none !important;
+  border: 1px solid #e7e0d6 !important;
+}
+
+.leaflet-bar a {
+  background-color: #ffffff !important;
+  color: #7e1925 !important;
+  border-bottom: 1px solid #e7e0d6 !important;
+  transition: all 0.2s ease;
+}
+
+.leaflet-bar a:hover {
+  background-color: #faf2ee !important;
+  color: #580b14 !important;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+/* Parol Design System Animations */
+@keyframes gentle-float {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+@keyframes gentle-float-slow {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-12px) rotate(-1.5deg);
+  }
+}
+
+@keyframes gentle-float-reverse {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(10px) rotate(1.5deg);
+  }
+}
+
+@keyframes gentle-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+.animate-gentle-float {
+  animation: gentle-float 6s ease-in-out infinite;
+}
+
+.animate-gentle-float-slow {
+  animation: gentle-float-slow 8s ease-in-out infinite;
+}
+
+.animate-gentle-float-reverse {
+  animation: gentle-float-reverse 7s ease-in-out infinite;
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 5s ease-in-out infinite;
+}
+
+/* Low-Poly Background utility */
+.bg-lowpoly-maroon {
+  background-color: #5a0e17;
+  background-image: url('/images/background/background.png');
+  background-size: cover;
+  background-position: center 25%;
+  background-repeat: no-repeat;
+}
+
+/* Global Text Highlight / Selection Background Color */
+::selection {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+::-moz-selection {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+mark,
+.text-highlight {
+  background-color: #dc2626;
+  color: #ffffff;
 }
