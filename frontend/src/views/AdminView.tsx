@@ -1,457 +1,663 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Plus, QrCode, BarChart3, Trash2, Download, Sparkles } from 'lucide-react';
-import type { HeritageSite, EventItem } from '../types';
+import React, { useState, useEffect } from 'react';
+import { 
+  LayoutDashboard, 
+  Map, 
+  Image as ImageIcon, 
+  Calendar as CalendarIcon, 
+  LogOut, 
+  Plus, 
+  Trash2, 
+  Edit3, 
+  Menu, 
+  X,
+  Clock
+} from 'lucide-react';
+import { 
+  apiFetchRawSites, apiCreateSite, apiUpdateSite, apiDeleteSite,
+  apiFetchEvents, apiCreateEvent, apiUpdateEvent, apiDeleteEvent,
+  apiFetchSiteImages, apiCreateSiteImage, apiUpdateSiteImage, apiDeleteSiteImage,
+  apiCreateTimeline, apiUpdateTimeline, apiDeleteTimeline
+} from '../api/client';
+import type { UserProfile } from '../types';
 
 interface AdminViewProps {
-  sites: HeritageSite[];
-  events: EventItem[];
-  onAddSite: (newSite: HeritageSite) => void;
-  onUpdateSite: (updatedSite: HeritageSite) => void;
-  onDeleteSite: (siteId: string) => void;
+  user: UserProfile;
+  onLogout: () => void;
 }
 
-export const AdminView: React.FC<AdminViewProps> = ({
-  sites,
-  events,
-  onAddSite,
-  onUpdateSite: _onUpdateSite,
-  onDeleteSite
-}) => {
-  const [activeTab, setActiveTab] = useState<'sites' | 'events' | 'analytics' | 'qrcodes'>('sites');
-  const [showNewSiteModal, setShowNewSiteModal] = useState(false);
-  const [generatedQRPreview, setGeneratedQRPreview] = useState<string | null>(null);
+type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines';
 
-  // New site form state
-  const [newSiteName, setNewSiteName] = useState('');
-  const [newSiteCategory, setNewSiteCategory] = useState('Historical Buildings');
-  const [newSiteYear, _setNewSiteYear] = useState('1920');
-  const [newSiteBarangay, setNewSiteBarangay] = useState('Poblacion');
-  const [newSiteDesc, setNewSiteDesc] = useState('');
+export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleCreateSite = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSiteName) return;
+  const [sites, setSites] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [siteImages, setSiteImages] = useState<any[]>([]);
+  
+  const [loading, setLoading] = useState(true);
 
-    const codeId = `SF-${Math.floor(100 + Math.random() * 900)}`;
-    const newSite: HeritageSite = {
-      id: newSiteName.toLowerCase().replace(/\s+/g, '-'),
-      name: newSiteName,
-      category: newSiteCategory as any,
-      yearBuilt: newSiteYear,
-      era: 'American Sugar Era',
-      address: `Brgy. ${newSiteBarangay}, City of San Fernando, Pampanga`,
-      barangay: newSiteBarangay,
-      coordinates: { lat: 15.031, lng: 120.689, mapX: 45, mapY: 45 },
-      distanceKm: 1.1,
-      shortDescription: newSiteDesc || 'A newly registered heritage structure under local historical conservation.',
-      fullDescription: newSiteDesc || 'Preserved under the City of San Fernando Heritage District Ordinance.',
-      story: 'Documented in municipal historical records as part of the cultural inventory of San Fernando.',
-      heroImage: '/images/sites/cathedral-hero.jpg',
-      archivalImage: '/images/sites/cathedral-archival.jpg',
-      modernImage: '/images/sites/cathedral-hero.jpg',
-      thenNowCaption: 'Comparison of restored facade with archival documentation.',
-      timeline: [{ year: newSiteYear, title: 'Original Construction', description: 'Built for local civic prominence.' }],
-      didYouKnow: ['Registered in the official CSFP Heritage Conservation Registry.'],
-      historicalCharacters: [{ name: 'Heritage Architect', role: 'Master Builder', bio: 'Prominent regional artisan.', avatar: '/images/characters/nicolasa-dayrit.jpg' }],
-      audioStory: {
-        title: `Story of ${newSiteName}`,
-        narrator: 'CSFP Heritage Office',
-        duration: '2:15',
-        durationSeconds: 135,
-        transcript: 'Archival audio narrative recorded by the cultural council.'
-      },
-      visitInfo: {
-        address: `Brgy. ${newSiteBarangay}, City of San Fernando`,
-        openingHours: '9:00 AM - 5:00 PM',
-        entranceFee: 'Free Public Heritage Landmark',
-        accessibility: 'Street-level access',
-        duration: '30 - 45 mins',
-        guideAvailable: true,
-        bestTime: 'Morning hours'
-      },
-      badgeName: `${newSiteName} Pioneer`,
-      scanCount: 1,
-      qrCodeId: codeId
-    };
-
-    onAddSite(newSite);
-    setShowNewSiteModal(false);
-    setNewSiteName('');
-    setNewSiteDesc('');
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const fetchedSites = await apiFetchRawSites();
+      const fetchedEvents = await apiFetchEvents();
+      const fetchedImages = await apiFetchSiteImages();
+      setSites(fetchedSites || []);
+      setEvents(fetchedEvents || []);
+      setSiteImages(fetchedImages || []);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
   };
 
-  const totalScans = sites.reduce((sum, s) => sum + s.scanCount, 0);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Handlers for deleting
+  const handleDeleteSite = async (id: string) => {
+    if (confirm('Are you sure you want to archive this site?')) {
+      await apiDeleteSite(id);
+      fetchData();
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    if (confirm('Are you sure you want to cancel this event?')) {
+      await apiDeleteEvent(id);
+      fetchData();
+    }
+  };
+
+  const handleDeleteImage = async (id: string) => {
+    if (confirm('Delete this image?')) {
+      await apiDeleteSiteImage(id);
+      fetchData();
+    }
+  };
+
+  // --- MODAL STATE ---
+  const [siteModalOpen, setSiteModalOpen] = useState(false);
+  const [siteForm, setSiteForm] = useState<any>({});
+  
+  const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [eventForm, setEventForm] = useState<any>({});
+  
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [imageForm, setImageForm] = useState<any>({});
+
+  const [timelineModalOpen, setTimelineModalOpen] = useState(false);
+  const [timelineForm, setTimelineForm] = useState<any>({});
+
+  const handleSaveTimeline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (timelineForm.id) {
+      await apiUpdateTimeline(timelineForm.id, timelineForm);
+    } else {
+      await apiCreateTimeline(timelineForm);
+    }
+    setTimelineModalOpen(false);
+    fetchData(); // Refresh the sites which eager load timelines
+  };
+
+  const handleDeleteTimeline = async (id: string) => {
+    if (confirm('Delete this timeline?')) {
+      await apiDeleteTimeline(id);
+      fetchData();
+    }
+  };
+
+  const handleSaveSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      ...siteForm,
+      created_by: parseInt(user.id, 10),
+      latitude: siteForm.latitude ? parseFloat(siteForm.latitude) : null,
+      longitude: siteForm.longitude ? parseFloat(siteForm.longitude) : null,
+    };
+    if (siteForm.id) {
+      await apiUpdateSite(siteForm.id, payload);
+    } else {
+      await apiCreateSite(payload);
+    }
+    setSiteModalOpen(false);
+    fetchData();
+  };
+
+  const handleSaveEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      ...eventForm,
+      created_by: parseInt(user.id, 10),
+    };
+    if (eventForm.id) {
+      await apiUpdateEvent(eventForm.id, payload);
+    } else {
+      await apiCreateEvent(payload);
+    }
+    setEventModalOpen(false);
+    fetchData();
+  };
+
+  const handleSaveImage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (imageForm.id) {
+      await apiUpdateSiteImage(imageForm.id, imageForm);
+    } else {
+      await apiCreateSiteImage(imageForm);
+    }
+    setImageModalOpen(false);
+    fetchData();
+  };
+
+  const renderSidebarItem = (tab: TabType, label: string, Icon: any) => (
+    <button 
+      onClick={() => { setActiveTab(tab); setSidebarOpen(false); }}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+        activeTab === tab 
+          ? 'bg-[#7A1C30] text-white' 
+          : 'text-gray-600 hover:bg-gray-100 hover:text-[#7A1C30]'
+      }`}
+    >
+      <Icon className="w-5 h-5" />
+      {label}
+    </button>
+  );
 
   return (
-    <div id="admin-cms-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-28">
-      {/* Admin Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8DFD5] pb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              Tourism Office Management Portal
-            </span>
-            <span className="text-xs text-[#6B645F]">• CSFP Admin CMS</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-serif text-[#23201F] mt-1">
-            Heritage Directory & QR Plaque CMS
-          </h1>
+    <div className="min-h-screen bg-gray-50 flex font-sans">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-200 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
+          <span className="text-[#7A1C30] font-bold text-xl tracking-tight">CHIS Admin</span>
+          <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          {renderSidebarItem('dashboard', 'Dashboard', LayoutDashboard)}
+          {renderSidebarItem('sites', 'Heritage Sites', Map)}
+          {renderSidebarItem('images', 'Site Images', ImageIcon)}
+          {renderSidebarItem('timelines', 'Timelines', Clock)}
+          {renderSidebarItem('events', 'Events', CalendarIcon)}
+        </div>
+      </aside>
 
-        <button
-          onClick={() => setShowNewSiteModal(true)}
-          className="flex items-center gap-2 rounded-full bg-[#7A1C30] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-[#581020]"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Heritage Landmark</span>
-        </button>
-      </div>
-
-      {/* Admin Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#E8DFD5] pb-2 overflow-x-auto no-scrollbar">
-        {[
-          { id: 'sites', label: `Heritage Sites (${sites.length})`, icon: ShieldCheck },
-          { id: 'analytics', label: 'Scan Analytics & Engagement', icon: BarChart3 },
-          { id: 'qrcodes', label: 'QR Plaque Generator', icon: QrCode },
-          { id: 'events', label: `Cultural Events (${events.length})`, icon: Sparkles },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-colors whitespace-nowrap ${
-                isActive
-                  ? 'bg-[#7A1C30] text-white shadow-sm'
-                  : 'bg-white border border-[#E8DFD5] text-[#23201F] hover:bg-[#FAF8F5]'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center">
+            <button onClick={() => setSidebarOpen(true)} className="text-gray-500 hover:text-gray-700 lg:hidden">
+              <Menu className="w-6 h-6" />
             </button>
-          );
-        })}
-      </div>
+            <span className="ml-4 font-bold text-gray-900 capitalize lg:hidden">{activeTab.replace('-', ' ')}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-3 text-right">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-900 leading-none">{user.name}</span>
+                <span className="text-xs text-gray-500">{user.role || 'Administrator'}</span>
+              </div>
+              <img src={user.avatar || '/images/default-avatar.png'} alt="Admin" className="w-8 h-8 rounded-full bg-gray-200 object-cover" />
+            </div>
+            <button onClick={onLogout} className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg">
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        </header>
+        
+        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+          {loading ? (
+            <div className="flex justify-center items-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7A1C30]"></div>
+            </div>
+          ) : (
+            <div className="max-w-6xl mx-auto">
+              
+              {/* DASHBOARD TAB */}
+              {activeTab === 'dashboard' && (
+                <div className="space-y-6">
+                  <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-red-50 rounded-lg"><Map className="w-6 h-6 text-[#7A1C30]" /></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Total Heritage Sites</p>
+                          <p className="text-2xl font-bold text-gray-900">{sites.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-50 rounded-lg"><ImageIcon className="w-6 h-6 text-blue-600" /></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Total Site Images</p>
+                          <p className="text-2xl font-bold text-gray-900">{siteImages.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-emerald-50 rounded-lg"><CalendarIcon className="w-6 h-6 text-emerald-600" /></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Total Events</p>
+                          <p className="text-2xl font-bold text-gray-900">{events.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-      {/* TAB 1: SITES MANAGEMENT */}
-      {activeTab === 'sites' && (
-        <div className="space-y-4">
-          <div className="overflow-x-auto rounded-3xl border border-[#E8DFD5] bg-white shadow-sm">
-            <table className="w-full text-left text-xs text-[#23201F]">
-              <thead className="bg-[#FAF8F5] border-b border-[#E8DFD5] text-[11px] uppercase tracking-wider text-[#6B645F]">
-                <tr>
-                  <th className="p-4">Site Name</th>
-                  <th className="p-4">Category</th>
-                  <th className="p-4">Barangay</th>
-                  <th className="p-4">Year Built</th>
-                  <th className="p-4">QR Code ID</th>
-                  <th className="p-4">Total Scans</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F4EFEA]">
-                {sites.map((site) => (
-                  <tr key={site.id} className="hover:bg-[#FAF8F5]">
-                    <td className="p-4 font-bold flex items-center gap-2.5">
-                      <img
-                        src={site.heroImage}
-                        alt=""
-                        className="h-8 w-8 rounded-lg object-cover"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                        }}
-                      />
-                      <span>{site.name}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className="rounded bg-[#7A1C30]/10 px-2 py-0.5 text-[10px] font-semibold text-[#7A1C30]">
-                        {site.category}
-                      </span>
-                    </td>
-                    <td className="p-4">{site.barangay}</td>
-                    <td className="p-4 font-mono">{site.yearBuilt}</td>
-                    <td className="p-4 font-mono font-bold text-[#C28E38]">{site.qrCodeId}</td>
-                    <td className="p-4 font-bold">{site.scanCount} scans</td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setGeneratedQRPreview(site.qrCodeId)}
-                          className="rounded p-1 text-[#6B645F] hover:text-[#7A1C30]"
-                          title="View QR Code"
-                        >
-                          <QrCode className="w-4 h-4" />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+                      <div className="space-y-3">
+                        <button onClick={() => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); }} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                          <span className="font-medium text-gray-700">Add Heritage Site</span>
+                          <Plus className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button
-                          onClick={() => onDeleteSite(site.id)}
-                          className="rounded p-1 text-red-600 hover:text-red-800"
-                          title="Delete Site"
-                        >
-                          <Trash2 className="w-4 h-4" />
+                        <button onClick={() => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); }} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                          <span className="font-medium text-gray-700">Add Event</span>
+                          <Plus className="w-4 h-4 text-gray-400" />
+                        </button>
+                        <button onClick={() => { setImageForm({}); setImageModalOpen(true); }} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                          <span className="font-medium text-gray-700">Upload Site Image</span>
+                          <Plus className="w-4 h-4 text-gray-400" />
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: ANALYTICS */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-6">
-          {/* Top Metrics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="rounded-3xl border border-[#E8DFD5] bg-white p-5 space-y-1">
-              <span className="text-[11px] font-bold uppercase text-[#6B645F]">Total On-Site Scans</span>
-              <p className="text-3xl font-bold font-serif text-[#7A1C30]">{totalScans}</p>
-              <p className="text-[10px] text-emerald-700">↑ 18% increase this festive month</p>
-            </div>
-            <div className="rounded-3xl border border-[#E8DFD5] bg-white p-5 space-y-1">
-              <span className="text-[11px] font-bold uppercase text-[#6B645F]">Active QR Plaques</span>
-              <p className="text-3xl font-bold font-serif text-[#C28E38]">{sites.length}</p>
-              <p className="text-[10px] text-[#6B645F]">Across 5 Heritage Barangays</p>
-            </div>
-            <div className="rounded-3xl border border-[#E8DFD5] bg-white p-5 space-y-1">
-              <span className="text-[11px] font-bold uppercase text-[#6B645F]">Registered Explorers</span>
-              <p className="text-3xl font-bold font-serif text-[#23201F]">1,842</p>
-              <p className="text-[10px] text-emerald-700">Active cultural visitors</p>
-            </div>
-            <div className="rounded-3xl border border-[#E8DFD5] bg-white p-5 space-y-1">
-              <span className="text-[11px] font-bold uppercase text-[#6B645F]">Audio Guide Plays</span>
-              <p className="text-3xl font-bold font-serif text-[#7A1C30]">3,210</p>
-              <p className="text-[10px] text-[#6B645F]">Avg. duration: 3 min 12 sec</p>
-            </div>
-          </div>
-
-          {/* Popularity Ranking */}
-          <div className="rounded-3xl border border-[#E8DFD5] bg-white p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold font-serif text-[#23201F]">
-              Most Visited Heritage Landmarks (By QR Scans)
-            </h3>
-            <div className="space-y-3">
-              {[...sites].sort((a, b) => b.scanCount - a.scanCount).map((s, idx) => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF8F5] border border-[#E8DFD5]">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7A1C30] text-white text-xs font-bold">
-                      {idx + 1}
-                    </span>
-                    <div>
-                      <h4 className="text-xs font-bold text-[#23201F]">{s.name}</h4>
-                      <span className="text-[10px] text-[#6B645F]">{s.category} • {s.barangay}</span>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Heritage Sites</h3>
+                      <div className="space-y-4">
+                        {sites.slice(-5).reverse().map(s => {
+                          const mainImg = s.images?.[0]?.image_path;
+                          return (
+                          <div key={s.id} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                            <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
+                              <img src={mainImg ? `http://localhost:8000/storage/${mainImg}` : '/images/sites/cathedral-hero.jpg'} alt="" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-gray-900 truncate">{s.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{s.address} • {s.status}</p>
+                            </div>
+                          </div>
+                        )})}
+                        {sites.length === 0 && <p className="text-sm text-gray-500">No sites available.</p>}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-[#7A1C30]">{s.scanCount} scans</span>
-                    <span className="text-[10px] text-[#6B645F] block">{s.qrCodeId}</span>
-                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+              )}
 
-      {/* TAB 3: QR CODE GENERATOR */}
-      {activeTab === 'qrcodes' && (
-        <div className="rounded-3xl border border-[#E8DFD5] bg-white p-6 sm:p-8 shadow-sm space-y-6">
-          <div>
-            <h3 className="text-lg font-bold font-serif text-[#23201F]">
-              Physical QR Plaque Deployment Generator
-            </h3>
-            <p className="text-xs text-[#6B645F] mt-1">
-              Select any heritage landmark to preview and download printable brass plaque templates for mounting at on-site physical entrances.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-[#23201F] block">Select Heritage Landmark:</label>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {sites.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => setGeneratedQRPreview(s.qrCodeId)}
-                    className={`cursor-pointer flex items-center justify-between p-3 rounded-2xl border transition-colors ${
-                      generatedQRPreview === s.qrCodeId
-                        ? 'border-[#7A1C30] bg-[#FAF8F5]'
-                        : 'border-[#E8DFD5] hover:bg-[#FAF8F5]'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="text-xs font-bold text-[#23201F]">{s.name}</h4>
-                      <p className="text-[10px] text-[#6B645F]">{s.qrCodeId}</p>
+              {/* SITES TAB */}
+              {activeTab === 'sites' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 className="text-2xl font-bold text-gray-900">Heritage Sites</h1>
+                    <button onClick={() => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                      <Plus className="w-4 h-4" /> Add Site
+                    </button>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                          <tr>
+                            <th className="px-6 py-3 font-medium">Name</th>
+                            <th className="px-6 py-3 font-medium">Address</th>
+                            <th className="px-6 py-3 font-medium">Status</th>
+                            <th className="px-6 py-3 font-medium text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {sites.map(s => (
+                            <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 font-bold text-gray-900">{s.name}</td>
+                              <td className="px-6 py-4 text-gray-500">{s.address}</td>
+                              <td className="px-6 py-4 text-gray-500">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{s.status}</span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button onClick={() => { setSiteForm(s); setSiteModalOpen(true); }} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => handleDeleteSite(s.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                              </td>
+                            </tr>
+                          ))}
+                          {sites.length === 0 && (
+                            <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No heritage sites found.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                    <span className="text-xs font-semibold text-[#7A1C30]">Preview</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Plaque Preview Canvas */}
-            <div className="rounded-3xl border-4 border-[#C28E38] bg-[#FAF8F5] p-6 text-center space-y-4 shadow-xl">
-              <div className="flex justify-between items-center text-[10px] uppercase font-bold text-[#7A1C30]">
-                <span>City of San Fernando</span>
-                <span>Pampanga Heritage</span>
-              </div>
-
-              <div className="py-2">
-                <div className="h-36 w-36 mx-auto rounded-2xl border-4 border-[#23201F] bg-white p-2 flex flex-col items-center justify-center shadow-inner">
-                  {/* Visual QR pattern simulated */}
-                  <div className="grid grid-cols-4 gap-1 w-full h-full p-1 bg-black/5 rounded">
-                    {Array.from({ length: 16 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={`rounded-sm ${
-                          (i % 2 === 0 || i === 0 || i === 3 || i === 12 || i === 15)
-                            ? 'bg-[#23201F]'
-                            : 'bg-transparent'
-                        }`}
-                      />
-                    ))}
                   </div>
                 </div>
-                <span className="mt-2 inline-block font-mono text-xs font-bold text-[#7A1C30]">
-                  {generatedQRPreview || 'SF-101'}
-                </span>
-              </div>
+              )}
 
-              <div>
-                <h4 className="text-xs font-bold font-serif text-[#23201F]">
-                  Scan with “Sa’n Fernando” Web App
-                </h4>
-                <p className="text-[10px] text-[#6B645F]">
-                  Discover the historical stories, then & now photos, and audio guides
-                </p>
-              </div>
-
-              <button
-                onClick={() => alert(`Plaque template for ${generatedQRPreview || 'SF-101'} downloaded as PDF/SVG!`)}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#7A1C30] py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-[#581020]"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export Plaque Print Vector</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: EVENTS */}
-      {activeTab === 'events' && (
-        <div className="rounded-3xl border border-[#E8DFD5] bg-white p-6 shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-base font-bold font-serif text-[#23201F]">Active Public Events</h3>
-            <span className="text-xs text-[#6B645F]">{events.length} Festivals Published</span>
-          </div>
-
-          <div className="space-y-3">
-            {events.map((e) => (
-              <div key={e.id} className="flex items-center justify-between p-4 rounded-2xl bg-[#FAF8F5] border border-[#E8DFD5]">
-                <div className="flex items-center gap-3">
-                  <img src={e.bannerImage} alt="" className="h-12 w-12 rounded-xl object-cover" />
-                  <div>
-                    <h4 className="text-xs font-bold text-[#23201F]">{e.title}</h4>
-                    <p className="text-[11px] text-[#6B645F]">{e.date} • {e.location}</p>
+              {/* SITE IMAGES TAB */}
+              {activeTab === 'images' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 className="text-2xl font-bold text-gray-900">Site Images</h1>
+                    <button onClick={() => { setImageForm({}); setImageModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                      <Plus className="w-4 h-4" /> Upload Image
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {siteImages.map(img => {
+                      const site = sites.find(s => s.id === img.heritage_site_id);
+                      return (
+                        <div key={img.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col hover:shadow-md transition-shadow">
+                          <img src={`http://localhost:8000/storage/${img.image_path}`} alt={img.caption} className="w-full h-44 object-cover" />
+                          <div className="p-4 flex-1 flex flex-col">
+                            <p className="text-sm font-bold text-gray-900 truncate mb-1">{img.caption || 'No Caption'}</p>
+                            <p className="text-xs text-gray-500 truncate mb-4 bg-gray-50 p-1.5 rounded-md border border-gray-100">Site: {site?.name || img.heritage_site_id}</p>
+                            <div className="mt-auto flex justify-end gap-2">
+                              <button onClick={() => { setImageForm(img); setImageModalOpen(true); }} className="text-blue-600 p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"><Edit3 className="w-4 h-4" /></button>
+                              <button onClick={() => handleDeleteImage(img.id)} className="text-red-600 p-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {siteImages.length === 0 && (
+                      <div className="col-span-full py-12 text-center text-gray-500 bg-white border border-gray-200 rounded-xl border-dashed">
+                        No images uploaded yet.
+                      </div>
+                    )}
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
-                  Published
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              )}
 
-      {/* MODAL: ADD NEW LANDMARK */}
-      {showNewSiteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-[#E8DFD5] pb-3">
-              <h3 className="text-base font-bold font-serif text-[#23201F]">Add Heritage Landmark</h3>
-              <button
-                onClick={() => setShowNewSiteModal(false)}
-                className="text-xs text-[#6B645F] hover:text-[#23201F]"
-              >
-                ✕
-              </button>
+              {/* EVENTS TAB */}
+              {activeTab === 'events' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 className="text-2xl font-bold text-gray-900">Events</h1>
+                    <button onClick={() => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                      <Plus className="w-4 h-4" /> Add Event
+                    </button>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                          <tr>
+                            <th className="px-6 py-3 font-medium">Event Title</th>
+                            <th className="px-6 py-3 font-medium">Date</th>
+                            <th className="px-6 py-3 font-medium">Location</th>
+                            <th className="px-6 py-3 font-medium text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {events.map(e => (
+                            <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 font-bold text-gray-900">{e.title}</td>
+                              <td className="px-6 py-4 text-gray-500">{e.event_date}</td>
+                              <td className="px-6 py-4 text-gray-500">{e.location}</td>
+                              <td className="px-6 py-4 text-right">
+                                <button onClick={() => { setEventForm(e); setEventModalOpen(true); }} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => handleDeleteEvent(e.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                              </td>
+                            </tr>
+                          ))}
+                          {events.length === 0 && (
+                            <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No events found.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TIMELINES TAB */}
+              {activeTab === 'timelines' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 className="text-2xl font-bold text-gray-900">Historical Timelines</h1>
+                    <button onClick={() => { setTimelineForm({}); setTimelineModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                      <Plus className="w-4 h-4" /> Add Timeline
+                    </button>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                          <tr>
+                            <th className="px-6 py-3 font-medium">Site</th>
+                            <th className="px-6 py-3 font-medium">Year</th>
+                            <th className="px-6 py-3 font-medium">Title</th>
+                            <th className="px-6 py-3 font-medium text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {sites.flatMap(s => (s.timelines || []).map((t: any) => ({ ...t, siteName: s.name }))).map((t: any) => (
+                            <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 text-gray-900">{t.siteName}</td>
+                              <td className="px-6 py-4 font-bold text-gray-900">{t.year}</td>
+                              <td className="px-6 py-4 text-gray-500">{t.title}</td>
+                              <td className="px-6 py-4 text-right">
+                                <button onClick={() => { setTimelineForm(t); setTimelineModalOpen(true); }} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => handleDeleteTimeline(t.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                              </td>
+                            </tr>
+                          ))}
+                          {sites.flatMap(s => s.timelines || []).length === 0 && (
+                            <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No timelines found.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
+          )}
+        </div>
+      </main>
 
-            <form onSubmit={handleCreateSite} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-[#23201F] block mb-1">Landmark Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Ocampo Heritage Villa"
-                  value={newSiteName}
-                  onChange={(e) => setNewSiteName(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8DFD5] bg-[#FAF8F5] p-2.5 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-bold text-[#23201F] block mb-1">Category</label>
-                  <select
-                    value={newSiteCategory}
-                    onChange={(e) => setNewSiteCategory(e.target.value)}
-                    className="w-full rounded-xl border border-[#E8DFD5] bg-[#FAF8F5] p-2 focus:outline-none"
-                  >
-                    <option value="Historical Buildings">Historical Buildings</option>
-                    <option value="Churches">Churches</option>
-                    <option value="Museums">Museums</option>
-                    <option value="Monuments">Monuments</option>
-                    <option value="Cultural Sites">Cultural Sites</option>
+      {/* --- MODALS --- */}
+      
+      {/* Site Modal */}
+      {siteModalOpen && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
+              <button type="button" onClick={() => setSiteModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+            </div>
+            <form onSubmit={handleSaveSite} className="flex-1 overflow-auto p-6 space-y-5 text-sm">
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5 col-span-2">
+                  <label className="font-semibold text-gray-700">Name</label>
+                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.name || ''} onChange={e => setSiteForm({...siteForm, name: e.target.value})} placeholder="Site Name" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Category</label>
+                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.category || ''} onChange={e => setSiteForm({...siteForm, category: e.target.value})} placeholder="e.g. Churches" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Year Built</label>
+                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.year_built || ''} onChange={e => setSiteForm({...siteForm, year_built: e.target.value})} placeholder="e.g. 1755" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Address</label>
+                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.address || ''} onChange={e => setSiteForm({...siteForm, address: e.target.value})} placeholder="Full address" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Status</label>
+                  <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={siteForm.status || 'active'} onChange={e => setSiteForm({...siteForm, status: e.target.value})}>
+                    <option value="active">Active</option>
+                    <option value="archived">Archived</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="font-bold text-[#23201F] block mb-1">Barangay</label>
-                  <input
-                    type="text"
-                    value={newSiteBarangay}
-                    onChange={(e) => setNewSiteBarangay(e.target.value)}
-                    className="w-full rounded-xl border border-[#E8DFD5] bg-[#FAF8F5] p-2 focus:outline-none"
-                  />
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Latitude</label>
+                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude || ''} onChange={e => setSiteForm({...siteForm, latitude: e.target.value})} placeholder="e.g. 15.031" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Longitude</label>
+                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude || ''} onChange={e => setSiteForm({...siteForm, longitude: e.target.value})} placeholder="e.g. 120.689" />
                 </div>
               </div>
-
-              <div>
-                <label className="font-bold text-[#23201F] block mb-1">Short Description</label>
-                <textarea
-                  rows={2}
-                  placeholder="Historical context..."
-                  value={newSiteDesc}
-                  onChange={(e) => setNewSiteDesc(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8DFD5] bg-[#FAF8F5] p-2 focus:outline-none"
-                />
+              
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Description</label>
+                <textarea required rows={3} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.description || ''} onChange={e => setSiteForm({...siteForm, description: e.target.value})} placeholder="Brief description..." />
               </div>
 
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewSiteModal(false)}
-                  className="flex-1 rounded-xl border border-[#E8DFD5] py-2.5 font-semibold text-[#6B645F]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 rounded-xl bg-[#7A1C30] py-2.5 font-bold uppercase tracking-wider text-white hover:bg-[#581020]"
-                >
-                  Save & Publish
-                </button>
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">History</label>
+                <textarea required rows={5} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm({...siteForm, history: e.target.value})} placeholder="Full historical context..." />
               </div>
             </form>
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+              <button type="button" onClick={() => setSiteModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button onClick={handleSaveSite} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Heritage Site</button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Event Modal */}
+      {eventModalOpen && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-gray-900">{eventForm.id ? 'Edit Event' : 'Add Event'}</h2>
+              <button type="button" onClick={() => setEventModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+            </div>
+            <form onSubmit={handleSaveEvent} className="p-6 space-y-5 text-sm max-h-[70vh] overflow-auto">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Title</label>
+                <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
+              </div>
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Date</label>
+                  <input required type="date" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.event_date ? eventForm.event_date.split('T')[0] : ''} onChange={e => setEventForm({...eventForm, event_date: e.target.value})} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Location</label>
+                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.location || ''} onChange={e => setEventForm({...eventForm, location: e.target.value})} placeholder="Event Location" />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <label className="font-semibold text-gray-700">Status</label>
+                  <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.status || 'upcoming'} onChange={e => setEventForm({...eventForm, status: e.target.value})}>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Image Path</label>
+                <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.image_path || ''} onChange={e => setEventForm({...eventForm, image_path: e.target.value})} placeholder="e.g. events/banner.jpg" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Description</label>
+                <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
+              </div>
+            </form>
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+              <button type="button" onClick={() => setEventModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button onClick={handleSaveEvent} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Event</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {imageModalOpen && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-gray-900">{imageForm.id ? 'Edit Image' : 'Add Image'}</h2>
+              <button type="button" onClick={() => setImageModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+            </div>
+            <form onSubmit={handleSaveImage} className="p-6 space-y-5 text-sm">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Heritage Site</label>
+                <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={imageForm.heritage_site_id || ''} onChange={e => setImageForm({...imageForm, heritage_site_id: parseInt(e.target.value)})}>
+                  <option value="">Select a Heritage Site...</option>
+                  {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Image Path / Filename</label>
+                <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
+                <p className="text-xs text-gray-500 mt-1">Relative to the backend storage directory.</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Caption</label>
+                <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={imageForm.caption || ''} onChange={e => setImageForm({...imageForm, caption: e.target.value})} placeholder="Image caption..." />
+              </div>
+            </form>
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+              <button type="button" onClick={() => setImageModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button onClick={handleSaveImage} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Image</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline Modal */}
+      {timelineModalOpen && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-gray-900">{timelineForm.id ? 'Edit Timeline' : 'Add Timeline'}</h2>
+              <button type="button" onClick={() => setTimelineModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+            </div>
+            <form onSubmit={handleSaveTimeline} className="p-6 space-y-5 text-sm">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Heritage Site</label>
+                <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={timelineForm.heritage_site_id || ''} onChange={e => setTimelineForm({...timelineForm, heritage_site_id: parseInt(e.target.value)})}>
+                  <option value="">Select a Heritage Site...</option>
+                  {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5 col-span-2">
+                  <label className="font-semibold text-gray-700">Title</label>
+                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="Timeline Event Title" value={timelineForm.title || ''} onChange={e => setTimelineForm({...timelineForm, title: e.target.value})} />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <label className="font-semibold text-gray-700">Year</label>
+                  <input required type="number" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. 1920" value={timelineForm.year || ''} onChange={e => setTimelineForm({...timelineForm, year: e.target.value})} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Description</label>
+                <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={timelineForm.description || ''} onChange={e => setTimelineForm({...timelineForm, description: e.target.value})} placeholder="Event description..." />
+              </div>
+            </form>
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+              <button type="button" onClick={() => setTimelineModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button onClick={handleSaveTimeline} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Timeline</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

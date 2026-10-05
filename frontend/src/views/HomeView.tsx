@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Compass, Map, ArrowRight, ArrowUpRight, Calendar, Bookmark, Sparkles, MapPin, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { HeritageSite, EventItem, CategoryType } from '../types';
@@ -27,11 +27,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
   savedSiteIds,
   onToggleSaveSite
 }) => {
+  const [heroImage, setHeroImage] = useState<string>('heritage-sites/san-fernando-cathedral.jpg');
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/site-images')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          setHeroImage(`http://localhost:8000/storage/${data[0].image_path}`);
+        }
+      })
+      .catch(err => console.error("Error fetching site images:", err));
+  }, []);
+
   return (
     <div id="home-page-view" className="pb-16">
       {/* HERO SECTION - Edge-to-Edge and strictly fitted within the first viewport height (1st vh) */}
-      <section 
-        id="home-hero-section" 
+      <section
+        id="home-hero-section"
         className="relative overflow-hidden w-full h-[calc(100vh-5rem)] min-h-[520px] max-h-[calc(100vh-5rem)] border-b border-[#861f2a]/40 bg-lowpoly-maroon shadow-lg flex flex-col items-center justify-start pt-14 sm:pt-18 md:pt-20 lg:pt-24"
       >
         {/* Low-Poly Background with Parols - /images/background/background.png with Preserved Vignette */}
@@ -52,7 +65,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Center Content Container: Expanded to max-w-6xl with balanced framing */}
         <div className="relative z-20 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-start">
           {/* Home of the Giant Lanterns Badge - Fades down first */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -62,7 +75,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </motion.div>
 
           {/* Main Title - Fades up after badge */}
-          <motion.h1 
+          <motion.h1
             id="hero-title"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
@@ -76,7 +89,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </motion.h1>
 
           {/* Subtitle - Fades up after title with updated narrative text */}
-          <motion.p 
+          <motion.p
             id="hero-subtitle"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -87,7 +100,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </motion.p>
 
           {/* Action Buttons - Fades up after subtitle */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
@@ -115,14 +128,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {/* HERITAGE INTRODUCTION SECTION - Two-column editorial introduction directly below Hero */}
-      <section 
-        id="heritage-intro-section" 
+      <section
+        id="heritage-intro-section"
         className="w-full bg-[#fbf6f1] border-b border-[#e8dfd5] py-14 sm:py-20 lg:py-24 overflow-hidden"
       >
         <div className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:grid lg:grid-cols-2 gap-10 lg:gap-12 xl:gap-16 items-center">
             {/* LEFT COLUMN: Editorial Text (50% width) - Fades in from the left on scroll */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.25 }}
@@ -135,8 +148,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </p>
 
               {/* Main Heading */}
-              <h2 
-                id="heritage-intro-heading" 
+              <h2
+                id="heritage-intro-heading"
                 className="font-outfit text-3xl sm:text-4xl lg:text-[44px] xl:text-[48px] font-extrabold text-[#1e1b19] tracking-tight leading-[1.15] mb-5 sm:mb-6"
               >
                 Home of the Giant Lanterns
@@ -164,7 +177,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </motion.div>
 
             {/* RIGHT COLUMN: Minimalist Elegant Architectural Heritage Frame (50% width) */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.25 }}
@@ -175,7 +188,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 {/* Visual Container without white border padding or badge overlay */}
                 <div className="relative aspect-[4/3] sm:aspect-[16/11] w-full overflow-hidden bg-[#1e0206]">
                   <img
-                    src="/images/giant-lanterns.jpg"
+                    src={heroImage}
                     alt="The Parul Sampernandu Tradition - Giant Lanterns of San Fernando"
                     className="w-full h-full object-cover filter brightness-[1.02] contrast-[1.03] group-hover:scale-[1.02] transition-transform duration-700 ease-out select-none"
                     loading="lazy"
@@ -202,13 +215,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {/* SECTION 3: THEMATIC CLASSIFICATION / EXPLORE BY CATEGORY */}
-      <section 
-        id="explore-heritage-categories-section" 
+      <section
+        id="explore-heritage-categories-section"
         className="w-full bg-[#fbf8f5] py-8 sm:py-10 border-b border-[#e8dfd5]"
       >
         <div className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           {/* Section Header - Onscroll Fade */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.25 }}
@@ -331,325 +344,324 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       {/* MAIN CONTENT AREA */}
       <div className="space-y-12 sm:space-y-16 pt-12 sm:pt-16">
-      {/* FEATURED HERITAGE SITES - Minimalist Elegant Redesign */}
-      <section id="featured-heritage-section" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.25 }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-outfit"
-        >
-          <div>
-            <span className="font-outfit text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#7e1925]" />
-              Archival Highlights
-            </span>
-            <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
-              Featured Heritage Sites
-            </h2>
-          </div>
-          <button
-            id="view-all-featured-btn"
-            onClick={onExploreClick}
-            className="font-outfit text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
+        {/* FEATURED HERITAGE SITES - Minimalist Elegant Redesign */}
+        <section id="featured-heritage-section" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-outfit"
           >
-            <span>View All Sites</span>
-            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
-          </button>
-        </motion.div>
+            <div>
+              <span className="font-outfit text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#7e1925]" />
+                Archival Highlights
+              </span>
+              <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
+                Featured Heritage Sites
+              </h2>
+            </div>
+            <button
+              id="view-all-featured-btn"
+              onClick={onExploreClick}
+              className="font-outfit text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
+            >
+              <span>View All Sites</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+            </button>
+          </motion.div>
 
-        {/* Heritage Cards Grid - Minimalist Elegant 2xl Rounded with Real Photos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
-          {featuredSites.map((site, index) => {
-            const isSaved = savedSiteIds.includes(site.id);
-            return (
+          {/* Heritage Cards Grid - Minimalist Elegant 2xl Rounded with Real Photos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
+            {featuredSites.map((site, index) => {
+              const isSaved = savedSiteIds.includes(site.id);
+              return (
+                <motion.div
+                  key={site.id}
+                  id={`featured-site-${site.id}`}
+                  onClick={() => onSelectSite(site)}
+                  initial={{ opacity: 0, y: 32 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.15 }}
+                  transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="group relative flex flex-col rounded-2xl border border-[#e8dfd5] bg-white hover:border-[#7e1925]/60 hover:shadow-[0_16px_36px_-10px_rgba(126,25,37,0.14)] transition-all duration-400 overflow-hidden text-left font-outfit cursor-pointer"
+                >
+                  {/* 16:10 Photo Container with Subtle Smooth Zoom */}
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#240409]">
+                    <img
+                      src={site.heroImage}
+                      alt={site.name}
+                      className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] select-none"
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
+                      }}
+                    />
+                    {/* Subtle Elegant Gradient Fade */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10 group-hover:from-black/85 transition-colors duration-300" />
+
+                    {/* Category Pill Tag */}
+                    <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-outfit text-[10px] font-bold uppercase tracking-wider text-[#7e1925] border border-[#e8dfd5] shadow-xs">
+                      {site.category}
+                    </span>
+
+                    {/* Bookmark Button */}
+                    <button
+                      id={`save-featured-${site.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleSaveSite(site.id);
+                      }}
+                      className={`absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-all ${isSaved
+                          ? 'bg-[#7e1925] text-white shadow-xs'
+                          : 'bg-black/45 text-white/90 hover:bg-black/70 border border-white/20'
+                        }`}
+                      title={isSaved ? 'Remove from saved' : 'Save site'}
+                    >
+                      <Bookmark className={`h-3.5 w-3.5 ${isSaved ? 'fill-white' : ''}`} />
+                    </button>
+
+                    {/* Historical Year Badge */}
+                    <div className="absolute bottom-2.5 left-3">
+                      <span className="font-outfit text-[10px] font-semibold text-[#f5dfc6] bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded border border-white/15 tracking-wide">
+                        Circa {site.yearBuilt}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Content Area */}
+                  <div className="flex flex-1 flex-col justify-between p-4 sm:p-5 font-outfit">
+                    <div>
+                      <div className="flex items-center gap-1.5 font-outfit text-[11px] font-bold uppercase tracking-[0.14em] text-[#7e1925] mb-1">
+                        <MapPin className="h-3 w-3 text-[#7e1925] flex-shrink-0" />
+                        <span>{site.barangay}, San Fernando</span>
+                      </div>
+
+                      <h3 className="font-outfit text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
+                        {site.name}
+                      </h3>
+
+                      <p className="mt-2 font-outfit text-xs sm:text-[13px] text-[#554d48] leading-relaxed font-normal line-clamp-2">
+                        {site.shortDescription}
+                      </p>
+                    </div>
+
+                    {/* Footer metadata */}
+                    <div className="mt-4 pt-3.5 border-t border-[#f0e8df] flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs text-[#8a7171]">
+                        <Clock className="w-3.5 h-3.5 text-[#7e1925]" />
+                        <span className="font-outfit text-[11px] sm:text-xs font-medium">{site.visitInfo?.duration || '45 mins'}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#7e1925] group-hover:text-[#580b14] transition-colors">
+                        <span>Explore</span>
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* UPCOMING EVENTS PREVIEW - Minimalist Elegant Redesign with Real Photos */}
+        <section id="upcoming-events-section" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-outfit"
+          >
+            <div>
+              <span className="font-outfit text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925]">
+                Living Culture & Celebrations
+              </span>
+              <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
+                Upcoming Events
+              </h2>
+            </div>
+            <button
+              onClick={() => onSelectEvent(upcomingEvents[0])}
+              className="font-outfit text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
+            >
+              <span>All Cultural Festivals</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+            </button>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-7">
+            {upcomingEvents.slice(0, 3).map((event, idx) => (
               <motion.div
-                key={site.id}
-                id={`featured-site-${site.id}`}
-                onClick={() => onSelectSite(site)}
+                key={event.id}
+                id={`event-preview-${event.id}`}
+                onClick={() => onSelectEvent(event)}
                 initial={{ opacity: 0, y: 32 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.15 }}
-                transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.6, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
                 className="group relative flex flex-col rounded-2xl border border-[#e8dfd5] bg-white hover:border-[#7e1925]/60 hover:shadow-[0_16px_36px_-10px_rgba(126,25,37,0.14)] transition-all duration-400 overflow-hidden text-left font-outfit cursor-pointer"
               >
-                {/* 16:10 Photo Container with Subtle Smooth Zoom */}
+                {/* 16:10 Real Photo Container */}
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#240409]">
                   <img
-                    src={site.heroImage}
-                    alt={site.name}
+                    src={event.bannerImage}
+                    alt={event.title}
                     className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] select-none"
                     loading="lazy"
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
+                      (e.target as HTMLImageElement).src = '/images/events/giant-lantern-fest.jpg';
                     }}
                   />
-                  {/* Subtle Elegant Gradient Fade */}
+                  {/* Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10 group-hover:from-black/85 transition-colors duration-300" />
 
-                  {/* Category Pill Tag */}
-                  <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-outfit text-[10px] font-bold uppercase tracking-wider text-[#7e1925] border border-[#e8dfd5] shadow-xs">
-                    {site.category}
+                  {/* Event Date Badge on Top Left */}
+                  <span className="absolute top-3 left-3 rounded-lg bg-[#7e1925] px-2.5 py-1 font-outfit text-[10px] font-bold text-white uppercase tracking-wider shadow-xs">
+                    {event.dateBadge}
                   </span>
 
-                  {/* Bookmark Button */}
-                  <button
-                    id={`save-featured-${site.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleSaveSite(site.id);
-                    }}
-                    className={`absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-all ${
-                      isSaved 
-                        ? 'bg-[#7e1925] text-white shadow-xs' 
-                        : 'bg-black/45 text-white/90 hover:bg-black/70 border border-white/20'
-                    }`}
-                    title={isSaved ? 'Remove from saved' : 'Save site'}
-                  >
-                    <Bookmark className={`h-3.5 w-3.5 ${isSaved ? 'fill-white' : ''}`} />
-                  </button>
-
-                  {/* Historical Year Badge */}
-                  <div className="absolute bottom-2.5 left-3">
-                    <span className="font-outfit text-[10px] font-semibold text-[#f5dfc6] bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded border border-white/15 tracking-wide">
-                      Circa {site.yearBuilt}
-                    </span>
-                  </div>
+                  {/* Category Pill on Top Right */}
+                  <span className="absolute top-3 right-3 rounded-full bg-black/60 backdrop-blur-xs px-2.5 py-0.5 font-outfit text-[10px] font-semibold text-[#ffd580] border border-[#fcbd15]/30 uppercase tracking-wider">
+                    {event.category}
+                  </span>
                 </div>
 
-                {/* Content Area */}
-                <div className="flex flex-1 flex-col justify-between p-4 sm:p-5 font-outfit">
+                <div className="p-4 sm:p-5 flex flex-1 flex-col justify-between font-outfit">
                   <div>
-                    <div className="flex items-center gap-1.5 font-outfit text-[11px] font-bold uppercase tracking-[0.14em] text-[#7e1925] mb-1">
-                      <MapPin className="h-3 w-3 text-[#7e1925] flex-shrink-0" />
-                      <span>{site.barangay}, San Fernando</span>
+                    <div className="flex items-center gap-1.5 font-outfit text-xs font-semibold text-[#7e1925] mb-1">
+                      <Calendar className="h-3.5 w-3.5 text-[#7e1925]" />
+                      <span>{event.date}</span>
                     </div>
 
                     <h3 className="font-outfit text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
-                      {site.name}
+                      {event.title}
                     </h3>
 
                     <p className="mt-2 font-outfit text-xs sm:text-[13px] text-[#554d48] leading-relaxed font-normal line-clamp-2">
-                      {site.shortDescription}
+                      {event.shortDescription}
                     </p>
                   </div>
 
-                  {/* Footer metadata */}
-                  <div className="mt-4 pt-3.5 border-t border-[#f0e8df] flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-[#8a7171]">
-                      <Clock className="w-3.5 h-3.5 text-[#7e1925]" />
-                      <span className="font-outfit text-[11px] sm:text-xs font-medium">{site.visitInfo?.duration || '45 mins'}</span>
-                    </div>
+                  <div className="mt-4 pt-3.5 border-t border-[#f0e8df] flex items-center justify-between text-xs">
+                    <span className="font-outfit text-[11px] sm:text-xs text-[#8a7171] line-clamp-1 max-w-[60%]">
+                      {event.location.split(',')[0]}
+                    </span>
                     <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#7e1925] group-hover:text-[#580b14] transition-colors">
-                      <span>Explore</span>
+                      <span>View Event</span>
                       <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                     </div>
                   </div>
                 </div>
               </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* UPCOMING EVENTS PREVIEW - Minimalist Elegant Redesign with Real Photos */}
-      <section id="upcoming-events-section" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.25 }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-outfit"
-        >
-          <div>
-            <span className="font-outfit text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925]">
-              Living Culture & Celebrations
-            </span>
-            <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
-              Upcoming Events
-            </h2>
+            ))}
           </div>
-          <button
-            onClick={() => onSelectEvent(upcomingEvents[0])}
-            className="font-outfit text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
+        </section>
+
+        {/* HERITAGE CALL TO ACTION CARD - Styled with plain-bg.png */}
+        <section id="heritage-cta-card-section" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 36 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden rounded-2xl border border-[#861f2a]/40 p-8 sm:p-12 text-white shadow-xl bg-[#4a0810]"
           >
-            <span>All Cultural Festivals</span>
-            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
-          </button>
-        </motion.div>
+            {/* Custom Plain Low-Poly Background */}
+            <img
+              src="/images/background/plain-bg.png"
+              alt="San Fernando Heritage"
+              className="absolute inset-0 h-full w-full object-cover object-center pointer-events-none"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/images/background/background.png';
+              }}
+            />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-7">
-          {upcomingEvents.slice(0, 3).map((event, idx) => (
-            <motion.div
-              key={event.id}
-              id={`event-preview-${event.id}`}
-              onClick={() => onSelectEvent(event)}
-              initial={{ opacity: 0, y: 32 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.15 }}
-              transition={{ duration: 0.6, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className="group relative flex flex-col rounded-2xl border border-[#e8dfd5] bg-white hover:border-[#7e1925]/60 hover:shadow-[0_16px_36px_-10px_rgba(126,25,37,0.14)] transition-all duration-400 overflow-hidden text-left font-outfit cursor-pointer"
-            >
-              {/* 16:10 Real Photo Container */}
-              <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#240409]">
-                <img
-                  src={event.bannerImage}
-                  alt={event.title}
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] select-none"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/images/events/giant-lantern-fest.jpg';
-                  }}
-                />
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10 group-hover:from-black/85 transition-colors duration-300" />
+            {/* Subtle vignette overlay for optimal text contrast */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#2e0307]/85 via-[#36040a]/65 to-[#240205]/80 pointer-events-none" />
 
-                {/* Event Date Badge on Top Left */}
-                <span className="absolute top-3 left-3 rounded-lg bg-[#7e1925] px-2.5 py-1 font-outfit text-[10px] font-bold text-white uppercase tracking-wider shadow-xs">
-                  {event.dateBadge}
-                </span>
+            {/* Decorative Framing Parols at corners */}
+            <SectionParolAccents leftId="1" rightId="2" />
 
-                {/* Category Pill on Top Right */}
-                <span className="absolute top-3 right-3 rounded-full bg-black/60 backdrop-blur-xs px-2.5 py-0.5 font-outfit text-[10px] font-semibold text-[#ffd580] border border-[#fcbd15]/30 uppercase tracking-wider">
-                  {event.category}
-                </span>
-              </div>
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              {/* LEFT SIDE (50% width on large screens) */}
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full space-y-4 text-left"
+              >
+                {/* Eyebrow badge without icon as requested */}
+                <div className="inline-flex items-center rounded-full bg-[#200205]/80 border border-white/20 px-3.5 py-1 text-xs font-medium text-white/95 backdrop-blur-md shadow-xs">
+                  <span className="tracking-wide">City of <span className="text-[#ffd580] font-semibold">San Fernando</span>, Pampanga</span>
+                </div>
+                <h2 className="font-outfit text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
+                  Your Journey Through <span className="text-[#ffd580]">San Fernando</span> Starts Here.
+                </h2>
+                <p className="font-outfit text-sm sm:text-base text-[#ffeaec]/90 max-w-xl leading-relaxed font-normal">
+                  Explore the places, stories, and traditions that keep the city's heritage alive.
+                </p>
+                <div className="pt-2">
+                  <button
+                    id="start-journey-btn"
+                    onClick={onExploreClick}
+                    className="font-outfit inline-flex items-center gap-2 rounded-xl bg-[#f5b82a] text-[#3d0309] px-7 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider hover:bg-[#ffc842] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
+                  >
+                    <span>Explore Heritage</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
 
-              <div className="p-4 sm:p-5 flex flex-1 flex-col justify-between font-outfit">
-                <div>
-                  <div className="flex items-center gap-1.5 font-outfit text-xs font-semibold text-[#7e1925] mb-1">
-                    <Calendar className="h-3.5 w-3.5 text-[#7e1925]" />
-                    <span>{event.date}</span>
+              {/* RIGHT SIDE (50% width on large screens): Heritage Showcase Card */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full flex justify-center lg:justify-end"
+              >
+                <div className="relative w-full max-w-lg aspect-[16/10] sm:aspect-[16/9] lg:aspect-[16/10] rounded-2xl overflow-hidden border border-white/25 bg-[#2d0206]/80 shadow-2xl group transition-all duration-300">
+                  <img
+                    src="/images/sites/giant-lantern-hero.jpg"
+                    alt="San Fernando Cultural Heritage"
+                    className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/images/giant-lanterns.jpg';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15 pointer-events-none" />
+
+                  {/* Badge on top right */}
+                  <div className="absolute top-3.5 right-3.5">
+                    <span className="inline-flex items-center rounded-full bg-black/60 backdrop-blur-md px-3 py-1 font-outfit text-[11px] font-semibold text-white/95 border border-white/25 uppercase tracking-wider">
+                      Heritage Trail
+                    </span>
                   </div>
 
-                  <h3 className="font-outfit text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
-                    {event.title}
-                  </h3>
-
-                  <p className="mt-2 font-outfit text-xs sm:text-[13px] text-[#554d48] leading-relaxed font-normal line-clamp-2">
-                    {event.shortDescription}
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-3.5 border-t border-[#f0e8df] flex items-center justify-between text-xs">
-                  <span className="font-outfit text-[11px] sm:text-xs text-[#8a7171] line-clamp-1 max-w-[60%]">
-                    {event.location.split(',')[0]}
-                  </span>
-                  <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#7e1925] group-hover:text-[#580b14] transition-colors">
-                    <span>View Event</span>
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                  {/* Caption at bottom */}
+                  <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 text-left">
+                    <span className="font-outfit text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd580] block mb-1">
+                      Living Culture & History
+                    </span>
+                    <p className="font-outfit text-base sm:text-lg font-bold text-white leading-snug">
+                      <span className="text-[#ffd580]">San Fernando</span> Cultural Legacy
+                    </p>
+                    <p className="font-outfit text-xs text-[#ffeaec]/85 mt-1 line-clamp-2">
+                      Historic landmarks, ancestral architecture, and centuries of vibrant traditions.
+                    </p>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* HERITAGE CALL TO ACTION CARD - Styled with plain-bg.png */}
-      <section id="heritage-cta-card-section" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 36 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-2xl border border-[#861f2a]/40 p-8 sm:p-12 text-white shadow-xl bg-[#4a0810]"
-        >
-          {/* Custom Plain Low-Poly Background */}
-          <img
-            src="/images/background/plain-bg.png"
-            alt="San Fernando Heritage"
-            className="absolute inset-0 h-full w-full object-cover object-center pointer-events-none"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/images/background/background.png';
-            }}
-          />
-
-          {/* Subtle vignette overlay for optimal text contrast */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#2e0307]/85 via-[#36040a]/65 to-[#240205]/80 pointer-events-none" />
-
-          {/* Decorative Framing Parols at corners */}
-          <SectionParolAccents leftId="1" rightId="2" />
-
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            {/* LEFT SIDE (50% width on large screens) */}
-            <motion.div 
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full space-y-4 text-left"
-            >
-              {/* Eyebrow badge without icon as requested */}
-              <div className="inline-flex items-center rounded-full bg-[#200205]/80 border border-white/20 px-3.5 py-1 text-xs font-medium text-white/95 backdrop-blur-md shadow-xs">
-                <span className="tracking-wide">City of <span className="text-[#ffd580] font-semibold">San Fernando</span>, Pampanga</span>
-              </div>
-              <h2 className="font-outfit text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
-                Your Journey Through <span className="text-[#ffd580]">San Fernando</span> Starts Here.
-              </h2>
-              <p className="font-outfit text-sm sm:text-base text-[#ffeaec]/90 max-w-xl leading-relaxed font-normal">
-                Explore the places, stories, and traditions that keep the city's heritage alive.
-              </p>
-              <div className="pt-2">
-                <button
-                  id="start-journey-btn"
-                  onClick={onExploreClick}
-                  className="font-outfit inline-flex items-center gap-2 rounded-xl bg-[#f5b82a] text-[#3d0309] px-7 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider hover:bg-[#ffc842] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
-                >
-                  <span>Explore Heritage</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-
-            {/* RIGHT SIDE (50% width on large screens): Heritage Showcase Card */}
-            <motion.div 
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full flex justify-center lg:justify-end"
-            >
-              <div className="relative w-full max-w-lg aspect-[16/10] sm:aspect-[16/9] lg:aspect-[16/10] rounded-2xl overflow-hidden border border-white/25 bg-[#2d0206]/80 shadow-2xl group transition-all duration-300">
-                <img
-                  src="/images/sites/giant-lantern-hero.jpg"
-                  alt="San Fernando Cultural Heritage"
-                  className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/images/giant-lanterns.jpg';
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15 pointer-events-none" />
-                
-                {/* Badge on top right */}
-                <div className="absolute top-3.5 right-3.5">
-                  <span className="inline-flex items-center rounded-full bg-black/60 backdrop-blur-md px-3 py-1 font-outfit text-[11px] font-semibold text-white/95 border border-white/25 uppercase tracking-wider">
-                    Heritage Trail
-                  </span>
-                </div>
-                
-                {/* Caption at bottom */}
-                <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 text-left">
-                  <span className="font-outfit text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd580] block mb-1">
-                    Living Culture & History
-                  </span>
-                  <p className="font-outfit text-base sm:text-lg font-bold text-white leading-snug">
-                    <span className="text-[#ffd580]">San Fernando</span> Cultural Legacy
-                  </p>
-                  <p className="font-outfit text-xs text-[#ffeaec]/85 mt-1 line-clamp-2">
-                    Historic landmarks, ancestral architecture, and centuries of vibrant traditions.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-      </section>
+              </motion.div>
+            </div>
+          </motion.div>
+        </section>
       </div>
     </div>
   );

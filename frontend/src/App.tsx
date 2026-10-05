@@ -4,12 +4,11 @@ import type {
   HeritageSite,
   EventItem,
   CategoryType,
-  UserProfile,
-  CommunityPhoto
+  UserProfile
 } from './types';
 import confetti from 'canvas-confetti';
 
-import { INITIAL_HERITAGE_SITES } from './data/heritageData';
+
 import { CULTURAL_EVENTS } from './data/eventsData';
 import { apiFetchSites, apiFetchEvents, apiFetchCurrentUser } from './api/client';
 
@@ -39,39 +38,12 @@ import { AdminView } from './views/AdminView';
 export default function App() {
   // Navigation & View State
   const [currentView, setCurrentView] = useState<ViewType>('home');
-  const [selectedSite, setSelectedSite] = useState<HeritageSite>(INITIAL_HERITAGE_SITES[0]);
+  const [selectedSite, setSelectedSite] = useState<HeritageSite | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | 'All'>('All');
 
   // Dynamic Data State
-  const [sites, setSites] = useState<HeritageSite[]>(() => {
-    try {
-      const saved = localStorage.getItem('sf_heritage_sites');
-      const parsed = saved ? JSON.parse(saved) : null;
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Upgrade any outdated placeholder image URLs with real verified photos
-        return parsed.map((s: HeritageSite) => {
-          const fresh = INITIAL_HERITAGE_SITES.find(f => f.id === s.id);
-          if (fresh) {
-            return {
-              ...s,
-              heroImage: fresh.heroImage,
-              archivalImage: fresh.archivalImage,
-              modernImage: fresh.modernImage,
-              historicalCharacters: s.historicalCharacters?.map((hc, idx) => ({
-                ...hc,
-                avatar: fresh.historicalCharacters?.[idx]?.avatar || hc.avatar
-              })) || fresh.historicalCharacters
-            };
-          }
-          return s;
-        });
-      }
-      return INITIAL_HERITAGE_SITES;
-    } catch {
-      return INITIAL_HERITAGE_SITES;
-    }
-  });
+  const [sites, setSites] = useState<HeritageSite[]>([]);
 
   const [events, setEvents] = useState<EventItem[]>(() => {
     try {
@@ -154,7 +126,7 @@ export default function App() {
       }
     }
     loadBackendData();
-  }, []);
+  }, [currentView]);
 
   // Sync to localStorage
   useEffect(() => {
@@ -300,11 +272,13 @@ export default function App() {
         spread: 60,
         origin: { y: 0.7 }
       });
-    } catch (e) { }
+    } catch {
+      // Ignore error
+    }
   };
 
   // Community Photo Upload handler
-  const handlePhotoUploaded = (_photo: CommunityPhoto) => {
+  const handlePhotoUploaded = () => {
     setUser((prev) => {
       if (!prev) return null;
       const prevBadges = prev.badges || [];
@@ -318,7 +292,9 @@ export default function App() {
       };
       try {
         localStorage.setItem('sf_user_profile', JSON.stringify({ ...updatedUser, isLoggedIn: true }));
-      } catch { }
+      } catch {
+        // Ignore error
+      }
       return updatedUser;
     });
   };
@@ -330,17 +306,31 @@ export default function App() {
   };
 
   // Admin Actions
-  const handleAddSite = (newSite: HeritageSite) => {
-    setSites((prev) => [newSite, ...prev]);
-  };
 
-  const handleUpdateSite = (updatedSite: HeritageSite) => {
-    setSites((prev) => prev.map((s) => (s.id === updatedSite.id ? updatedSite : s)));
-  };
 
-  const handleDeleteSite = (siteId: string) => {
-    setSites((prev) => prev.filter((s) => s.id !== siteId));
-  };
+  if (currentView === 'admin') {
+    if (!user || user.role !== 'admin') {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-gray-100">
+          <div className="text-center p-8 bg-white shadow-xl rounded-xl">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
+            <p className="text-gray-600 mb-6">You need administrator privileges to access this portal.</p>
+            <button onClick={() => navigateTo('home')} className="bg-[#7A1C30] text-white px-6 py-2 rounded-lg font-bold">Return to Home</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <AdminView 
+        user={user}
+        onLogout={() => {
+          setUser(null);
+          navigateTo('home');
+        }}
+      />
+    );
+  }
 
   return (
     <div id="san-fernando-app-root" className="min-h-screen flex flex-col bg-[#FDFCFB] text-[#23201F] font-sans antialiased selection:bg-[#dc2626] selection:text-white">
@@ -354,8 +344,8 @@ export default function App() {
         savedCount={(savedSiteIds?.length || 0) + (savedEventIds?.length || 0)}
         user={user}
         totalSites={sites?.length || 10}
-        isAdminMode={currentView === 'admin'}
-        onToggleAdminMode={() => navigateTo(currentView === 'admin' ? 'home' : 'admin')}
+        isAdminMode={user?.role === 'admin'}
+        onToggleAdminMode={() => navigateTo('admin')}
       />
 
       {/* MAIN VIEW CONTENT CONTAINER */}
@@ -414,7 +404,6 @@ export default function App() {
               setSelectedSite(site);
               navigateTo('interactive-history');
             }}
-            onTriggerQRScan={handleTriggerQRScan}
             isSaved={savedSiteIds.includes(selectedSite.id)}
             onToggleSave={handleToggleSaveSite}
             onAddToPlan={(siteId) => {
@@ -496,16 +485,6 @@ export default function App() {
         {/* PAGE 12: TOURISM OFFICE & CONTACT */}
         {currentView === 'tourism-office' && <TourismOfficeView />}
 
-        {/* PAGE 13: ADMIN / CMS */}
-        {currentView === 'admin' && (
-          <AdminView
-            sites={sites}
-            events={events}
-            onAddSite={handleAddSite}
-            onUpdateSite={handleUpdateSite}
-            onDeleteSite={handleDeleteSite}
-          />
-        )}
       </main>
 
       {/* FOOTER - Harmonized with Deep Maroon Low-Poly & Decorative Parols */}
@@ -653,7 +632,7 @@ export default function App() {
           setIsAuthOpen(false);
           navigateTo('admin');
         }}
-        isAdmin={currentView === 'admin'}
+        isAdmin={user?.role === 'admin'}
       />
 
       {/* DIRECTIONS & TRANSIT MODAL */}

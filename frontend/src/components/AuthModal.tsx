@@ -44,7 +44,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isUserAdmin = user?.id.startsWith('admin') || user?.email?.toLowerCase() === 'adminsf@csfp.gov.ph' || isAdmin;
+  const isUserAdmin = user?.role === 'admin' || user?.id?.toString().startsWith('admin') || user?.email?.toLowerCase() === 'adminsf@csfp.gov.ph' || isAdmin;
 
   // Google / Gmail Login Handler
   const handleGoogleLogin = () => {

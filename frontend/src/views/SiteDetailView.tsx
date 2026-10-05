@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, Navigation, QrCode, MapPin, Sparkles, Calendar, ArrowLeft, Share2, Compass, KeyRound, Footprints, VolumeX, CameraOff, ShieldCheck, CheckSquare } from 'lucide-react';
+import { Bookmark, Navigation, MapPin, Sparkles, Calendar, ArrowLeft, Share2, KeyRound, ShieldCheck } from 'lucide-react';
 import type { HeritageSite, CommunityPhoto } from '../types';
 import { ThenNowSlider } from '../components/ThenNowSlider';
 import { AudioStoryPlayer } from '../components/AudioStoryPlayer';
@@ -10,7 +10,6 @@ interface SiteDetailViewProps {
   onBack: () => void;
   onOpenDirections: (site: HeritageSite) => void;
   onOpenInteractiveHistory: (site: HeritageSite) => void;
-  onTriggerQRScan: (site: HeritageSite) => void;
   isSaved: boolean;
   onToggleSave: (siteId: string) => void;
   onAddToPlan: (siteId: string) => void;
@@ -23,7 +22,6 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
   onBack,
   onOpenDirections,
   onOpenInteractiveHistory,
-  onTriggerQRScan,
   isSaved,
   onToggleSave,
   onAddToPlan,
@@ -173,6 +171,7 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
       </section>
 
       {/* SECTION 2: THE STORY */}
+      {site.story && site.story !== 'No history recorded.' && (
       <section id="section-the-story" className="space-y-3">
         <div className="flex items-center gap-2 border-b border-[#e7e0d6] pb-2">
           <span className="h-4 w-1 bg-[#b45309]" />
@@ -188,21 +187,25 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
           </div>
 
           {/* Inline Audio Narrative Player - Voices of Pampanga */}
-          <div className="mt-8 pt-6 border-t border-[#e7e0d6]">
-            <AudioStoryPlayer
-              title={site.audioStory.title}
-              narrator={site.audioStory.narrator}
-              duration={site.audioStory.duration}
-              durationSeconds={site.audioStory.durationSeconds}
-              transcript={site.audioStory.transcript}
-              kapampanganTranscript={site.audioStory.kapampanganTranscript}
-              chapters={site.audioStory.chapters}
-            />
-          </div>
+          {site.audioStory && site.audioStory.durationSeconds > 0 && (
+            <div className="mt-8 pt-6 border-t border-[#e7e0d6]">
+              <AudioStoryPlayer
+                title={site.audioStory.title}
+                narrator={site.audioStory.narrator}
+                duration={site.audioStory.duration}
+                durationSeconds={site.audioStory.durationSeconds}
+                transcript={site.audioStory.transcript}
+                kapampanganTranscript={site.audioStory.kapampanganTranscript}
+                chapters={site.audioStory.chapters}
+              />
+            </div>
+          )}
         </div>
       </section>
+      )}
 
       {/* SECTION 3: TIMELINE */}
+      {site.timeline && site.timeline.length > 0 && (
       <section id="section-timeline" className="space-y-4">
         <div className="flex items-center justify-between border-b border-[#e7e0d6] pb-2">
           <div className="flex items-center gap-2">
@@ -236,8 +239,10 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
           </div>
         </div>
       </section>
+      )}
 
       {/* SECTION 4: THEN & NOW (Interactive Slider) */}
+      {site.archivalImage && site.archivalImage !== site.modernImage && site.archivalImage !== '/images/sites/cathedral-hero.jpg' && (
       <section id="section-then-now" className="space-y-3">
         <div className="flex items-center justify-between border-b border-[#e7e0d6] pb-2">
           <div className="flex items-center gap-2">
@@ -259,8 +264,10 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
           nowYear="Present Day"
         />
       </section>
+      )}
 
       {/* SECTION 5: DID YOU KNOW? */}
+      {site.didYouKnow && site.didYouKnow.length > 0 && (
       <section id="section-did-you-know" className="space-y-3">
         <div className="flex items-center gap-2 border-b border-[#e7e0d6] pb-2">
           <span className="h-4 w-1 bg-[#b45309]" />
@@ -286,6 +293,7 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
           ))}
         </div>
       </section>
+      )}
 
       {/* SECTION 6: UNLOCKING HOUSEHOLD VAULTS (Subterranean Secrets & Ancestral Heirlooms) */}
       {site.householdVaults && site.householdVaults.length > 0 && (
@@ -339,114 +347,6 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
         </section>
       )}
 
-      {/* SECTION 7: VISIT INFORMATION & SITE ETIQUETTE */}
-      <section id="section-visit-info" className="space-y-4">
-        <div className="flex items-center gap-2 border-b border-[#e7e0d6] pb-2">
-          <span className="h-4 w-1 bg-[#7e1925]" />
-          <h2 className="headline-md text-[#1e1b19]">
-            Visitor Guidelines & Practical Info
-          </h2>
-        </div>
-
-        <div className="rounded border border-[#e7e0d6] bg-white p-6 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 body-sm">
-            <div>
-              <span className="label-compact text-[#574141] block mb-1">
-                Location
-              </span>
-              <p className="text-[#1e1b19] font-medium">{site.visitInfo.address}</p>
-            </div>
-
-            <div>
-              <span className="label-compact text-[#574141] block mb-1">
-                Visiting Hours
-              </span>
-              <p className="text-[#1e1b19] font-medium">{site.visitInfo.openingHours}</p>
-            </div>
-
-            <div>
-              <span className="label-compact text-[#574141] block mb-1">
-                Entrance Fee
-              </span>
-              <p className="text-[#7e1925] font-semibold">{site.visitInfo.entranceFee}</p>
-            </div>
-
-            <div>
-              <span className="label-compact text-[#574141] block mb-1">
-                Accessibility
-              </span>
-              <p className="text-[#1e1b19] font-medium">{site.visitInfo.accessibility}</p>
-            </div>
-
-            <div>
-              <span className="label-compact text-[#574141] block mb-1">
-                Recommended Duration
-              </span>
-              <p className="text-[#1e1b19] font-medium">{site.visitInfo.duration}</p>
-            </div>
-
-            <div>
-              <span className="label-compact text-[#574141] block mb-1">
-                Optimal Visiting Time
-              </span>
-              <p className="text-[#1e1b19] font-medium">{site.visitInfo.bestTime}</p>
-            </div>
-          </div>
-
-          {/* On-Site Etiquette Guidelines (Shoe covers, quiet reflection, photography restrictions) */}
-          {site.etiquetteRules && (
-            <div className="pt-5 border-t border-[#e7e0d6] space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="label-prominent text-[#7e1925]">
-                  Heritage Conservation Etiquette
-                </span>
-                <span className="text-[11px] text-[#8a7171]">Official Preservation Protocol</span>
-              </div>
-
-              {/* Protocol Badges */}
-              <div className="flex flex-wrap gap-2">
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs border ${
-                  site.etiquetteRules.shoeCoversRequired
-                    ? 'bg-[#faf2ee] border-[#D49B24] text-[#231416] font-medium'
-                    : 'bg-[#faf2ee] border-[#e7e0d6] text-[#574141]'
-                }`}>
-                  <Footprints className="w-3.5 h-3.5 text-[#D49B24]" />
-                  <span>{site.etiquetteRules.shoeCoversRequired ? 'Shoe Covers Required' : 'Standard Footwear Permitted'}</span>
-                </div>
-
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs border ${
-                  site.etiquetteRules.silenceProtocol
-                    ? 'bg-[#faf2ee] border-[#7e1925] text-[#7e1925] font-medium'
-                    : 'bg-[#faf2ee] border-[#e7e0d6] text-[#574141]'
-                }`}>
-                  <VolumeX className="w-3.5 h-3.5 text-[#7e1925]" />
-                  <span>{site.etiquetteRules.silenceProtocol ? 'Quiet Reflection Protocol' : 'Normal Voice Volume'}</span>
-                </div>
-
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs border ${
-                  !site.etiquetteRules.flashPhotographyAllowed
-                    ? 'bg-[#faf2ee] border-[#574141] text-[#1e1b19] font-medium'
-                    : 'bg-[#faf2ee] border-[#e7e0d6] text-[#574141]'
-                }`}>
-                  <CameraOff className="w-3.5 h-3.5 text-[#574141]" />
-                  <span>{site.etiquetteRules.flashPhotographyAllowed ? 'Photography Allowed' : 'No Flash / Tripods'}</span>
-                </div>
-              </div>
-
-              {/* Specific Preservation Notes */}
-              <ul className="space-y-1.5 pt-1">
-                {site.etiquetteRules.preservationNotes.map((note, nIdx) => (
-                  <li key={nIdx} className="flex items-start gap-2 text-xs text-[#574141]">
-                    <CheckSquare className="w-3.5 h-3.5 text-[#D49B24] flex-shrink-0 mt-0.5" />
-                    <span>{note}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </section>
-
       {/* SECTION 8: COMMUNITY PHOTO WALL & VISITOR MEMORIES */}
       <VisitorPhotoWall
         siteId={site.id}
@@ -454,57 +354,6 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
         defaultUserName={userName}
         onPhotoUploaded={onPhotoUploaded}
       />
-
-      {/* SECTION 9: INTERACTIVE EXPERIENCE (ON-SITE QR CTA & NHCP BRONZE PLAQUE) */}
-      <section id="section-interactive-experience" className="rounded-lg border-2 border-[#D49B24] bg-[#faf2ee] p-6 sm:p-8 relative overflow-hidden">
-        {/* Subtle Decorative Star Pattern in Background */}
-        <div className="absolute -right-6 -bottom-6 w-32 h-32 opacity-10 pointer-events-none text-[#D49B24]">
-          <svg viewBox="0 0 100 100" fill="currentColor">
-            <polygon points="50,0 60,35 95,50 60,65 50,100 40,65 5,50 40,35" />
-          </svg>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2.5 text-center md:text-left">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-              <span className="label-prominent text-[#7e1925] flex items-center gap-1.5">
-                <QrCode className="h-4 w-4 text-[#7e1925]" />
-                On-Site Discovery Plaque
-              </span>
-              <span className="rounded bg-[#231416] text-[#F7D070] border border-[#D49B24] px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-                NHCP Marker #{site.nhcpPlaqueCode || site.yearBuilt.split(' ')[0]}
-              </span>
-            </div>
-
-            <h3 className="headline-md text-[#1e1b19]">
-              Standing at this landmark? Scan or Enter #{site.nhcpPlaqueCode || site.yearBuilt.split(' ')[0]}.
-            </h3>
-            <p className="body-sm text-[#574141] max-w-md leading-relaxed">
-              Scan the official brass QR plaque installed at the facade or enter the 4-digit NHCP code to verify your visit and unlock historical testimonies.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <button
-              id="simulate-onsite-scan-btn"
-              onClick={() => onTriggerQRScan(site)}
-              className="flex items-center gap-2 rounded bg-[#7e1925] px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#580b14] transition-colors shadow-xs"
-            >
-              <QrCode className="h-4 w-4" />
-              <span>Simulate On-Site Scan</span>
-            </button>
-
-            <button
-              id="view-full-multimedia-btn"
-              onClick={() => onOpenInteractiveHistory(site)}
-              className="flex items-center gap-2 rounded border border-[#e7e0d6] bg-white px-5 py-2.5 label-compact text-[#1e1b19] hover:border-[#7e1925] transition-colors"
-            >
-              <Compass className="h-4 w-4 text-[#D49B24]" />
-              <span>360° & Figures</span>
-            </button>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
