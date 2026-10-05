@@ -12,7 +12,6 @@ interface AuthModalProps {
   savedSiteIds?: string[];
   sites?: HeritageSite[];
   onNavigateAdmin?: () => void;
-  isAdmin?: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -23,8 +22,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLogout,
   savedSiteIds = [],
   sites: _sites = [],
-  onNavigateAdmin,
-  isAdmin = false
+  onNavigateAdmin
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'profile'>(user ? 'profile' : 'login');
   const [email, setEmail] = useState('');
@@ -44,36 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isUserAdmin = user?.role === 'admin' || user?.id?.toString().startsWith('admin') || user?.email?.toLowerCase() === 'adminsf@csfp.gov.ph' || isAdmin;
-
-  // Google / Gmail Login Handler
-  const handleGoogleLogin = () => {
-    setIsSubmitting(true);
-    setNotice(null);
-
-    // Create authenticated Google/Gmail session
-    const googleUser: UserProfile = {
-      id: 'usr-google-' + Date.now(),
-      name: 'Ronian Gulles',
-      email: 'gulles.ronian@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-      hometown: 'San Fernando, Pampanga',
-      memberSince: 'September 2026',
-      savedSites: user?.savedSites || [],
-      scannedSites: user?.scannedSites || [],
-      badges: user?.badges || ['first-scan'],
-      stamps: user?.stamps || []
-    };
-
-    onLogin(googleUser);
-    setNotice({ type: 'success', message: 'Signed in with Gmail (gulles.ronian@gmail.com) successfully!' });
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setNotice(null);
-      setMode('profile');
-      onClose();
-    }, 700);
-  };
+  const isUserAdmin = user?.role === 'admin';
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,54 +50,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsSubmitting(true);
 
     const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPassword = password.trim();
-
     try {
-      const response = await apiLogin(trimmedEmail, trimmedPassword);
+      const response = await apiLogin(trimmedEmail, password);
       onLogin(response.user);
-      const isAdminUser = response.user.role === 'admin' || response.user.email?.toLowerCase() === 'adminsf@csfp.gov.ph';
-      setNotice({
-        type: 'success',
-        message: isAdminUser ? 'City Administrator authenticated via Laravel JWT. Launching CMS...' : 'Welcome back! Logged in via Laravel JWT.'
-      });
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setNotice(null);
-        if (isAdminUser && onNavigateAdmin) {
-          onNavigateAdmin();
-        } else {
-          setMode('profile');
-        }
-        onClose();
-      }, 700);
-    } catch (err: any) {
-      // Local fallback if API server is offline
-      if (trimmedEmail === 'adminsf@csfp.gov.ph' && trimmedPassword === '@dm1nCSFP') {
-        const adminUser: UserProfile = {
-          id: 'admin-csfp-01',
-          name: 'City Administrator',
-          email: 'adminsf@csfp.gov.ph',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-          hometown: 'City of San Fernando, Pampanga',
-          memberSince: 'Official Administrator',
-          savedSites: user?.savedSites || [],
-          scannedSites: user?.scannedSites || [],
-          badges: ['admin-curator', 'heritage-officer'],
-          stamps: user?.stamps || []
-        };
-        onLogin(adminUser);
-        setNotice({ type: 'success', message: 'City Administrator authenticated. Launching CMS Portal...' });
-        setTimeout(() => {
-          setIsSubmitting(false);
-          setNotice(null);
-          if (onNavigateAdmin) onNavigateAdmin();
-          onClose();
-        }, 800);
-        return;
-      }
-
+      if (response.user.role === 'admin') onNavigateAdmin?.();
+      else setMode('profile');
+      onClose();
+    } catch (err: unknown) {
+      setNotice({ type: 'error', message: err instanceof Error ? err.message : 'Unable to sign in. Please try again.' });
+    } finally {
       setIsSubmitting(false);
-      setNotice({ type: 'error', message: err?.message || 'Authentication failed. Please check your credentials.' });
     }
   };
 
@@ -139,25 +70,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     const trimmedEmail = email.trim().toLowerCase();
 
-    if (trimmedEmail === 'adminsf@csfp.gov.ph') {
-      setIsSubmitting(false);
-      setNotice({ type: 'error', message: 'This official address is reserved for City Administration. Please sign in instead.' });
-      return;
-    }
-
     try {
       const response = await apiRegister(name.trim() || 'Heritage Explorer', trimmedEmail, password);
       onLogin(response.user);
-      setNotice({ type: 'success', message: 'Heritage account registered via Laravel JWT! Welcome to San Fernando.' });
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setNotice(null);
-        setMode('profile');
-        onClose();
-      }, 700);
-    } catch (err: any) {
+      setMode('profile');
+      onClose();
+    } catch (err: unknown) {
+      setNotice({ type: 'error', message: err instanceof Error ? err.message : 'Unable to register. Please try again.' });
+    } finally {
       setIsSubmitting(false);
-      setNotice({ type: 'error', message: err?.message || 'Registration failed. Email may already be in use.' });
     }
   };
 
@@ -316,8 +237,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="button"
                 id="gmail-login-btn"
-                onClick={handleGoogleLogin}
-                disabled={isSubmitting}
+                disabled
+                title="Google sign-in is not available yet. Use email and password."
                 className="w-full flex items-center justify-center gap-3 rounded-xl border border-[#ded5cb] bg-white hover:bg-[#f9f7f4] active:bg-[#f2ece4] py-2.5 px-4 text-xs font-bold text-[#352f2c] transition-colors shadow-xs cursor-pointer mb-4"
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
@@ -326,7 +247,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.24C.45 8.15 0 9.92 0 12s.45 3.85 1.24 5.42l4.04-3.15z" />
                   <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
                 </svg>
-                <span>Continue with Google / Gmail</span>
+                <span>Google / Gmail sign-in unavailable</span>
               </button>
 
               {/* Minimalist Divider */}
@@ -349,7 +270,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com or adminsf@csfp.gov.ph"
+                    placeholder="you@example.com"
                     className="w-full rounded-xl border border-[#ded5cb] bg-white px-3.5 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-outfit"
                   />
                 </div>
@@ -365,7 +286,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       onClick={() => {
                         setNotice({ 
                           type: 'info', 
-                          message: 'Demo credentials: Admin (adminsf@csfp.gov.ph / @dm1nCSFP) or any email for Explorer.' 
+                          message: 'Password recovery is not available here yet. Contact your administrator for help.'
                         });
                       }}
                       className="text-xs text-[#7e1925] hover:underline font-medium"
@@ -420,36 +341,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </div>
 
-              {/* Quick Demo Credentials Footer with Breakline */}
-              <div className="mt-5 pt-4 border-t border-[#e2d8cd]">
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="font-semibold text-[#8a817b]">Quick Demo:</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('adminsf@csfp.gov.ph');
-                        setPassword('@dm1nCSFP');
-                        setNotice(null);
-                      }}
-                      className="font-bold text-xs text-[#7e1925] hover:bg-[#7e1925]/10 px-2.5 py-1 rounded-lg bg-white border border-[#ded5cb] transition-colors shadow-2xs"
-                    >
-                      Admin
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('fernandino.traveler@gmail.com');
-                        setPassword('traveler2026');
-                        setNotice(null);
-                      }}
-                      className="font-bold text-xs text-[#554d48] hover:bg-black/5 px-2.5 py-1 rounded-lg bg-white border border-[#ded5cb] transition-colors shadow-2xs"
-                    >
-                      Explorer
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           ) : (
             /* MINIMALIST REGISTER FORM (Hometown/Province Removed) */

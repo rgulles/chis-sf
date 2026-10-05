@@ -20,7 +20,6 @@ class EventController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'created_by' => 'required|exists:users,id',
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'event_date' => 'required|date',
@@ -28,6 +27,8 @@ class EventController extends Controller
             'image_path' => 'nullable|string|max:255',
             'status' => 'nullable|in:upcoming,ongoing,completed,cancelled',
         ]);
+
+        $data['created_by'] = $request->user()->id;
 
         $event = Event::create($data);
 

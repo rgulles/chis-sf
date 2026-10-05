@@ -20,7 +20,6 @@ class HeritageSiteController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'created_by' => 'required|exists:users,id',
             'name' => 'required|string|max:255',
             'category' => 'nullable|string|max:255',
             'year_built' => 'nullable|string|max:255',
@@ -31,6 +30,8 @@ class HeritageSiteController extends Controller
             'longitude' => 'nullable|numeric',
             'status' => 'nullable|in:active,archived',
         ]);
+
+        $data['created_by'] = $request->user()->id;
 
         $heritageSite = HeritageSite::create($data);
 

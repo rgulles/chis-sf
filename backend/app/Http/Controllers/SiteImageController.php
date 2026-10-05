@@ -33,6 +33,7 @@ class SiteImageController extends Controller
     public function update(Request $request, SiteImage $siteImage)
     {
         $data = $request->validate([
+            'heritage_site_id' => 'sometimes|required|integer|exists:heritage_sites,id',
             'image_path' => 'sometimes|string|max:255',
             'caption' => 'nullable|string|max:255',
         ]);

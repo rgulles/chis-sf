@@ -7,6 +7,7 @@ import type {
 } from '../types';
 
 const API_BASE = '/api';
+let authGeneration = 0;
 
 export function getJwtToken(): string | null {
   return localStorage.getItem('chis_jwt_token');
@@ -43,37 +44,88 @@ export async function checkApiHealth() {
 }
 
 // Auth API Calls
-export async function apiLogin(email: string, password: string): Promise<{ token: string; user: UserProfile }> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || 'Invalid credentials');
+function mapAuthenticatedUser(raw: unknown): UserProfile {
+  if (!raw || typeof raw !== 'object') throw new Error('Invalid authentication response. Please try again.');
+  const user = raw as Record<string, unknown>;
+  const validId = typeof user.id === 'number'
+    ? Number.isSafeInteger(user.id) && user.id > 0
+    : typeof user.id === 'string' && /^[1-9]\d*$/.test(user.id);
+  if (!validId || typeof user.name !== 'string' || typeof user.email !== 'string'
+    || (user.role !== 'admin' && user.role !== 'traveler')) {
+    throw new Error('Invalid authentication response. Please try again.');
   }
+  return {
+    id: String(user.id), name: user.name, email: user.email, role: user.role,
+    avatar: typeof user.avatar === 'string' ? user.avatar : '/images/characters/nicolasa-dayrit.jpg',
+    savedSites: [], scannedSites: [], badges: [], stamps: [],
+  };
+}
+
+async function authenticate(path: string, credentials: Record<string, unknown>): Promise<{ token: string; user: UserProfile }> {
+  const generation = authGeneration;
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+  } catch {
+    throw new Error('Unable to reach the sign-in server. Check your connection and try again.');
+  }
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Incorrect email or password.');
+    if (res.status === 422) throw new Error('Please check the information you entered.');
+    if (res.status === 429) throw new Error('Too many attempts. Please try again later.');
+    throw new Error('The authentication service is unavailable. Please try again later.');
+  }
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('The authentication service returned an invalid response. Please try again.');
+  }
+  if (!data || typeof data.token !== 'string' || !data.token.trim()) {
+    throw new Error('Invalid authentication response. Please try again.');
+  }
+  const user = mapAuthenticatedUser(data.user);
+  if (generation !== authGeneration) throw new Error('Sign-in cancelled because you signed out.');
   setJwtToken(data.token);
-  return data;
+  return { token: data.token, user };
+}
+
+export async function apiLogin(email: string, password: string): Promise<{ token: string; user: UserProfile }> {
+  return authenticate('/auth/login', { email, password });
 }
 
 export async function apiRegister(name: string, email: string, password: string, hometown?: string): Promise<{ token: string; user: UserProfile }> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password, hometown })
-  });
+  return authenticate('/auth/register', { name, email, password, hometown });
+}
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || 'Registration failed');
+export async function apiLogout(): Promise<void> {
+  const token = getJwtToken();
+  authGeneration += 1;
+  // Clear immediately so refresh and pending authentication cannot restore this session.
+  setJwtToken(null);
+  localStorage.removeItem('sf_user_profile');
+  if (!token) return;
+
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // Local logout is complete even when revocation is unavailable or times out.
   }
-  setJwtToken(data.token);
-  return data;
 }
 
 export async function apiFetchCurrentUser(): Promise<UserProfile | null> {
+  const generation = authGeneration;
   const token = getJwtToken();
   if (!token) return null;
 
@@ -81,12 +133,14 @@ export async function apiFetchCurrentUser(): Promise<UserProfile | null> {
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: getAuthHeaders()
     });
+    if (generation !== authGeneration || getJwtToken() !== token) return null;
     if (!res.ok) {
-      setJwtToken(null);
+      if (res.status === 401 || res.status === 403) setJwtToken(null);
       return null;
     }
     const data = await res.json();
-    return data.user;
+    if (generation !== authGeneration || getJwtToken() !== token) return null;
+    return mapAuthenticatedUser(data.user);
   } catch {
     return null;
   }
@@ -176,13 +230,7 @@ export async function apiFetchSites(): Promise<HeritageSite[]> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiFetchRawSites(): Promise<any[]> {
-  try {
-    const res = await fetch(`${API_BASE}/heritage-sites`);
-    if (!res.ok) throw new Error('Failed to fetch sites');
-    return await res.json();
-  } catch {
-    return [];
-  }
+  return adminList('/heritage-sites');
 }
 
 export async function apiFetchSiteById(id: string): Promise<HeritageSite | null> {
@@ -205,106 +253,112 @@ export async function apiRecordQrScan(id: string): Promise<unknown> {
 }
 
 // Admin: Heritage Sites
+export class AdminApiError extends Error {
+  status: number | null;
+  validationErrors: Record<string, string[]>;
+
+  constructor(message: string, status: number | null = null, validationErrors: Record<string, string[]> = {}) {
+    super(message);
+    this.name = 'AdminApiError';
+    this.status = status;
+    this.validationErrors = validationErrors;
+  }
+}
+
+async function adminRequest(path: string, method = 'GET', data?: unknown): Promise<unknown> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method, headers: getAuthHeaders(),
+      ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+    });
+  } catch {
+    throw new AdminApiError('Unable to reach the server. Check your connection and try again.');
+  }
+  if (!res.ok) {
+    const errors: Record<string, string[]> = {};
+    if (res.status === 422) {
+      const body = await res.json().catch(() => null);
+      if (body?.errors && typeof body.errors === 'object') {
+        for (const [field, messages] of Object.entries(body.errors)) {
+          if (Array.isArray(messages)) {
+            errors[field] = messages.filter((message): message is string =>
+              typeof message === 'string' && message.length <= 300 && !/[<>]/.test(message));
+          }
+        }
+      }
+    }
+    const message = res.status === 422 ? 'Please correct the form information and try again.'
+      : res.status === 401 ? 'Your session is no longer valid. Please sign in again.'
+      : res.status === 403 ? 'You do not have permission to perform this action.'
+      : res.status === 404 ? 'This record was not found. Reload the data and try again.'
+      : 'The request failed. Please try again later.';
+    throw new AdminApiError(message, res.status, errors);
+  }
+  if (method === 'DELETE' || res.status === 204) return undefined;
+  try {
+    return await res.json();
+  } catch {
+    throw new AdminApiError('The server returned an invalid response. Please reload the data.', res.status);
+  }
+}
+
+async function adminList(path: string): Promise<unknown[]> {
+  const data = await adminRequest(path);
+  if (!Array.isArray(data)) throw new AdminApiError('The server returned an invalid list. Please retry.');
+  return data;
+}
+
+export async function apiFetchAdminEvents(): Promise<unknown[]> {
+  return adminList('/events');
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCreateSite(data: any): Promise<HeritageSite> {
-  const res = await fetch(`${API_BASE}/heritage-sites`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to create site');
-  return await res.json();
+  return await adminRequest('/heritage-sites', 'POST', data) as HeritageSite;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiUpdateSite(id: string, data: any): Promise<HeritageSite> {
-  const res = await fetch(`${API_BASE}/heritage-sites/${id}`, {
-    method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to update site');
-  return await res.json();
+  return await adminRequest(`/heritage-sites/${id}`, 'PUT', data) as HeritageSite;
 }
 
 export async function apiDeleteSite(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/heritage-sites/${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders()
-  });
-  if (!res.ok) throw new Error('Failed to delete site');
+  await adminRequest(`/heritage-sites/${id}`, 'DELETE');
 }
 
 // Admin: Site Images
 export async function apiFetchSiteImages(): Promise<unknown[]> {
-  try {
-    const res = await fetch(`${API_BASE}/site-images`);
-    if (!res.ok) throw new Error('Failed to fetch site images');
-    return await res.json();
-  } catch {
-    return [];
-  }
+  return adminList('/site-images');
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCreateSiteImage(data: any): Promise<unknown> {
-  const res = await fetch(`${API_BASE}/site-images`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to create site image');
-  return await res.json();
+  return adminRequest('/site-images', 'POST', data);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiUpdateSiteImage(id: string, data: any): Promise<unknown> {
-  const res = await fetch(`${API_BASE}/site-images/${id}`, {
-    method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to update site image');
-  return await res.json();
+  return adminRequest(`/site-images/${id}`, 'PUT', data);
 }
 
 export async function apiDeleteSiteImage(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/site-images/${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders()
-  });
-  if (!res.ok) throw new Error('Failed to delete site image');
+  await adminRequest(`/site-images/${id}`, 'DELETE');
 }
 
 // Admin: Heritage Timelines
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCreateTimeline(data: any): Promise<any> {
-  const res = await fetch(`${API_BASE}/heritage-timelines`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to create timeline');
-  return await res.json();
+  return adminRequest('/heritage-timelines', 'POST', data);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiUpdateTimeline(id: string, data: any): Promise<any> {
-  const res = await fetch(`${API_BASE}/heritage-timelines/${id}`, {
-    method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to update timeline');
-  return await res.json();
+  return adminRequest(`/heritage-timelines/${id}`, 'PUT', data);
 }
 
 export async function apiDeleteTimeline(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/heritage-timelines/${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders()
-  });
-  if (!res.ok) throw new Error('Failed to delete timeline');
+  await adminRequest(`/heritage-timelines/${id}`, 'DELETE');
 }
 
 // Events API
@@ -320,32 +374,16 @@ export async function apiFetchEvents(): Promise<EventItem[]> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCreateEvent(data: any): Promise<EventItem> {
-  const res = await fetch(`${API_BASE}/events`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to create event');
-  return await res.json();
+  return await adminRequest('/events', 'POST', data) as EventItem;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiUpdateEvent(id: string, data: any): Promise<EventItem> {
-  const res = await fetch(`${API_BASE}/events/${id}`, {
-    method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Failed to update event');
-  return await res.json();
+  return await adminRequest(`/events/${id}`, 'PUT', data) as EventItem;
 }
 
 export async function apiDeleteEvent(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/events/${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders()
-  });
-  if (!res.ok) throw new Error('Failed to delete event');
+  await adminRequest(`/events/${id}`, 'DELETE');
 }
 
 // Community Photo Wall API

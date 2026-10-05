@@ -6,6 +6,7 @@ use App\Http\Controllers\HeritageSiteController;
 use App\Http\Controllers\SiteImageController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\HeritageTimelineController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -24,11 +25,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 });
 
-use App\Http\Controllers\HeritageTimelineController;
-
-Route::apiResource('heritage-sites', HeritageSiteController::class);
-Route::apiResource('site-images', SiteImageController::class);
-Route::apiResource('events', EventController::class);
+Route::apiResource('heritage-sites', HeritageSiteController::class)->only(['index', 'show']);
+Route::apiResource('site-images', SiteImageController::class)->only(['index', 'show']);
+Route::apiResource('events', EventController::class)->only(['index', 'show']);
 
 Route::get('heritage-sites/{heritageSiteId}/timelines', [HeritageTimelineController::class, 'index']);
-Route::apiResource('heritage-timelines', HeritageTimelineController::class)->except('index');
+Route::apiResource('heritage-timelines', HeritageTimelineController::class)->only('show');
+
+Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+    Route::apiResource('heritage-sites', HeritageSiteController::class)->only(['store', 'update', 'destroy']);
+    Route::apiResource('site-images', SiteImageController::class)->only(['store', 'update', 'destroy']);
+    Route::apiResource('events', EventController::class)->only(['store', 'update', 'destroy']);
+    Route::apiResource('heritage-timelines', HeritageTimelineController::class)->only(['store', 'update', 'destroy']);
+});

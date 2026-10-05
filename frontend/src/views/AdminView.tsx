@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   LayoutDashboard, 
   Map, 
@@ -14,11 +14,12 @@ import {
 } from 'lucide-react';
 import { 
   apiFetchRawSites, apiCreateSite, apiUpdateSite, apiDeleteSite,
-  apiFetchEvents, apiCreateEvent, apiUpdateEvent, apiDeleteEvent,
+  apiFetchAdminEvents, apiCreateEvent, apiUpdateEvent, apiDeleteEvent,
   apiFetchSiteImages, apiCreateSiteImage, apiUpdateSiteImage, apiDeleteSiteImage,
-  apiCreateTimeline, apiUpdateTimeline, apiDeleteTimeline
+  apiCreateTimeline, apiUpdateTimeline, apiDeleteTimeline, AdminApiError
 } from '../api/client';
 import type { UserProfile } from '../types';
+import { eventDateForInput, eventDateForSubmission, replaceEventDate, storageImageUrl } from '../utils/adminData';
 
 interface AdminViewProps {
   user: UserProfile;
@@ -26,6 +27,7 @@ interface AdminViewProps {
 }
 
 type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines';
+type FormType = 'site' | 'event' | 'image' | 'timeline';
 
 export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -36,45 +38,98 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
   const [siteImages, setSiteImages] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [formErrors, setFormErrors] = useState<Partial<Record<FormType, AdminApiError>>>({});
+  const pendingRequests = useRef(new Set<string>());
+  const [pending, setPending] = useState(new Set<string>());
+  const loadRevision = useRef(0);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    const revision = ++loadRevision.current;
     setLoading(true);
+    setLoadError(null);
     try {
-      const fetchedSites = await apiFetchRawSites();
-      const fetchedEvents = await apiFetchEvents();
-      const fetchedImages = await apiFetchSiteImages();
-      setSites(fetchedSites || []);
-      setEvents(fetchedEvents || []);
-      setSiteImages(fetchedImages || []);
-    } catch (e) {
-      console.error(e);
+      const [fetchedSites, fetchedEvents, fetchedImages] = await Promise.all([
+        apiFetchRawSites(), apiFetchAdminEvents(), apiFetchSiteImages(),
+      ]);
+      if (revision !== loadRevision.current) return;
+      setSites(fetchedSites);
+      setEvents(fetchedEvents);
+      setSiteImages(fetchedImages);
+    } catch (error) {
+      if (revision === loadRevision.current) {
+        setLoadError(error instanceof AdminApiError ? error.message : 'Unable to load admin data. Please retry.');
+      }
+    } finally {
+      if (revision === loadRevision.current) setLoading(false);
     }
-    setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [fetchData]);
+
+  const openForm = (form: FormType, open: () => void) => {
+    if (pendingRequests.current.has(`save:${form}`)) return;
+    setFormErrors((previous) => ({ ...previous, [form]: undefined }));
+    setNotice(null);
+    open();
+  };
+
+  const runMutation = async (key: string, request: () => Promise<unknown>, message: string,
+    close?: () => void, form?: FormType) => {
+    if (pendingRequests.current.has(key)) return;
+    pendingRequests.current.add(key);
+    setPending(new Set(pendingRequests.current));
+    setNotice(null);
+    if (form) setFormErrors((previous) => ({ ...previous, [form]: undefined }));
+    try {
+      await request();
+      close?.();
+      setNotice({ type: 'success', message });
+      await fetchData();
+    } catch (error) {
+      const failure = error instanceof AdminApiError ? error : new AdminApiError('The request failed. Please try again.');
+      if (form) setFormErrors((previous) => ({ ...previous, [form]: failure }));
+      else setNotice({ type: 'error', message: failure.message });
+    } finally {
+      pendingRequests.current.delete(key);
+      setPending(new Set(pendingRequests.current));
+    }
+  };
+
+  const renderFormError = (form: FormType) => {
+    const error = formErrors[form];
+    return error ? (
+      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <p>{error.message}</p>
+        {Object.entries(error.validationErrors).map(([field, messages]) => messages.map((message, index) => (
+          <p key={`${field}-${index}`}>{message}</p>
+        )))}
+      </div>
+    ) : null;
+  };
 
   // Handlers for deleting
   const handleDeleteSite = async (id: string) => {
+    if (pendingRequests.current.has(`delete:site:${id}`)) return;
     if (confirm('Are you sure you want to archive this site?')) {
-      await apiDeleteSite(id);
-      fetchData();
+      await runMutation(`delete:site:${id}`, () => apiDeleteSite(id), 'Heritage site archived successfully.');
     }
   };
 
   const handleDeleteEvent = async (id: string) => {
+    if (pendingRequests.current.has(`delete:event:${id}`)) return;
     if (confirm('Are you sure you want to cancel this event?')) {
-      await apiDeleteEvent(id);
-      fetchData();
+      await runMutation(`delete:event:${id}`, () => apiDeleteEvent(id), 'Event cancelled successfully.');
     }
   };
 
   const handleDeleteImage = async (id: string) => {
-    if (confirm('Delete this image?')) {
-      await apiDeleteSiteImage(id);
-      fetchData();
+    if (pendingRequests.current.has(`delete:image:${id}`)) return;
+    if (confirm('Remove this image reference? The stored file will not be deleted.')) {
+      await runMutation(`delete:image:${id}`, () => apiDeleteSiteImage(id), 'Image reference removed successfully. The stored file was not deleted.');
     }
   };
 
@@ -93,19 +148,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
 
   const handleSaveTimeline = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (timelineForm.id) {
-      await apiUpdateTimeline(timelineForm.id, timelineForm);
-    } else {
-      await apiCreateTimeline(timelineForm);
-    }
-    setTimelineModalOpen(false);
-    fetchData(); // Refresh the sites which eager load timelines
+    await runMutation('save:timeline', () => timelineForm.id
+      ? apiUpdateTimeline(timelineForm.id, timelineForm) : apiCreateTimeline(timelineForm),
+    `Timeline ${timelineForm.id ? 'updated' : 'created'} successfully.`, () => setTimelineModalOpen(false), 'timeline');
   };
 
   const handleDeleteTimeline = async (id: string) => {
+    if (pendingRequests.current.has(`delete:timeline:${id}`)) return;
     if (confirm('Delete this timeline?')) {
-      await apiDeleteTimeline(id);
-      fetchData();
+      await runMutation(`delete:timeline:${id}`, () => apiDeleteTimeline(id), 'Timeline deleted successfully.');
     }
   };
 
@@ -117,39 +168,28 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
       latitude: siteForm.latitude ? parseFloat(siteForm.latitude) : null,
       longitude: siteForm.longitude ? parseFloat(siteForm.longitude) : null,
     };
-    if (siteForm.id) {
-      await apiUpdateSite(siteForm.id, payload);
-    } else {
-      await apiCreateSite(payload);
-    }
-    setSiteModalOpen(false);
-    fetchData();
+    await runMutation('save:site', () => siteForm.id
+      ? apiUpdateSite(siteForm.id, payload) : apiCreateSite(payload),
+    `Heritage site ${siteForm.id ? 'updated' : 'created'} successfully.`, () => setSiteModalOpen(false), 'site');
   };
 
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       ...eventForm,
+      event_date: eventDateForSubmission(eventForm.event_date),
       created_by: parseInt(user.id, 10),
     };
-    if (eventForm.id) {
-      await apiUpdateEvent(eventForm.id, payload);
-    } else {
-      await apiCreateEvent(payload);
-    }
-    setEventModalOpen(false);
-    fetchData();
+    await runMutation('save:event', () => eventForm.id
+      ? apiUpdateEvent(eventForm.id, payload) : apiCreateEvent(payload),
+    `Event ${eventForm.id ? 'updated' : 'created'} successfully.`, () => setEventModalOpen(false), 'event');
   };
 
   const handleSaveImage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (imageForm.id) {
-      await apiUpdateSiteImage(imageForm.id, imageForm);
-    } else {
-      await apiCreateSiteImage(imageForm);
-    }
-    setImageModalOpen(false);
-    fetchData();
+    await runMutation('save:image', () => imageForm.id
+      ? apiUpdateSiteImage(imageForm.id, imageForm) : apiCreateSiteImage(imageForm),
+    `Image ${imageForm.id ? 'updated' : 'created'} successfully.`, () => setImageModalOpen(false), 'image');
   };
 
   const renderSidebarItem = (tab: TabType, label: string, Icon: any) => (
@@ -218,9 +258,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
         </header>
         
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+          {notice && (
+            <div role={notice.type === 'error' ? 'alert' : 'status'} className={`mb-4 rounded-lg border p-3 text-sm ${notice.type === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+              {notice.message}
+            </div>
+          )}
           {loading ? (
-            <div className="flex justify-center items-center h-full">
+            <div role="status" className="flex justify-center items-center gap-3 h-full">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7A1C30]"></div>
+              <span>Loading admin data...</span>
+            </div>
+          ) : loadError ? (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-800">
+              <p className="font-semibold">Unable to load admin data.</p>
+              <p className="mt-1 text-sm">{loadError}</p>
+              <button type="button" onClick={() => void fetchData()} className="mt-3 rounded-lg bg-[#7A1C30] px-4 py-2 text-sm font-semibold text-white">Retry</button>
             </div>
           ) : (
             <div className="max-w-6xl mx-auto">
@@ -264,16 +316,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                       <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
                       <div className="space-y-3">
-                        <button onClick={() => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); }} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={() => openForm('site', () => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Heritage Site</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button onClick={() => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); }} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={() => openForm('event', () => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Event</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button onClick={() => { setImageForm({}); setImageModalOpen(true); }} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
-                          <span className="font-medium text-gray-700">Upload Site Image</span>
+                        <button onClick={() => openForm('image', () => { setImageForm({}); setImageModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                          <span className="font-medium text-gray-700">Add Image Reference</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
                       </div>
@@ -286,7 +338,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                           return (
                           <div key={s.id} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
                             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
-                              <img src={mainImg ? `http://localhost:8000/storage/${mainImg}` : '/images/sites/cathedral-hero.jpg'} alt="" className="w-full h-full object-cover" />
+                              <img src={mainImg ? storageImageUrl(mainImg) : '/images/sites/cathedral-hero.jpg'} alt="" className="w-full h-full object-cover" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold text-gray-900 truncate">{s.name}</p>
@@ -306,7 +358,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Heritage Sites</h1>
-                    <button onClick={() => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <button onClick={() => openForm('site', () => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
                       <Plus className="w-4 h-4" /> Add Site
                     </button>
                   </div>
@@ -331,8 +383,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{s.status}</span>
                               </td>
                               <td className="px-6 py-4 text-right">
-                                <button onClick={() => { setSiteForm(s); setSiteModalOpen(true); }} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
-                                <button onClick={() => handleDeleteSite(s.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => openForm('site', () => { setSiteForm(s); setSiteModalOpen(true); })} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button disabled={pending.has(`delete:site:${s.id}`)} aria-busy={pending.has(`delete:site:${s.id}`)} onClick={() => handleDeleteSite(s.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Archive" aria-label="Archive">{pending.has(`delete:site:${s.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
                               </td>
                             </tr>
                           ))}
@@ -351,8 +403,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Site Images</h1>
-                    <button onClick={() => { setImageForm({}); setImageModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
-                      <Plus className="w-4 h-4" /> Upload Image
+                    <button onClick={() => openForm('image', () => { setImageForm({}); setImageModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                      <Plus className="w-4 h-4" /> Add Image Reference
                     </button>
                   </div>
                   
@@ -361,13 +413,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                       const site = sites.find(s => s.id === img.heritage_site_id);
                       return (
                         <div key={img.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col hover:shadow-md transition-shadow">
-                          <img src={`http://localhost:8000/storage/${img.image_path}`} alt={img.caption} className="w-full h-44 object-cover" />
+                          <img src={storageImageUrl(img.image_path)} alt={img.caption} className="w-full h-44 object-cover" />
                           <div className="p-4 flex-1 flex flex-col">
                             <p className="text-sm font-bold text-gray-900 truncate mb-1">{img.caption || 'No Caption'}</p>
                             <p className="text-xs text-gray-500 truncate mb-4 bg-gray-50 p-1.5 rounded-md border border-gray-100">Site: {site?.name || img.heritage_site_id}</p>
                             <div className="mt-auto flex justify-end gap-2">
-                              <button onClick={() => { setImageForm(img); setImageModalOpen(true); }} className="text-blue-600 p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"><Edit3 className="w-4 h-4" /></button>
-                              <button onClick={() => handleDeleteImage(img.id)} className="text-red-600 p-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                              <button onClick={() => openForm('image', () => { setImageForm(img); setImageModalOpen(true); })} className="text-blue-600 p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"><Edit3 className="w-4 h-4" /></button>
+                              <button disabled={pending.has(`delete:image:${img.id}`)} aria-busy={pending.has(`delete:image:${img.id}`)} title="Remove Image Reference" aria-label="Remove Image Reference" onClick={() => handleDeleteImage(img.id)} className="text-red-600 p-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">{pending.has(`delete:image:${img.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
                             </div>
                           </div>
                         </div>
@@ -375,7 +427,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                     })}
                     {siteImages.length === 0 && (
                       <div className="col-span-full py-12 text-center text-gray-500 bg-white border border-gray-200 rounded-xl border-dashed">
-                        No images uploaded yet.
+                        No image references added yet.
                       </div>
                     )}
                   </div>
@@ -387,7 +439,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Events</h1>
-                    <button onClick={() => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <button onClick={() => openForm('event', () => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
                       <Plus className="w-4 h-4" /> Add Event
                     </button>
                   </div>
@@ -410,8 +462,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                               <td className="px-6 py-4 text-gray-500">{e.event_date}</td>
                               <td className="px-6 py-4 text-gray-500">{e.location}</td>
                               <td className="px-6 py-4 text-right">
-                                <button onClick={() => { setEventForm(e); setEventModalOpen(true); }} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
-                                <button onClick={() => handleDeleteEvent(e.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => openForm('event', () => { setEventForm(e); setEventModalOpen(true); })} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button disabled={pending.has(`delete:event:${e.id}`)} aria-busy={pending.has(`delete:event:${e.id}`)} onClick={() => handleDeleteEvent(e.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Cancel Event" aria-label="Cancel Event">{pending.has(`delete:event:${e.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
                               </td>
                             </tr>
                           ))}
@@ -430,7 +482,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Historical Timelines</h1>
-                    <button onClick={() => { setTimelineForm({}); setTimelineModalOpen(true); }} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <button onClick={() => openForm('timeline', () => { setTimelineForm({}); setTimelineModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
                       <Plus className="w-4 h-4" /> Add Timeline
                     </button>
                   </div>
@@ -453,8 +505,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                               <td className="px-6 py-4 font-bold text-gray-900">{t.year}</td>
                               <td className="px-6 py-4 text-gray-500">{t.title}</td>
                               <td className="px-6 py-4 text-right">
-                                <button onClick={() => { setTimelineForm(t); setTimelineModalOpen(true); }} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
-                                <button onClick={() => handleDeleteTimeline(t.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => openForm('timeline', () => { setTimelineForm(t); setTimelineModalOpen(true); })} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button disabled={pending.has(`delete:timeline:${t.id}`)} aria-busy={pending.has(`delete:timeline:${t.id}`)} onClick={() => handleDeleteTimeline(t.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Delete">{pending.has(`delete:timeline:${t.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
                               </td>
                             </tr>
                           ))}
@@ -481,9 +533,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
               <h2 className="text-xl font-bold text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
-              <button type="button" onClick={() => setSiteModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <button type="button" disabled={pending.has('save:site')} onClick={() => setSiteModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
             </div>
-            <form onSubmit={handleSaveSite} className="flex-1 overflow-auto p-6 space-y-5 text-sm">
+            <form id="admin-site-form" onSubmit={handleSaveSite} className="flex-1 overflow-auto p-6 space-y-5 text-sm">
+              {renderFormError('site')}
+              <fieldset disabled={pending.has('save:site')} className="contents">
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5 col-span-2">
                   <label className="font-semibold text-gray-700">Name</label>
@@ -527,10 +581,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <label className="font-semibold text-gray-700">History</label>
                 <textarea required rows={5} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm({...siteForm, history: e.target.value})} placeholder="Full historical context..." />
               </div>
+              </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" onClick={() => setSiteModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
-              <button onClick={handleSaveSite} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Heritage Site</button>
+              <button type="button" disabled={pending.has('save:site')} onClick={() => setSiteModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button type="submit" form="admin-site-form" disabled={pending.has('save:site')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:site') ? 'Saving...' : 'Save Heritage Site'}</button>
             </div>
           </div>
         </div>
@@ -542,9 +597,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
               <h2 className="text-xl font-bold text-gray-900">{eventForm.id ? 'Edit Event' : 'Add Event'}</h2>
-              <button type="button" onClick={() => setEventModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
             </div>
-            <form onSubmit={handleSaveEvent} className="p-6 space-y-5 text-sm max-h-[70vh] overflow-auto">
+            <form id="admin-event-form" onSubmit={handleSaveEvent} className="p-6 space-y-5 text-sm max-h-[70vh] overflow-auto">
+              {renderFormError('event')}
+              <fieldset disabled={pending.has('save:event')} className="contents">
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Title</label>
                 <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
@@ -552,7 +609,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5">
                   <label className="font-semibold text-gray-700">Date</label>
-                  <input required type="date" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.event_date ? eventForm.event_date.split('T')[0] : ''} onChange={e => setEventForm({...eventForm, event_date: e.target.value})} />
+                  <input required type="date" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventDateForInput(eventForm.event_date)} onChange={e => setEventForm({...eventForm, event_date: replaceEventDate(events.find(event => event.id === eventForm.id)?.event_date, e.target.value)})} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-semibold text-gray-700">Location</label>
@@ -576,10 +633,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <label className="font-semibold text-gray-700">Description</label>
                 <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
               </div>
+              </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" onClick={() => setEventModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
-              <button onClick={handleSaveEvent} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Event</button>
+              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button type="submit" form="admin-event-form" disabled={pending.has('save:event')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:event') ? 'Saving...' : 'Save Event'}</button>
             </div>
           </div>
         </div>
@@ -590,10 +648,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-gray-900">{imageForm.id ? 'Edit Image' : 'Add Image'}</h2>
-              <button type="button" onClick={() => setImageModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <h2 className="text-xl font-bold text-gray-900">{imageForm.id ? 'Edit Image Reference' : 'Add Image Reference'}</h2>
+              <button type="button" disabled={pending.has('save:image')} onClick={() => setImageModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
             </div>
-            <form onSubmit={handleSaveImage} className="p-6 space-y-5 text-sm">
+            <form id="admin-image-form" onSubmit={handleSaveImage} className="p-6 space-y-5 text-sm">
+              {renderFormError('image')}
+              <fieldset disabled={pending.has('save:image')} className="contents">
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Heritage Site</label>
                 <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={imageForm.heritage_site_id || ''} onChange={e => setImageForm({...imageForm, heritage_site_id: parseInt(e.target.value)})}>
@@ -602,18 +662,19 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Image Path / Filename</label>
+                <label className="font-semibold text-gray-700">Image Path or URL</label>
                 <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
-                <p className="text-xs text-gray-500 mt-1">Relative to the backend storage directory.</p>
+                <p className="text-xs text-gray-500 mt-1">Enter a path relative to backend storage or an existing HTTPS image URL. This saves a reference; it does not upload a file.</p>
               </div>
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Caption</label>
                 <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={imageForm.caption || ''} onChange={e => setImageForm({...imageForm, caption: e.target.value})} placeholder="Image caption..." />
               </div>
+              </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" onClick={() => setImageModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
-              <button onClick={handleSaveImage} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Image</button>
+              <button type="button" disabled={pending.has('save:image')} onClick={() => setImageModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button type="submit" form="admin-image-form" disabled={pending.has('save:image')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:image') ? 'Saving...' : 'Save Image'}</button>
             </div>
           </div>
         </div>
@@ -625,9 +686,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
               <h2 className="text-xl font-bold text-gray-900">{timelineForm.id ? 'Edit Timeline' : 'Add Timeline'}</h2>
-              <button type="button" onClick={() => setTimelineModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <button type="button" disabled={pending.has('save:timeline')} onClick={() => setTimelineModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
             </div>
-            <form onSubmit={handleSaveTimeline} className="p-6 space-y-5 text-sm">
+            <form id="admin-timeline-form" onSubmit={handleSaveTimeline} className="p-6 space-y-5 text-sm">
+              {renderFormError('timeline')}
+              <fieldset disabled={pending.has('save:timeline')} className="contents">
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Heritage Site</label>
                 <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={timelineForm.heritage_site_id || ''} onChange={e => setTimelineForm({...timelineForm, heritage_site_id: parseInt(e.target.value)})}>
@@ -649,10 +712,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <label className="font-semibold text-gray-700">Description</label>
                 <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={timelineForm.description || ''} onChange={e => setTimelineForm({...timelineForm, description: e.target.value})} placeholder="Event description..." />
               </div>
+              </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" onClick={() => setTimelineModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
-              <button onClick={handleSaveTimeline} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">Save Timeline</button>
+              <button type="button" disabled={pending.has('save:timeline')} onClick={() => setTimelineModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button type="submit" form="admin-timeline-form" disabled={pending.has('save:timeline')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:timeline') ? 'Saving...' : 'Save Timeline'}</button>
             </div>
           </div>
         </div>

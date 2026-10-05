@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type {
   ViewType,
   HeritageSite,
@@ -10,7 +10,7 @@ import confetti from 'canvas-confetti';
 
 
 import { CULTURAL_EVENTS } from './data/eventsData';
-import { apiFetchSites, apiFetchEvents, apiFetchCurrentUser } from './api/client';
+import { apiFetchSites, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken } from './api/client';
 
 // Components
 import { Header } from './components/Header';
@@ -82,22 +82,15 @@ export default function App() {
     }
   });
 
-  // User Profile & Authentication State - Default: None logged in
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    try {
-      const saved = localStorage.getItem('sf_user_profile');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Only load if explicitly marked as logged in and not default demo user
-        if (parsed && parsed.id && parsed.isLoggedIn && parsed.id !== 'tourist-user-1') {
-          return parsed;
-        }
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  });
+  // Cached profiles never establish authentication; Laravel verifies the bearer token.
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const authRevision = useRef(0);
+
+  const handleAuthenticatedLogin = (authenticatedUser: UserProfile) => {
+    if (!getJwtToken()) return;
+    authRevision.current += 1;
+    setUser(authenticatedUser);
+  };
 
   // Modals Visibility State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -117,15 +110,21 @@ export default function App() {
         if (fetchedEvents && fetchedEvents.length > 0) {
           setEvents(fetchedEvents);
         }
-        const currentUser = await apiFetchCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-        }
       } catch (err) {
         console.warn('Backend loading deferred to local cache:', err);
       }
     }
     loadBackendData();
+  }, [currentView]);
+
+  // Verify independently of catalogue loading, and ignore superseded requests.
+  useEffect(() => {
+    let cancelled = false;
+    const revision = authRevision.current;
+    apiFetchCurrentUser().then((currentUser) => {
+      if (!cancelled && revision === authRevision.current) setUser(currentUser);
+    });
+    return () => { cancelled = true; };
   }, [currentView]);
 
   // Sync to localStorage
@@ -153,6 +152,14 @@ export default function App() {
   const navigateTo = (view: ViewType) => {
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLogout = () => {
+    authRevision.current += 1;
+    void apiLogout();
+    setUser(null);
+    setIsAuthOpen(false);
+    navigateTo('home');
   };
 
   // Toggle Save Site
@@ -324,10 +331,7 @@ export default function App() {
     return (
       <AdminView 
         user={user}
-        onLogout={() => {
-          setUser(null);
-          navigateTo('home');
-        }}
+        onLogout={handleLogout}
       />
     );
   }
@@ -344,7 +348,6 @@ export default function App() {
         savedCount={(savedSiteIds?.length || 0) + (savedEventIds?.length || 0)}
         user={user}
         totalSites={sites?.length || 10}
-        isAdminMode={user?.role === 'admin'}
         onToggleAdminMode={() => navigateTo('admin')}
       />
 
@@ -621,18 +624,14 @@ export default function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         user={user}
-        onLogin={(userData) => setUser(userData)}
-        onLogout={() => {
-          setUser(null);
-          setIsAuthOpen(false);
-        }}
+        onLogin={handleAuthenticatedLogin}
+        onLogout={handleLogout}
         savedSiteIds={savedSiteIds}
         sites={sites}
         onNavigateAdmin={() => {
           setIsAuthOpen(false);
           navigateTo('admin');
         }}
-        isAdmin={user?.role === 'admin'}
       />
 
       {/* DIRECTIONS & TRANSIT MODAL */}

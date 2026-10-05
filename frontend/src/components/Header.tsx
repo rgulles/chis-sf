@@ -11,7 +11,6 @@ interface HeaderProps {
   onOpenAuth: () => void;
   user: UserProfile | null;
   totalSites?: number;
-  isAdminMode?: boolean;
   onToggleAdminMode?: () => void;
   savedCount?: number;
 }
@@ -23,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenQRScanner,
   onOpenAuth,
   user,
-  isAdminMode = false,
   onToggleAdminMode,
   savedCount = 0,
 }) => {
@@ -112,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <User className="h-5 w-5 text-[#7e1925] stroke-[2.2]" />
               </div>
             )}
-            {isAdminMode && (
+            {user?.role === 'admin' && (
               <span 
                 className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[#7e1925] border-2 border-white ring-1 ring-[#5e0012]" 
                 title="Admin Logged In" 

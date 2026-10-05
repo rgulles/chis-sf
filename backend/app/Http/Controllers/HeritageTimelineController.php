@@ -37,6 +37,7 @@ class HeritageTimelineController extends Controller
     public function update(Request $request, HeritageTimeline $heritageTimeline)
     {
         $data = $request->validate([
+            'heritage_site_id' => 'sometimes|required|integer|exists:heritage_sites,id',
             'year' => 'sometimes|string|max:255',
             'title' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
