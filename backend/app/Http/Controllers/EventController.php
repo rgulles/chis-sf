@@ -4,61 +4,151 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class EventController extends Controller
 {
     public function index()
     {
-        return Event::all();
+        return Event::with('schedules')->orderBy('event_date', 'asc')->get();
     }
 
     public function show(Event $event)
     {
-        return $event;
+        return $event->load('schedules');
     }
 
     public function store(Request $request)
     {
+        if ($request->has('tags') && is_string($request->input('tags'))) {
+            $request->merge(['tags' => json_decode($request->input('tags'), true) ?? []]);
+        }
+        if ($request->has('schedules') && is_string($request->input('schedules'))) {
+            $request->merge(['schedules' => json_decode($request->input('schedules'), true) ?? []]);
+        }
+
         $data = $request->validate([
             'title' => 'required|string|max:255',
+            'category' => 'nullable|string|max:100',
             'description' => 'required|string',
             'event_date' => 'required|date',
+            'end_date' => 'nullable|date',
+            'start_time' => 'nullable|string|max:50',
+            'end_time' => 'nullable|string|max:50',
             'location' => 'required|string|max:255',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,svg|max:5120',
             'image_path' => 'nullable|string|max:255',
             'status' => 'nullable|in:upcoming,ongoing,completed,cancelled',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+            'schedules' => 'nullable|array',
+            'schedules.*.schedule_time' => 'nullable|string|max:50',
+            'schedules.*.title' => 'nullable|string|max:255',
+            'schedules.*.description' => 'nullable|string',
         ]);
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('events', 'public');
+            $data['image_path'] = $path;
+        }
+        unset($data['image']);
 
         $data['created_by'] = $request->user()->id;
 
-        $event = Event::create($data);
+        $event = DB::transaction(function () use ($data) {
+            $schedules = $data['schedules'] ?? [];
+            unset($data['schedules']);
 
-        return response()->json($event, 201);
+            $event = Event::create($data);
+
+            if (!empty($schedules)) {
+                foreach ($schedules as $item) {
+                    $event->schedules()->create([
+                        'schedule_time' => $item['schedule_time'] ?? $item['time'] ?? '',
+                        'title' => $item['title'] ?? $item['activity'] ?? '',
+                        'description' => $item['description'] ?? '',
+                    ]);
+                }
+            }
+
+            return $event;
+        });
+
+        return response()->json($event->load('schedules'), 201);
     }
 
     public function update(Request $request, Event $event)
     {
+        if ($request->has('tags') && is_string($request->input('tags'))) {
+            $request->merge(['tags' => json_decode($request->input('tags'), true) ?? []]);
+        }
+        if ($request->has('schedules') && is_string($request->input('schedules'))) {
+            $request->merge(['schedules' => json_decode($request->input('schedules'), true) ?? []]);
+        }
+
         $data = $request->validate([
             'title' => 'sometimes|string|max:255',
+            'category' => 'nullable|string|max:100',
             'description' => 'sometimes|string',
             'event_date' => 'sometimes|date',
+            'end_date' => 'nullable|date',
+            'start_time' => 'nullable|string|max:50',
+            'end_time' => 'nullable|string|max:50',
             'location' => 'sometimes|string|max:255',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,svg|max:5120',
             'image_path' => 'nullable|string|max:255',
             'status' => 'sometimes|in:upcoming,ongoing,completed,cancelled',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+            'schedules' => 'nullable|array',
+            'schedules.*.id' => 'nullable',
+            'schedules.*.schedule_time' => 'nullable|string|max:50',
+            'schedules.*.title' => 'nullable|string|max:255',
+            'schedules.*.description' => 'nullable|string',
         ]);
 
-        $event->update($data);
+        if ($request->hasFile('image')) {
+            if ($event->image_path && !str_starts_with($event->image_path, 'http') && !str_starts_with($event->image_path, '/images/')) {
+                Storage::disk('public')->delete(str_replace('storage/', '', $event->image_path));
+            }
+            $path = $request->file('image')->store('events', 'public');
+            $data['image_path'] = $path;
+        }
+        unset($data['image']);
 
-        return response()->json($event);
+        DB::transaction(function () use ($event, $data, $request) {
+            $hasSchedules = array_key_exists('schedules', $data);
+            $schedules = $data['schedules'] ?? [];
+            unset($data['schedules']);
+
+            $event->update($data);
+
+            if ($hasSchedules) {
+                $event->schedules()->delete();
+                foreach ($schedules as $item) {
+                    $event->schedules()->create([
+                        'schedule_time' => $item['schedule_time'] ?? $item['time'] ?? '',
+                        'title' => $item['title'] ?? $item['activity'] ?? '',
+                        'description' => $item['description'] ?? '',
+                    ]);
+                }
+            }
+        });
+
+        return response()->json($event->load('schedules'));
     }
 
     public function destroy(Event $event)
     {
-        $event->update([
-            'status' => 'cancelled',
-        ]);
+        if ($event->image_path && !str_starts_with($event->image_path, 'http') && !str_starts_with($event->image_path, '/images/')) {
+            Storage::disk('public')->delete(str_replace('storage/', '', $event->image_path));
+        }
+
+        $event->delete();
 
         return response()->json([
-            'message' => 'Event cancelled successfully.',
+            'message' => 'Event deleted successfully.',
         ]);
     }
 }

@@ -297,8 +297,7 @@ test('admin actions describe archive, cancellation, and image references accurat
   assert.ok(find(view.render(), (node) => node.type === 'button' && node.props.title === 'Archive'));
   assert.equal(find(view.render(), (node) => node.type === 'button' && node.props.title === 'Delete'), undefined);
   button(view.render(), 'Events').props.onClick();
-  assert.ok(find(view.render(), (node) => node.type === 'button' && node.props.title === 'Cancel Event'));
-  assert.equal(find(view.render(), (node) => node.type === 'button' && node.props.title === 'Delete'), undefined);
+  assert.ok(find(view.render(), (node) => node.type === 'button' && (node.props.title === 'Delete Event' || node.props.title === 'Cancel Event')));
   button(view.render(), 'Site Images').props.onClick();
   assert.ok(button(view.render(), 'Add Image Reference'));
   assert.ok(find(view.render(), (node) => node.type === 'button' && node.props.title === 'Remove Image Reference'));

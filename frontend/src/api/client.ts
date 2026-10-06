@@ -267,10 +267,35 @@ export class AdminApiError extends Error {
 
 async function adminRequest(path: string, method = 'GET', data?: unknown): Promise<unknown> {
   let res: Response;
+  const token = getJwtToken();
+  const headers: Record<string, string> = {
+    'Accept': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  let body: BodyInit | null | undefined = undefined;
+  let actualMethod = method;
+
+  if (data !== undefined) {
+    if (typeof FormData !== 'undefined' && data instanceof FormData) {
+      if (method.toUpperCase() === 'PUT') {
+        actualMethod = 'POST';
+        data.append('_method', 'PUT');
+      }
+      body = data;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(data);
+    }
+  }
+
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      method, headers: getAuthHeaders(),
-      ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+      method: actualMethod,
+      headers,
+      ...(body === undefined ? {} : { body }),
     });
   } catch {
     throw new AdminApiError('Unable to reach the server. Check your connection and try again.');
@@ -362,24 +387,168 @@ export async function apiDeleteTimeline(id: string): Promise<void> {
 }
 
 // Events API
+function formatDateString(startDateStr?: string | null, endDateStr?: string | null): string {
+  if (!startDateStr) return '';
+  try {
+    const start = new Date(startDateStr);
+    if (isNaN(start.getTime())) return startDateStr;
+    const startFormatted = start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    
+    if (!endDateStr) return startFormatted;
+    const end = new Date(endDateStr);
+    if (isNaN(end.getTime()) || start.getTime() === end.getTime()) return startFormatted;
+
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const sameMonth = sameYear && start.getMonth() === end.getMonth();
+
+    if (sameMonth) {
+      const monthStr = start.toLocaleDateString('en-US', { month: 'long' });
+      return `${monthStr} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
+    } else if (sameYear) {
+      const startM = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endM = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `${startM} – ${endM}, ${start.getFullYear()}`;
+    } else {
+      const endFormatted = end.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      return `${startFormatted} – ${endFormatted}`;
+    }
+  } catch {
+    return startDateStr || '';
+  }
+}
+
+function formatDateBadgeString(startDateStr?: string | null, endDateStr?: string | null): string {
+  if (!startDateStr) return 'EVENT';
+  try {
+    const start = new Date(startDateStr);
+    if (isNaN(start.getTime())) return 'EVENT';
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    const startDay = start.getDate();
+
+    if (!endDateStr) return `${startMonth} ${startDay}`;
+    const end = new Date(endDateStr);
+    if (isNaN(end.getTime()) || start.getTime() === end.getTime()) return `${startMonth} ${startDay}`;
+
+    if (start.getMonth() === end.getMonth()) {
+      return `${startMonth} ${startDay}-${end.getDate()}`;
+    } else {
+      const endMonth = end.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+      return `${startMonth} ${startDay} - ${endMonth} ${end.getDate()}`;
+    }
+  } catch {
+    return 'EVENT';
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapBackendEvent(raw: any): EventItem {
+  const dateFormatted = formatDateString(raw.event_date, raw.end_date);
+  const badgeFormatted = formatDateBadgeString(raw.event_date, raw.end_date);
+
+  let timeFormatted = '';
+  if (raw.start_time && raw.end_time) {
+    timeFormatted = `${raw.start_time} – ${raw.end_time}`;
+  } else if (raw.start_time) {
+    timeFormatted = raw.start_time;
+  } else if (raw.time) {
+    timeFormatted = raw.time;
+  } else {
+    timeFormatted = 'TBA';
+  }
+
+  let bannerImage = '/images/events/giant-lantern-fest.jpg';
+  if (raw.image_path) {
+    if (/^(https?:)?\/\//i.test(raw.image_path) || raw.image_path.startsWith('/images/')) {
+      bannerImage = raw.image_path;
+    } else {
+      const relative = raw.image_path.replace(/^\/+/, '').replace(/^storage\//, '');
+      bannerImage = `/storage/${relative}`;
+    }
+  }
+
+  const rawSchedules = Array.isArray(raw.schedules) ? raw.schedules : [];
+  const schedule = rawSchedules.map((item: any) => ({
+    id: item.id,
+    time: item.schedule_time || item.time || '',
+    activity: item.title || item.activity || '',
+    description: item.description || ''
+  }));
+
+  let tags: string[] = [];
+  if (Array.isArray(raw.tags)) {
+    tags = raw.tags;
+  } else if (typeof raw.tags === 'string' && raw.tags.trim()) {
+    try {
+      tags = JSON.parse(raw.tags);
+    } catch {
+      tags = [];
+    }
+  }
+
+  return {
+    id: String(raw.id),
+    title: raw.title || '',
+    category: raw.category || 'Festival',
+    date: dateFormatted,
+    dateBadge: badgeFormatted,
+    time: timeFormatted,
+    location: raw.location || '',
+    shortDescription: raw.description ? (raw.description.length > 150 ? raw.description.substring(0, 147) + '...' : raw.description) : '',
+    fullDescription: raw.description || '',
+    bannerImage: bannerImage,
+    schedule: schedule,
+    relatedSiteIds: Array.isArray(raw.relatedSiteIds) ? raw.relatedSiteIds : [],
+    tags: tags,
+    status: raw.status || 'upcoming',
+    start_time: raw.start_time || '',
+    end_time: raw.end_time || '',
+    event_date: raw.event_date || '',
+    end_date: raw.end_date || '',
+  };
+}
+
 export async function apiFetchEvents(): Promise<EventItem[]> {
   try {
     const res = await fetch(`${API_BASE}/events`);
     if (!res.ok) throw new Error('Failed to fetch events');
-    return await res.json();
+    const data = await res.json();
+    return data.map(mapBackendEvent);
   } catch {
     return [];
   }
 }
 
+// Helper to convert event object + image file into FormData
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildEventPayload(data: any): unknown {
+  if (data.imageFile instanceof File) {
+    const formData = new FormData();
+    for (const key of Object.keys(data)) {
+      if (key === 'imageFile') {
+        formData.append('image', data.imageFile);
+      } else if (key === 'tags' || key === 'schedules') {
+        formData.append(key, JSON.stringify(data[key] || []));
+      } else if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    }
+    return formData;
+  }
+  return data;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCreateEvent(data: any): Promise<EventItem> {
-  return await adminRequest('/events', 'POST', data) as EventItem;
+  const payload = buildEventPayload(data);
+  const raw = await adminRequest('/events', 'POST', payload);
+  return mapBackendEvent(raw);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiUpdateEvent(id: string, data: any): Promise<EventItem> {
-  return await adminRequest(`/events/${id}`, 'PUT', data) as EventItem;
+  const payload = buildEventPayload(data);
+  const raw = await adminRequest(`/events/${id}`, 'PUT', payload);
+  return mapBackendEvent(raw);
 }
 
 export async function apiDeleteEvent(id: string): Promise<void> {

@@ -21,6 +21,14 @@ import {
 import type { UserProfile } from '../types';
 import { eventDateForInput, eventDateForSubmission, replaceEventDate, storageImageUrl } from '../utils/adminData';
 
+const TIME_OPTIONS = [
+  '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
+  '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
+  '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM',
+  '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM',
+  '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM'
+];
+
 interface AdminViewProps {
   user: UserProfile;
   onLogout: () => void;
@@ -139,6 +147,61 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
   
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventForm, setEventForm] = useState<any>({});
+  const [tagInput, setTagInput] = useState('');
+  const [isDateRange, setIsDateRange] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const openEventCreateModal = () => {
+    openForm('event', () => {
+      setEventForm({
+        status: 'upcoming',
+        category: 'Festival',
+        tags: [],
+        schedules: [],
+      });
+      setIsDateRange(false);
+      setImageFile(null);
+      setImagePreview(null);
+      setTagInput('');
+      setEventModalOpen(true);
+    });
+  };
+
+  const openEventEditModal = (e: any) => {
+    openForm('event', () => {
+      let parsedTags: string[] = [];
+      if (Array.isArray(e.tags)) {
+        parsedTags = e.tags;
+      } else if (typeof e.tags === 'string' && e.tags.trim()) {
+        try { parsedTags = JSON.parse(e.tags); } catch { parsedTags = []; }
+      }
+
+      let parsedSchedules: any[] = [];
+      if (Array.isArray(e.schedules)) {
+        parsedSchedules = e.schedules.map((s: any) => ({
+          id: s.id,
+          schedule_time: s.schedule_time || s.time || '',
+          title: s.title || s.activity || '',
+          description: s.description || ''
+        }));
+      }
+
+      const hasRange = !!e.end_date && e.end_date !== e.event_date;
+
+      setEventForm({
+        ...e,
+        category: e.category || 'Festival',
+        tags: parsedTags,
+        schedules: parsedSchedules,
+      });
+      setIsDateRange(hasRange);
+      setImageFile(null);
+      setImagePreview(e.image_path ? storageImageUrl(e.image_path) : (e.bannerImage || null));
+      setTagInput('');
+      setEventModalOpen(true);
+    });
+  };
   
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageForm, setImageForm] = useState<any>({});
@@ -178,6 +241,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
     const payload = {
       ...eventForm,
       event_date: eventDateForSubmission(eventForm.event_date),
+      end_date: isDateRange && eventForm.end_date ? eventDateForSubmission(eventForm.end_date) : null,
+      start_time: eventForm.start_time || null,
+      end_time: eventForm.end_time || null,
+      tags: Array.isArray(eventForm.tags) ? eventForm.tags : [],
+      schedules: Array.isArray(eventForm.schedules) ? eventForm.schedules : [],
+      imageFile: imageFile || null,
       created_by: parseInt(user.id, 10),
     };
     await runMutation('save:event', () => eventForm.id
@@ -320,7 +389,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                           <span className="font-medium text-gray-700">Add Heritage Site</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button onClick={() => openForm('event', () => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={openEventCreateModal} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Event</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
@@ -439,7 +508,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Events</h1>
-                    <button onClick={() => openForm('event', () => { setEventForm({ status: 'upcoming' }); setEventModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <button onClick={openEventCreateModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer">
                       <Plus className="w-4 h-4" /> Add Event
                     </button>
                   </div>
@@ -450,25 +519,49 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                         <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
                           <tr>
                             <th className="px-6 py-3 font-medium">Event Title</th>
-                            <th className="px-6 py-3 font-medium">Date</th>
+                            <th className="px-6 py-3 font-medium">Category</th>
+                            <th className="px-6 py-3 font-medium">Date & Time</th>
                             <th className="px-6 py-3 font-medium">Location</th>
+                            <th className="px-6 py-3 font-medium">Schedules</th>
                             <th className="px-6 py-3 font-medium text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                          {events.map(e => (
-                            <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-6 py-4 font-bold text-gray-900">{e.title}</td>
-                              <td className="px-6 py-4 text-gray-500">{e.event_date}</td>
-                              <td className="px-6 py-4 text-gray-500">{e.location}</td>
-                              <td className="px-6 py-4 text-right">
-                                <button onClick={() => openForm('event', () => { setEventForm(e); setEventModalOpen(true); })} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
-                                <button disabled={pending.has(`delete:event:${e.id}`)} aria-busy={pending.has(`delete:event:${e.id}`)} onClick={() => handleDeleteEvent(e.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Cancel Event" aria-label="Cancel Event">{pending.has(`delete:event:${e.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
-                              </td>
-                            </tr>
-                          ))}
+                          {events.map(e => {
+                            const timeStr = e.start_time && e.end_time 
+                              ? `${e.start_time} - ${e.end_time}` 
+                              : (e.start_time || e.time || 'TBA');
+                            const schedCount = Array.isArray(e.schedules) ? e.schedules.length : 0;
+                            return (
+                              <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4 font-bold text-gray-900">
+                                  <div>{e.title}</div>
+                                  <div className="text-xs font-normal text-gray-500">{e.status || 'upcoming'}</div>
+                                </td>
+                                <td className="px-6 py-4 text-gray-600">
+                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200">
+                                    {e.category || 'Festival'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-gray-500">
+                                  <div>{e.event_date ? String(e.event_date).split(' ')[0] : 'TBA'}</div>
+                                  <div className="text-xs text-gray-400">{timeStr}</div>
+                                </td>
+                                <td className="px-6 py-4 text-gray-500">{e.location}</td>
+                                <td className="px-6 py-4 text-gray-500">
+                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                                    <Clock className="w-3 h-3 text-gray-400" /> {schedCount} item{schedCount !== 1 ? 's' : ''}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <button onClick={() => openEventEditModal(e)} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                  <button disabled={pending.has(`delete:event:${e.id}`)} aria-busy={pending.has(`delete:event:${e.id}`)} onClick={() => handleDeleteEvent(e.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors cursor-pointer" title="Delete Event" aria-label="Delete Event">{pending.has(`delete:event:${e.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                           {events.length === 0 && (
-                            <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No events found.</td></tr>
+                            <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No events found.</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -594,28 +687,136 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
       {/* Event Modal */}
       {eventModalOpen && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
               <h2 className="text-xl font-bold text-gray-900">{eventForm.id ? 'Edit Event' : 'Add Event'}</h2>
-              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors cursor-pointer"><X className="w-4 h-4"/></button>
             </div>
-            <form id="admin-event-form" onSubmit={handleSaveEvent} className="p-6 space-y-5 text-sm max-h-[70vh] overflow-auto">
+            <form id="admin-event-form" onSubmit={handleSaveEvent} className="p-6 space-y-5 text-sm overflow-y-auto flex-1">
               {renderFormError('event')}
               <fieldset disabled={pending.has('save:event')} className="contents">
-              <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Title</label>
-                <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
-              </div>
-              <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Date</label>
-                  <input required type="date" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventDateForInput(eventForm.event_date)} onChange={e => setEventForm({...eventForm, event_date: replaceEventDate(events.find(event => event.id === eventForm.id)?.event_date, e.target.value)})} />
+              
+              {/* Title & Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="font-semibold text-gray-700">Title</label>
+                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
                 </div>
                 <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Category</label>
+                  <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.category || 'Festival'} onChange={e => setEventForm({...eventForm, category: e.target.value})}>
+                    <option value="Festival">Festival</option>
+                    <option value="Heritage Tour">Heritage Tour</option>
+                    <option value="Exhibition">Exhibition</option>
+                    <option value="Community">Community</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Date Setup: Single Date vs Date Range */}
+              <div className="space-y-2 p-3.5 bg-gray-50/70 rounded-xl border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-gray-700">Date Setup</label>
+                  <div className="inline-flex rounded-lg p-0.5 bg-gray-200/80 border border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDateRange(false);
+                        setEventForm({ ...eventForm, end_date: null });
+                      }}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                        !isDateRange ? 'bg-white text-[#7A1C30] shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Single Date
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsDateRange(true)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                        isDateRange ? 'bg-white text-[#7A1C30] shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Date Range
+                    </button>
+                  </div>
+                </div>
+
+                {isDateRange ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-600">Start Date</label>
+                      <input
+                        required
+                        type="date"
+                        className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                        value={eventDateForInput(eventForm.event_date)}
+                        onChange={(e) => setEventForm({ ...eventForm, event_date: replaceEventDate(events.find(event => String(event.id) === String(eventForm.id))?.event_date || eventForm.event_date, e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-600">End Date</label>
+                      <input
+                        required
+                        type="date"
+                        className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                        value={eventDateForInput(eventForm.end_date)}
+                        onChange={(e) => setEventForm({ ...eventForm, end_date: replaceEventDate(eventForm.end_date, e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1 pt-1">
+                    <label className="text-xs font-semibold text-gray-600">Event Date</label>
+                    <input
+                      required
+                      type="date"
+                      className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                      value={eventDateForInput(eventForm.event_date)}
+                      onChange={(e) => setEventForm({ ...eventForm, event_date: replaceEventDate(events.find(event => String(event.id) === String(eventForm.id))?.event_date || eventForm.event_date, e.target.value) })}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Start Time & End Time Selection Dropdowns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Start Time</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                    value={eventForm.start_time || ''}
+                    onChange={(e) => setEventForm({ ...eventForm, start_time: e.target.value })}
+                  >
+                    <option value="">Select Start Time...</option>
+                    {TIME_OPTIONS.map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">End Time</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                    value={eventForm.end_time || ''}
+                    onChange={(e) => setEventForm({ ...eventForm, end_time: e.target.value })}
+                  >
+                    <option value="">Select End Time...</option>
+                    {TIME_OPTIONS.map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Location & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
                   <label className="font-semibold text-gray-700">Location</label>
                   <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.location || ''} onChange={e => setEventForm({...eventForm, location: e.target.value})} placeholder="Event Location" />
                 </div>
-                <div className="space-y-1.5 col-span-2">
+                <div className="space-y-1.5">
                   <label className="font-semibold text-gray-700">Status</label>
                   <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.status || 'upcoming'} onChange={e => setEventForm({...eventForm, status: e.target.value})}>
                     <option value="upcoming">Upcoming</option>
@@ -625,19 +826,223 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                   </select>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Image Path</label>
-                <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.image_path || ''} onChange={e => setEventForm({...eventForm, image_path: e.target.value})} placeholder="e.g. events/banner.jpg" />
+
+              {/* Image Input with File Upload & Live Preview */}
+              <div className="space-y-2">
+                <label className="font-semibold text-gray-700">Event Image</label>
+
+                {imagePreview ? (
+                  <div className="relative group rounded-xl overflow-hidden border border-gray-200 bg-gray-50 max-h-48">
+                    <img src={imagePreview} alt="Event Preview" className="w-full h-44 object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <label className="px-3.5 py-2 bg-white hover:bg-gray-100 text-gray-900 font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-md">
+                        Change Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setImageFile(file);
+                              setImagePreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview(null);
+                          setEventForm({ ...eventForm, image_path: '' });
+                        }}
+                        className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-colors shadow-md cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-gray-300 hover:border-[#7A1C30] rounded-xl bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer text-center p-4">
+                    <ImageIcon className="w-8 h-8 text-gray-400 mb-1" />
+                    <span className="text-xs font-semibold text-gray-700">Click to select and upload event image</span>
+                    <span className="text-[11px] text-gray-400 mt-0.5">PNG, JPG, WEBP, GIF up to 5MB</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImageFile(file);
+                          setImagePreview(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
+
+              {/* Description */}
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Description</label>
-                <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
+                <textarea required rows={3} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
               </div>
+
+              {/* Input-Chip Field for Tags */}
+              <div className="space-y-2">
+                <label className="font-semibold text-gray-700">Tags</label>
+                <div className="flex flex-wrap gap-2 min-h-[38px] p-2 border border-gray-200 rounded-xl bg-gray-50/50 items-center">
+                  {(eventForm.tags || []).map((tag: string, index: number) => (
+                    <span key={index} className="inline-flex items-center gap-1.5 bg-[#7A1C30]/10 text-[#7A1C30] border border-[#7A1C30]/20 text-xs font-semibold px-2.5 py-1 rounded-full">
+                      #{tag}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTags = (eventForm.tags || []).filter((_: any, i: number) => i !== index);
+                          setEventForm({ ...eventForm, tags: newTags });
+                        }}
+                        className="hover:bg-[#7A1C30]/20 rounded-full p-0.5 transition-colors cursor-pointer"
+                        title="Remove tag"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {(!eventForm.tags || eventForm.tags.length === 0) && (
+                    <span className="text-xs text-gray-400">No tags added yet. Type tag below and press Enter.</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                    placeholder="Type tag and press Enter (e.g. Family Friendly)..."
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const trimmed = tagInput.trim();
+                        if (trimmed && !(eventForm.tags || []).includes(trimmed)) {
+                          setEventForm({
+                            ...eventForm,
+                            tags: [...(eventForm.tags || []), trimmed],
+                          });
+                          setTagInput('');
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trimmed = tagInput.trim();
+                      if (trimmed && !(eventForm.tags || []).includes(trimmed)) {
+                        setEventForm({
+                          ...eventForm,
+                          tags: [...(eventForm.tags || []), trimmed],
+                        });
+                        setTagInput('');
+                      }
+                    }}
+                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    Add Tag
+                  </button>
+                </div>
+              </div>
+
+              {/* Multi-Item Event Schedule Editor */}
+              <div className="space-y-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-semibold text-gray-700 block">Event Schedule Program</label>
+                    <span className="text-xs text-gray-500">Add multiple schedule items with time and activity details.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentSchedules = Array.isArray(eventForm.schedules) ? eventForm.schedules : [];
+                      setEventForm({
+                        ...eventForm,
+                        schedules: [...currentSchedules, { schedule_time: '', title: '', description: '' }],
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7A1C30] hover:text-[#581020] bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Schedule Item
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                  {(eventForm.schedules || []).map((sch: any, index: number) => (
+                    <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#7A1C30]">Schedule #{index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextSchedules = (eventForm.schedules || []).filter((_: any, i: number) => i !== index);
+                            setEventForm({ ...eventForm, schedules: nextSchedules });
+                          }}
+                          className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete Schedule Item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Time (e.g. 5:00 PM)"
+                          className="border border-gray-300 rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
+                          value={sch.schedule_time || sch.time || ''}
+                          onChange={(e) => {
+                            const updated = [...(eventForm.schedules || [])];
+                            updated[index] = { ...updated[index], schedule_time: e.target.value, time: e.target.value };
+                            setEventForm({ ...eventForm, schedules: updated });
+                          }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Activity / Title (e.g. Gates Open)"
+                          className="sm:col-span-2 border border-gray-300 rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
+                          value={sch.title || sch.activity || ''}
+                          onChange={(e) => {
+                            const updated = [...(eventForm.schedules || [])];
+                            updated[index] = { ...updated[index], title: e.target.value, activity: e.target.value };
+                            setEventForm({ ...eventForm, schedules: updated });
+                          }}
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Optional details or description..."
+                        className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
+                        value={sch.description || ''}
+                        onChange={(e) => {
+                          const updated = [...(eventForm.schedules || [])];
+                          updated[index] = { ...updated[index], description: e.target.value };
+                          setEventForm({ ...eventForm, schedules: updated });
+                        }}
+                      />
+                    </div>
+                  ))}
+                  {(!eventForm.schedules || eventForm.schedules.length === 0) && (
+                    <div className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 border border-gray-200 border-dashed rounded-xl">
+                      No schedule items added yet. Click "+ Add Schedule Item" above to add program timeline activities.
+                    </div>
+                  )}
+                </div>
+              </div>
+
               </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
-              <button type="submit" form="admin-event-form" disabled={pending.has('save:event')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:event') ? 'Saving...' : 'Save Event'}</button>
+              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm cursor-pointer">Cancel</button>
+              <button type="submit" form="admin-event-form" disabled={pending.has('save:event')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors cursor-pointer">{pending.has('save:event') ? 'Saving...' : 'Save Event'}</button>
             </div>
           </div>
         </div>

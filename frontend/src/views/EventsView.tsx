@@ -43,7 +43,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   // EVENT DETAILS VIEW
   if (selectedEvent) {
     const isAdded = savedEventIds.includes(selectedEvent.id);
-    const relatedHeritageSites = sites.filter((s) => selectedEvent.relatedSiteIds.includes(s.id));
+    const relatedHeritageSites = sites.filter((s) => (selectedEvent.relatedSiteIds || []).includes(s.id));
 
     return (
       <motion.div 
@@ -133,7 +133,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           </p>
 
           <div className="pt-2 flex flex-wrap gap-2">
-            {selectedEvent.tags.map((tag) => (
+            {(selectedEvent.tags || []).map((tag) => (
               <span
                 key={tag}
                 className="rounded-full bg-[#faf2ee] border border-[#e8dfd5] px-3.5 py-1 font-outfit text-xs font-semibold text-[#7e1925]"
@@ -152,7 +152,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           </h3>
 
           <div className="space-y-3">
-            {selectedEvent.schedule.map((item, idx) => (
+            {(selectedEvent.schedule || []).map((item, idx) => (
               <div
                 key={idx}
                 className="flex items-start gap-4 p-4 rounded-xl border border-[#e8dfd5] bg-[#faf2ee]"
@@ -160,11 +160,23 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 <span className="rounded-lg bg-[#7e1925] text-white px-3 py-1 font-outfit text-xs font-bold whitespace-nowrap tracking-wide">
                   {item.time}
                 </span>
-                <p className="font-outfit text-sm font-semibold text-[#1e1b19] pt-0.5">
-                  {item.activity}
-                </p>
+                <div className="pt-0.5 space-y-0.5">
+                  <p className="font-outfit text-sm font-semibold text-[#1e1b19]">
+                    {item.activity}
+                  </p>
+                  {item.description && (
+                    <p className="font-outfit text-xs text-[#574141]">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
+            {(!selectedEvent.schedule || selectedEvent.schedule.length === 0) && (
+              <p className="font-outfit text-sm text-[#574141] italic py-2">
+                No detailed program schedule available for this event yet.
+              </p>
+            )}
           </div>
         </div>
 

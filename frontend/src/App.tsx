@@ -9,7 +9,6 @@ import type {
 import confetti from 'canvas-confetti';
 
 
-import { CULTURAL_EVENTS } from './data/eventsData';
 import { apiFetchSites, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken } from './api/client';
 
 // Components
@@ -44,22 +43,7 @@ export default function App() {
 
   // Dynamic Data State
   const [sites, setSites] = useState<HeritageSite[]>([]);
-
-  const [events, setEvents] = useState<EventItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('sf_heritage_events');
-      const parsed = saved ? JSON.parse(saved) : null;
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((e: EventItem) => {
-          const fresh = CULTURAL_EVENTS.find(f => f.id === e.id);
-          return fresh ? { ...e, bannerImage: fresh.bannerImage } : e;
-        });
-      }
-      return CULTURAL_EVENTS;
-    } catch {
-      return CULTURAL_EVENTS;
-    }
-  });
+  const [events, setEvents] = useState<EventItem[]>([]);
 
   // Saved / Favorites
   const [savedSiteIds, setSavedSiteIds] = useState<string[]>(() => {
@@ -76,9 +60,9 @@ export default function App() {
     try {
       const saved = localStorage.getItem('sf_saved_events');
       const parsed = saved ? JSON.parse(saved) : null;
-      return Array.isArray(parsed) ? parsed : ['ligligan-parul-2026'];
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
-      return ['ligligan-parul-2026'];
+      return [];
     }
   });
 
@@ -107,11 +91,9 @@ export default function App() {
           setSites(fetchedSites);
         }
         const fetchedEvents = await apiFetchEvents();
-        if (fetchedEvents && fetchedEvents.length > 0) {
-          setEvents(fetchedEvents);
-        }
+        setEvents(fetchedEvents);
       } catch (err) {
-        console.warn('Backend loading deferred to local cache:', err);
+        console.warn('Backend loading error:', err);
       }
     }
     loadBackendData();

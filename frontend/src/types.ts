@@ -101,7 +101,7 @@ export interface HeritageSite {
 export interface EventItem {
   id: string;
   title: string;
-  category: 'Festival' | 'Heritage Tour' | 'Exhibition' | 'Community';
+  category: 'Festival' | 'Heritage Tour' | 'Exhibition' | 'Community' | string;
   date: string;
   dateBadge: string;
   time: string;
@@ -109,9 +109,14 @@ export interface EventItem {
   shortDescription: string;
   fullDescription: string;
   bannerImage: string;
-  schedule: Array<{ time: string; activity: string }>;
+  schedule: Array<{ id?: number | string; time: string; activity: string; description?: string }>;
   relatedSiteIds: string[];
   tags: string[];
+  status?: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | string;
+  start_time?: string;
+  end_time?: string;
+  event_date?: string;
+  end_date?: string;
 }
 
 export interface UserPlan {
