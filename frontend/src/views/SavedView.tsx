@@ -1,3 +1,4 @@
+import { handleHeritageImageError } from '../utils/heritageImages';
 import React from 'react';
 import { motion } from 'motion/react';
 import { Bookmark, Trash2, Calendar, MapPin, ChevronRight, Compass, ArrowRight } from 'lucide-react';
@@ -53,7 +54,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
             className="inline-flex items-center gap-2 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-6 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider text-white transition-all shadow-md hover:scale-[1.02] cursor-pointer"
           >
             <Compass className="w-4 h-4" />
-            <span>Generate Custom Itinerary</span>
+            <span>Review Saved Places</span>
           </button>
         )}
       </motion.div>
@@ -114,9 +115,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
                           alt={site.name}
                           className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                           referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                          }}
+                          onError={handleHeritageImageError}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                         <span className="absolute top-3.5 left-3.5 rounded-full bg-white/95 backdrop-blur-md px-3 py-1 font-outfit text-[11px] font-bold text-[#7e1925] border border-white/40 shadow-xs uppercase tracking-wider">
@@ -137,7 +136,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
                         </h3>
                         <p className="font-outfit text-xs text-[#574141] flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5 text-[#7e1925]" />
-                          <span>{site.barangay}</span>
+                          <span>{site.address}</span>
                         </p>
                       </div>
                     </div>

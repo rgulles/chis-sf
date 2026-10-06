@@ -111,16 +111,17 @@ export const InteractiveHistoryView: React.FC<InteractiveHistoryViewProps> = ({
               <Volume2 className="w-4 h-4 text-[#C28E38]" />
               Official Audio Story
             </h3>
-            <AudioStoryPlayer
+{site.audioStory && (            <AudioStoryPlayer
               title={site.audioStory.title}
               narrator={site.audioStory.narrator}
               duration={site.audioStory.duration}
               durationSeconds={site.audioStory.durationSeconds}
               transcript={site.audioStory.transcript}
-            />
+            />)}
           </div>
 
           {/* Interactive Then & Now Slider */}
+          {site.archivalImage && site.modernImage && (
           <div className="space-y-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-[#7A1C30] flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-[#C28E38]" />
@@ -134,6 +135,7 @@ export const InteractiveHistoryView: React.FC<InteractiveHistoryViewProps> = ({
               nowYear="Preserved Today"
             />
           </div>
+          )}
 
           {/* 360° Visual Inspection Viewer */}
           <div className="space-y-2">

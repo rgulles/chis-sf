@@ -1,3 +1,4 @@
+// Prototype/reference photo data only; detached from the live public heritage experience.
 import type { CommunityPhoto } from '../types';
 
 export const INITIAL_COMMUNITY_PHOTOS: CommunityPhoto[] = [

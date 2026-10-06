@@ -27,12 +27,16 @@ export interface Hotspot {
 
 export interface VisitInfo {
   address: string;
-  openingHours: string;
-  entranceFee: string;
-  accessibility: string;
-  duration: string;
-  guideAvailable: boolean;
-  bestTime: string;
+  openingHours?: string | null;
+  entranceFee?: string | null;
+  accessibilityNotes?: string | null;
+  visitNotes?: string | null;
+  contactInformation?: string | null;
+  // Legacy local dataset fields; the live API does not supply these.
+  accessibility?: string;
+  duration?: string;
+  guideAvailable?: boolean;
+  bestTime?: string;
 }
 
 export interface HouseholdVault {
@@ -60,30 +64,40 @@ export interface AudioStoryData {
   chapters?: Array<{ title: string; timeSeconds: number }>;
 }
 
+export interface HeritageImage {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  isCover: boolean;
+  sortOrder: number;
+}
+
 export interface HeritageSite {
   id: string;
+  status?: 'active' | 'archived';
   name: string;
   nativeName?: string;
-  category: CategoryType;
+  category: CategoryType | '';
   yearBuilt: string;
-  era: string;
+  era?: string;
   address: string;
-  barangay: string;
-  distanceKm: number;
+  barangay?: string;
+  distanceKm?: number;
   coordinates: {
     lat: number;
     lng: number;
-    mapX: number; // 0 to 100% on schematic map
-    mapY: number; // 0 to 100% on schematic map
-  };
+    mapX?: number; // 0 to 100% on schematic map
+    mapY?: number; // 0 to 100% on schematic map
+  } | null;
   shortDescription: string;
   fullDescription: string;
   story: string;
   heroImage: string;
+  images?: HeritageImage[];
   archivalImage: string;
   modernImage: string;
   thenNowCaption: string;
-  audioStory: AudioStoryData;
+  audioStory?: AudioStoryData;
   timeline: TimelineEvent[];
   didYouKnow: string[];
   historicalCharacters: HistoricalCharacter[];
@@ -92,9 +106,9 @@ export interface HeritageSite {
   etiquetteRules?: SiteEtiquette;
   nhcpPlaqueCode?: string; // 4-digit code e.g. "1870"
   panoramaHotspots?: Hotspot[];
-  qrCodeId: string;
-  scanCount: number;
-  badgeName: string;
+  qrCodeId?: string;
+  scanCount?: number;
+  badgeName?: string;
   isFeatured?: boolean;
 }
 

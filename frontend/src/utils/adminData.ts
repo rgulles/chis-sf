@@ -1,3 +1,5 @@
+import { heritageImageUrl } from './heritageImages';
+
 export function eventDateForInput(value?: string | null): string {
   return value?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? '';
 }
@@ -15,8 +17,5 @@ export function replaceEventDate(value: string | undefined, date: string): strin
 }
 
 export function storageImageUrl(path: string, backendBase = import.meta.env?.VITE_STORAGE_BASE_URL || ''): string {
-  if (/^(https?:)?\/\//i.test(path)) return path;
-  const base = backendBase.replace(/\/+$/, '').replace(/\/api$/, '');
-  const relative = path.replace(/^\/+/, '').replace(/^storage\//, '');
-  return `${base}/storage/${relative}`;
+  return heritageImageUrl(path, backendBase);
 }

@@ -163,16 +163,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               {/* Stats Summary */}
-              <div className="grid grid-cols-3 gap-2.5 text-center">
-                <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
-                  <span className="font-outfit text-xl font-bold text-[#7e1925] block leading-none mb-1">
-                    {user?.scannedSites?.length || 0}
-                  </span>
-                  <p className="text-[10px] font-semibold text-[#736b66] uppercase tracking-wider">Visited</p>
-                </div>
+              <div className="grid grid-cols-2 gap-2.5 text-center">
+
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
                   <span className="font-outfit text-xl font-bold text-[#b45309] block leading-none mb-1">
-                    {savedSiteIds.length}
+                    {_sites.filter(site => savedSiteIds.includes(site.id)).length}
                   </span>
                   <p className="text-[10px] font-semibold text-[#736b66] uppercase tracking-wider">Saved</p>
                 </div>
@@ -180,7 +175,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <span className="font-outfit text-xl font-bold text-[#1e1b19] block leading-none mb-1">
                     {isUserAdmin ? 'Admin' : 'Explorer'}
                   </span>
-                  <p className="text-[10px] font-semibold text-[#736b66] uppercase tracking-wider">Rank</p>
+                  <p className="text-[10px] font-semibold text-[#736b66] uppercase tracking-wider">Role</p>
                 </div>
               </div>
 

@@ -10,7 +10,12 @@ class HeritageTimeline extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['heritage_site_id', 'year', 'title', 'description'];
+    protected $fillable = ['heritage_site_id', 'year', 'title', 'description', 'sort_order'];
+
+    protected function casts(): array
+    {
+        return ['sort_order' => 'integer'];
+    }
 
     public function heritageSite(): BelongsTo
     {

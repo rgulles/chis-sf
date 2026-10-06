@@ -6,7 +6,6 @@ interface MobileNavProps {
   currentView: ViewType;
   onNavigate: (view: ViewType) => void;
   savedCount: number;
-  onOpenQRScanner: () => void;
 }
 
 export const MobileNav: React.FC<MobileNavProps> = ({

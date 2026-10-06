@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Navigation, Bus, MapPin, ExternalLink } from 'lucide-react';
 import type { HeritageSite } from '../types';
+import { hasUsableCoordinates } from '../utils/heritageCoordinates';
 
 interface DirectionsModalProps {
   isOpen: boolean;
@@ -13,11 +14,9 @@ export const DirectionsModal: React.FC<DirectionsModalProps> = ({
   onClose,
   site
 }) => {
-  if (!isOpen || !site) return null;
+  if (!isOpen || !site || !hasUsableCoordinates(site.coordinates)) return null;
 
-  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    `${site.name}, ${site.address}, City of San Fernando, Pampanga`
-  )}`;
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${site.coordinates.lat},${site.coordinates.lng}`;
 
   return (
     <div id="directions-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
@@ -49,7 +48,7 @@ export const DirectionsModal: React.FC<DirectionsModalProps> = ({
               <MapPin className="h-4 w-4 text-[#7e1925] flex-shrink-0 mt-0.5" />
               <div>
                 <span className="body-sm font-semibold text-[#1e1b19] block">{site.address}</span>
-                <span className="label-compact text-[#574141]">{site.barangay}, City of San Fernando, Pampanga</span>
+                <span className="label-compact text-[#574141]">{site.address}</span>
               </div>
             </div>
           </div>

@@ -69,7 +69,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     const foundSite = sites.find(s => 
       s.nhcpPlaqueCode === cleanCode || 
       s.yearBuilt.includes(cleanCode) || 
-      s.qrCodeId.toUpperCase().includes(cleanCode) ||
+      s.qrCodeId?.toUpperCase().includes(cleanCode) ||
       s.id.toLowerCase().includes(cleanCode.toLowerCase())
     );
 

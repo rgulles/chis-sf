@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Compass, Map, ArrowRight, ArrowUpRight, Calendar, Bookmark, Sparkles, MapPin, Clock } from 'lucide-react';
+import { handleHeritageImageError, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
+import React from 'react';
+import { Compass, Map, ArrowRight, ArrowUpRight, Calendar, Bookmark, Sparkles, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { HeritageSite, EventItem, CategoryType } from '../types';
 import { SectionParolAccents } from '../components/ParolDecoration';
@@ -27,18 +28,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   savedSiteIds,
   onToggleSaveSite
 }) => {
-  const [heroImage, setHeroImage] = useState<string>('heritage-sites/san-fernando-cathedral.jpg');
-
-  useEffect(() => {
-    fetch('http://localhost:8000/api/site-images')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.length > 0) {
-          setHeroImage(`http://localhost:8000/storage/${data[0].image_path}`);
-        }
-      })
-      .catch(err => console.error("Error fetching site images:", err));
-  }, []);
+  const highlight = featuredSites[0];
 
   return (
     <div id="home-page-view" className="pb-16">
@@ -188,24 +178,22 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 {/* Visual Container without white border padding or badge overlay */}
                 <div className="relative aspect-[4/3] sm:aspect-[16/11] w-full overflow-hidden bg-[#1e0206]">
                   <img
-                    src={heroImage}
-                    alt="The Parul Sampernandu Tradition - Giant Lanterns of San Fernando"
+                    src={highlight?.heroImage || HERITAGE_IMAGE_PLACEHOLDER}
+                    alt={highlight?.name || 'Heritage image unavailable'}
                     className="w-full h-full object-cover filter brightness-[1.02] contrast-[1.03] group-hover:scale-[1.02] transition-transform duration-700 ease-out select-none"
                     loading="lazy"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/lanterns/1.png';
-                    }}
+                    onError={handleHeritageImageError}
                   />
                 </div>
 
                 {/* Refined Heritage Caption Frame Footer matching left side typography */}
                 <div className="p-4 sm:p-5 text-left font-outfit bg-white border-t border-[#e8dfd5]">
                   <h3 className="font-outfit text-lg sm:text-xl font-bold text-[#1e1b19] tracking-tight mb-1.5 group-hover:text-[#7e1925] transition-colors">
-                    The Parul Sampernandu Tradition
+                    {highlight?.name || 'Heritage catalogue'}
                   </h3>
                   <p className="font-outfit text-xs sm:text-sm text-[#554d48] leading-relaxed font-normal">
-                    The world-famous giant lanterns of San Fernando feature up to 10,000 bulbs operated by manual mechanical rotor drums.
+                    {highlight?.shortDescription || 'No heritage sites are currently available.'}
                   </p>
                 </div>
               </div>
@@ -298,13 +286,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   className="absolute inset-0 w-full h-full object-cover object-center filter brightness-[0.92] group-hover:scale-105 group-hover:brightness-90 transition-all duration-500 ease-out select-none"
                   loading="lazy"
                   referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    if (cat.fallbackImage) {
-                      (e.target as HTMLImageElement).src = cat.fallbackImage;
-                    } else {
-                      (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                    }
-                  }}
+                  onError={handleHeritageImageError}
                 />
 
                 {/* Black fade overlay: subtle at rest, deepens on hover for crisp contrast */}
@@ -395,17 +377,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] select-none"
                       loading="lazy"
                       referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                      }}
+                      onError={handleHeritageImageError}
                     />
                     {/* Subtle Elegant Gradient Fade */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10 group-hover:from-black/85 transition-colors duration-300" />
 
                     {/* Category Pill Tag */}
-                    <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-outfit text-[10px] font-bold uppercase tracking-wider text-[#7e1925] border border-[#e8dfd5] shadow-xs">
+                    {site.category && <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-outfit text-[10px] font-bold uppercase tracking-wider text-[#7e1925] border border-[#e8dfd5] shadow-xs">
                       {site.category}
-                    </span>
+                    </span>}
 
                     {/* Bookmark Button */}
                     <button
@@ -424,11 +404,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     </button>
 
                     {/* Historical Year Badge */}
-                    <div className="absolute bottom-2.5 left-3">
+                    {site.yearBuilt && <div className="absolute bottom-2.5 left-3">
                       <span className="font-outfit text-[10px] font-semibold text-[#f5dfc6] bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded border border-white/15 tracking-wide">
-                        Circa {site.yearBuilt}
+                        {site.yearBuilt}
                       </span>
-                    </div>
+                    </div>}
                   </div>
 
                   {/* Content Area */}
@@ -436,7 +416,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     <div>
                       <div className="flex items-center gap-1.5 font-outfit text-[11px] font-bold uppercase tracking-[0.14em] text-[#7e1925] mb-1">
                         <MapPin className="h-3 w-3 text-[#7e1925] flex-shrink-0" />
-                        <span>{site.barangay}, San Fernando</span>
+                        <span>{site.address}</span>
                       </div>
 
                       <h3 className="font-outfit text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
@@ -450,10 +430,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
                     {/* Footer metadata */}
                     <div className="mt-4 pt-3.5 border-t border-[#f0e8df] flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs text-[#8a7171]">
-                        <Clock className="w-3.5 h-3.5 text-[#7e1925]" />
-                        <span className="font-outfit text-[11px] sm:text-xs font-medium">{site.visitInfo?.duration || '45 mins'}</span>
-                      </div>
                       <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#7e1925] group-hover:text-[#580b14] transition-colors">
                         <span>Explore</span>
                         <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
@@ -628,20 +604,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
               >
                 <div className="relative w-full max-w-lg aspect-[16/10] sm:aspect-[16/9] lg:aspect-[16/10] rounded-2xl overflow-hidden border border-white/25 bg-[#2d0206]/80 shadow-2xl group transition-all duration-300">
                   <img
-                    src="/images/sites/giant-lantern-hero.jpg"
-                    alt="San Fernando Cultural Heritage"
+                    src={highlight?.heroImage || HERITAGE_IMAGE_PLACEHOLDER}
+                    alt={highlight?.name || 'Heritage image unavailable'}
                     className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/giant-lanterns.jpg';
-                    }}
+                    onError={handleHeritageImageError}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15 pointer-events-none" />
 
                   {/* Badge on top right */}
                   <div className="absolute top-3.5 right-3.5">
                     <span className="inline-flex items-center rounded-full bg-black/60 backdrop-blur-md px-3 py-1 font-outfit text-[11px] font-semibold text-white/95 border border-white/25 uppercase tracking-wider">
-                      Heritage Trail
+                      {highlight?.category || 'Heritage catalogue'}
                     </span>
                   </div>
 
@@ -651,10 +625,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       Living Culture & History
                     </span>
                     <p className="font-outfit text-base sm:text-lg font-bold text-white leading-snug">
-                      <span className="text-[#ffd580]">San Fernando</span> Cultural Legacy
+                      {highlight?.name || 'Heritage catalogue'}
                     </p>
                     <p className="font-outfit text-xs text-[#ffeaec]/85 mt-1 line-clamp-2">
-                      Historic landmarks, ancestral architecture, and centuries of vibrant traditions.
+                      {highlight?.shortDescription || 'No heritage sites are currently available.'}
                     </p>
                   </div>
                 </div>

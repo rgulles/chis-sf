@@ -11,7 +11,14 @@ class SiteImage extends Model
         'heritage_site_id',
         'image_path',
         'caption',
+        'is_cover',
+        'sort_order',
     ];
+
+    protected function casts(): array
+    {
+        return ['is_cover' => 'boolean', 'sort_order' => 'integer'];
+    }
 
     public function heritageSite(): BelongsTo
     {

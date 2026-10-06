@@ -1,3 +1,4 @@
+// Legacy prototype/reference records only. Never use these as the live public catalogue.
 import type { HeritageSite } from '../types';
 
 export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
@@ -717,11 +718,4 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
   }
 ];
 
-export const HERITAGE_CATEGORIES = [
-  'All',
-  'Historical Buildings',
-  'Churches',
-  'Museums',
-  'Monuments',
-  'Cultural Sites'
-] as const;
+export { HERITAGE_CATEGORIES } from './heritageCategories';

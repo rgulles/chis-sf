@@ -6,16 +6,15 @@ import type {
   CategoryType,
   UserProfile
 } from './types';
-import confetti from 'canvas-confetti';
 
 
-import { apiFetchSites, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken } from './api/client';
+import { apiFetchSites, apiFetchSiteById, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken } from './api/client';
+import { parseHeritageRoute } from './utils/heritageNavigation';
 
 // Components
 import { Header } from './components/Header';
 import { MobileNav } from './components/MobileNav';
 import { SearchModal } from './components/SearchModal';
-import { QRScannerModal } from './components/QRScannerModal';
 import { AuthModal } from './components/AuthModal';
 import { DirectionsModal } from './components/DirectionsModal';
 import { HeritageChatbot } from './components/HeritageChatbot';
@@ -25,8 +24,6 @@ import { HomeView } from './views/HomeView';
 import { ExploreView } from './views/ExploreView';
 import { MapView } from './views/MapView';
 import { SiteDetailView } from './views/SiteDetailView';
-import { InteractiveHistoryView } from './views/InteractiveHistoryView';
-import { QRScanExperienceView } from './views/QRScanExperienceView';
 import { EventsView } from './views/EventsView';
 import { PlanView } from './views/PlanView';
 import { SavedView } from './views/SavedView';
@@ -36,13 +33,18 @@ import { AdminView } from './views/AdminView';
 
 export default function App() {
   // Navigation & View State
-  const [currentView, setCurrentView] = useState<ViewType>('home');
+  const [currentView, setCurrentView] = useState<ViewType>(() => parseHeritageRoute(window.location?.hash || '').view);
+  const [routeSiteId, setRouteSiteId] = useState<string | null>(() => parseHeritageRoute(window.location?.hash || '').siteId);
+  const [detailStatus, setDetailStatus] = useState<'loading' | 'ready' | 'not-found' | 'error'>('loading');
+  const [detailRetry, setDetailRetry] = useState(0);
+  const routeHash = useRef(window.location?.hash || '');
   const [selectedSite, setSelectedSite] = useState<HeritageSite | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | 'All'>('All');
 
   // Dynamic Data State
   const [sites, setSites] = useState<HeritageSite[]>([]);
+  const [sitesError, setSitesError] = useState<string | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
 
   // Saved / Favorites
@@ -50,9 +52,9 @@ export default function App() {
     try {
       const saved = localStorage.getItem('sf_saved_sites');
       const parsed = saved ? JSON.parse(saved) : null;
-      return Array.isArray(parsed) ? parsed : ['metropolitan-cathedral', 'lazatin-heritage-house'];
+      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string' && /^[1-9]\d*$/.test(id)) : [];
     } catch {
-      return ['metropolitan-cathedral', 'lazatin-heritage-house'];
+      return [];
     }
   });
 
@@ -78,18 +80,30 @@ export default function App() {
 
   // Modals Visibility State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isQROpen, setIsQROpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [directionsTargetSite, setDirectionsTargetSite] = useState<HeritageSite | null>(null);
 
   // Load live data from Laravel API on mount
   useEffect(() => {
+    let cancelled = false;
     async function loadBackendData() {
       try {
         const fetchedSites = await apiFetchSites();
-        if (fetchedSites && fetchedSites.length > 0) {
+        if (!cancelled) {
           setSites(fetchedSites);
+          setSitesError(null);
+          if (currentView !== 'site-detail') setSelectedSite((previous) => previous ? fetchedSites.find((site) => site.id === previous.id) || null : null);
+          setDirectionsTargetSite((previous) => previous ? fetchedSites.find((site) => site.id === previous.id) || null : null);
         }
+      } catch (err) {
+        if (!cancelled) {
+          setSites([]);
+          if (currentView !== 'site-detail') setSelectedSite(null);
+          setDirectionsTargetSite(null);
+          setSitesError(err instanceof Error ? err.message : 'Unable to load heritage sites. Please try again.');
+        }
+      }
+      try {
         const fetchedEvents = await apiFetchEvents();
         setEvents(fetchedEvents);
       } catch (err) {
@@ -97,7 +111,46 @@ export default function App() {
       }
     }
     loadBackendData();
+    return () => { cancelled = true; };
   }, [currentView]);
+
+  useEffect(() => {
+    const syncRoute = () => {
+      if (routeHash.current === window.location.hash) return;
+      routeHash.current = window.location.hash;
+      const route = parseHeritageRoute(window.location.hash);
+      setSelectedSite(null);
+      setDetailStatus('loading');
+      setRouteSiteId(route.siteId);
+      setCurrentView(route.view);
+      setDirectionsTargetSite(null);
+    };
+    window.addEventListener?.('popstate', syncRoute);
+    window.addEventListener?.('hashchange', syncRoute);
+    return () => {
+      window.removeEventListener?.('popstate', syncRoute);
+      window.removeEventListener?.('hashchange', syncRoute);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentView !== 'site-detail') return;
+    let cancelled = false;
+    setSelectedSite(null);
+    setDetailStatus('loading');
+    if (!routeSiteId) {
+      setDetailStatus('not-found');
+      return;
+    }
+    apiFetchSiteById(routeSiteId).then(site => {
+      if (cancelled) return;
+      setSelectedSite(site);
+      setDetailStatus(site ? 'ready' : 'not-found');
+    }).catch(() => {
+      if (!cancelled) setDetailStatus('error');
+    });
+    return () => { cancelled = true; };
+  }, [currentView, routeSiteId, detailRetry]);
 
   // Verify independently of catalogue loading, and ignore superseded requests.
   useEffect(() => {
@@ -132,6 +185,12 @@ export default function App() {
 
   // Scroll to top on view changes
   const navigateTo = (view: ViewType) => {
+    const id = view === 'site-detail' ? selectedSite?.id : null;
+    const hash = id ? `#/heritage/${encodeURIComponent(id)}` : `#/${view}`;
+    if (window.location && window.location.hash !== hash) window.history.pushState({ chisNavigation: true }, '', hash);
+    routeHash.current = hash;
+    setRouteSiteId(id || null);
+    if (view === 'site-detail') { setSelectedSite(null); setDetailStatus('loading'); setDetailRetry(value => value + 1); }
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -163,129 +222,21 @@ export default function App() {
 
   // Select Site to View Details (Page 4)
   const handleSelectSite = (site: HeritageSite) => {
-    setSelectedSite(site);
-    navigateTo('site-detail');
+    const hash = `#/heritage/${encodeURIComponent(site.id)}`;
+    if (window.location && window.location.hash !== hash) window.history.pushState({ chisNavigation: true }, '', hash);
+    routeHash.current = hash;
+    setSelectedSite(null);
+    setDetailStatus('loading');
+    setRouteSiteId(site.id);
+    setDetailRetry(value => value + 1);
+    setCurrentView('site-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Select Event to View Details (Page 8)
   const handleSelectEvent = (event: EventItem | null) => {
     setSelectedEvent(event);
     navigateTo('events');
-  };
-
-  // Open QR Scanner or Directly trigger on-site scan
-  const handleTriggerQRScan = (site: HeritageSite) => {
-    setSelectedSite(site);
-    handleProcessQRScan(site.qrCodeId);
-  };
-
-  // Process QR Code Scan
-  const handleProcessQRScan = (scannedCode: string) => {
-    const matched = sites.find(
-      (s) =>
-        s.qrCodeId.toLowerCase() === scannedCode.toLowerCase() ||
-        s.id.toLowerCase() === scannedCode.toLowerCase()
-    );
-
-    if (matched) {
-      setSelectedSite(matched);
-      setIsQROpen(false);
-
-      // Collect stamp if not collected
-      if (!user?.scannedSites?.includes(matched.id)) {
-        handleStampCollected(matched.id);
-      }
-
-      navigateTo('qr-experience');
-    }
-  };
-
-  // Handle Collecting a Heritage Stamp & Badges
-  const handleStampCollected = (siteId: string) => {
-    const site = sites.find((s) => s.id === siteId);
-    if (!site) return;
-
-    // Increment scanCount on site
-    setSites((prev) =>
-      prev.map((s) => (s.id === siteId ? { ...s, scanCount: s.scanCount + 1 } : s))
-    );
-
-    // Update User Stamps
-    setUser((prev) => {
-      if (!prev) return null;
-      const prevScanned = prev.scannedSites || [];
-      const prevStamps = prev.stamps || [];
-      const prevBadges = prev.badges || [];
-
-      if (prevScanned.includes(siteId)) return prev;
-
-      const newScanned = [...prevScanned, siteId];
-      const newStamps = [
-        ...prevStamps,
-        {
-          siteId: site.id,
-          siteName: site.name,
-          collectedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        }
-      ];
-
-      // Calculate unlocked badges
-      const unlockedBadges = [...prevBadges];
-      if (!unlockedBadges.includes('first-scan')) {
-        unlockedBadges.push('first-scan');
-      }
-      if (site.id === 'cathedral' && !unlockedBadges.includes('cathedral-explorer')) {
-        unlockedBadges.push('cathedral-explorer');
-      }
-      if (site.category === 'Historical Buildings' && !unlockedBadges.includes('sugar-baron')) {
-        unlockedBadges.push('sugar-baron');
-      }
-      if (site.id === 'train-station' && !unlockedBadges.includes('railway-adventurer')) {
-        unlockedBadges.push('railway-adventurer');
-      }
-      if (newScanned.length >= 5 && !unlockedBadges.includes('master-explorer')) {
-        unlockedBadges.push('master-explorer');
-      }
-
-      return {
-        ...prev,
-        scannedSites: newScanned,
-        stamps: newStamps,
-        badges: unlockedBadges
-      };
-    });
-
-    try {
-      confetti({
-        particleCount: 70,
-        spread: 60,
-        origin: { y: 0.7 }
-      });
-    } catch {
-      // Ignore error
-    }
-  };
-
-  // Community Photo Upload handler
-  const handlePhotoUploaded = () => {
-    setUser((prev) => {
-      if (!prev) return null;
-      const prevBadges = prev.badges || [];
-      const updatedBadges = [...prevBadges];
-      if (!updatedBadges.includes('heritage-photographer')) {
-        updatedBadges.push('heritage-photographer');
-      }
-      const updatedUser = {
-        ...prev,
-        badges: updatedBadges
-      };
-      try {
-        localStorage.setItem('sf_user_profile', JSON.stringify({ ...updatedUser, isLoggedIn: true }));
-      } catch {
-        // Ignore error
-      }
-      return updatedUser;
-    });
   };
 
   // Category selection handler
@@ -325,16 +276,20 @@ export default function App() {
         currentView={currentView}
         onNavigate={navigateTo}
         onOpenSearch={() => setIsSearchOpen(true)}
-        onOpenQRScanner={() => setIsQROpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
-        savedCount={(savedSiteIds?.length || 0) + (savedEventIds?.length || 0)}
+        savedCount={sites.filter(site => savedSiteIds.includes(site.id)).length + savedEventIds.length}
         user={user}
-        totalSites={sites?.length || 10}
+        totalSites={sites.length}
         onToggleAdminMode={() => navigateTo('admin')}
       />
 
       {/* MAIN VIEW CONTENT CONTAINER */}
       <main id="main-content-viewport" className="flex-1">
+        {sitesError && (
+          <div role="alert" className="mx-auto max-w-7xl px-4 py-3 text-sm text-red-800 bg-red-50">
+            {sitesError}
+          </div>
+        )}
         {/* PAGE 1: HOME */}
         {currentView === 'home' && (
           <HomeView
@@ -380,42 +335,25 @@ export default function App() {
         )}
 
         {/* PAGE 4: HERITAGE SITE DETAILS */}
-        {currentView === 'site-detail' && selectedSite && (
+        {currentView === 'site-detail' && detailStatus !== 'ready' && (
+          <section className="max-w-5xl mx-auto p-8 space-y-4" aria-live="polite">
+            <h1 className="headline-md">{detailStatus === 'loading' ? 'Loading heritage site…' : detailStatus === 'not-found' ? 'Heritage site not found' : 'Unable to load this heritage site'}</h1>
+            {detailStatus === 'not-found' && <p>This site is unavailable or no longer public.</p>}
+            {detailStatus === 'error' && <button onClick={() => setDetailRetry(value => value + 1)}>Try again</button>}
+            {detailStatus !== 'loading' && <button onClick={() => navigateTo('explore')}>Return to Explore</button>}
+          </section>
+        )}
+        {currentView === 'site-detail' && detailStatus === 'ready' && selectedSite && selectedSite.id === routeSiteId && (
           <SiteDetailView
             site={selectedSite}
-            onBack={() => navigateTo('explore')}
+            onBack={() => window.history?.state?.chisNavigation ? window.history.back() : navigateTo('explore')}
             onOpenDirections={(site) => setDirectionsTargetSite(site)}
-            onOpenInteractiveHistory={(site) => {
-              setSelectedSite(site);
-              navigateTo('interactive-history');
-            }}
             isSaved={savedSiteIds.includes(selectedSite.id)}
             onToggleSave={handleToggleSaveSite}
             onAddToPlan={(siteId) => {
               if (!savedSiteIds.includes(siteId)) handleToggleSaveSite(siteId);
               navigateTo('plan');
             }}
-            userName={user?.name || 'Guest Traveler'}
-            onPhotoUploaded={handlePhotoUploaded}
-          />
-        )}
-
-        {/* PAGE 5: DEDICATED INTERACTIVE HISTORY */}
-        {currentView === 'interactive-history' && selectedSite && (
-          <InteractiveHistoryView
-            site={selectedSite}
-            onBack={() => navigateTo('site-detail')}
-            onLaunchQRMode={handleTriggerQRScan}
-          />
-        )}
-
-        {/* PAGE 6: ON-SITE QR SCAN EXPERIENCE */}
-        {currentView === 'qr-experience' && selectedSite && (
-          <QRScanExperienceView
-            site={selectedSite}
-            onBack={() => navigateTo('site-detail')}
-            onStampCollected={handleStampCollected}
-            isStampUnlocked={(user?.scannedSites || []).includes(selectedSite.id)}
           />
         )}
 
@@ -579,8 +517,7 @@ export default function App() {
       <MobileNav
         currentView={currentView}
         onNavigate={navigateTo}
-        savedCount={savedSiteIds.length + savedEventIds.length}
-        onOpenQRScanner={() => setIsQROpen(true)}
+        savedCount={sites.filter(site => savedSiteIds.includes(site.id)).length + savedEventIds.length}
       />
 
       {/* SEARCH MODAL */}
@@ -591,14 +528,6 @@ export default function App() {
         events={events}
         onSelectSite={handleSelectSite}
         onSelectEvent={handleSelectEvent}
-      />
-
-      {/* ON-SITE QR SCANNER MODAL */}
-      <QRScannerModal
-        isOpen={isQROpen}
-        onClose={() => setIsQROpen(false)}
-        sites={sites}
-        onScanSuccess={handleProcessQRScan}
       />
 
       {/* USER AUTH & PROFILE MODAL */}

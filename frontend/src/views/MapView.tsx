@@ -1,3 +1,4 @@
+import { handleHeritageImageError } from '../utils/heritageImages';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { motion, AnimatePresence } from 'motion/react';
@@ -9,11 +10,8 @@ import {
   Compass,
   ChevronRight,
   Bookmark,
-  Footprints,
   Lock,
   Crosshair,
-  Volume2,
-  ArrowUpDown,
   Info,
   X,
   Layers,
@@ -24,7 +22,8 @@ import {
   Minus
 } from 'lucide-react';
 import type { HeritageSite, CategoryType } from '../types';
-import { HERITAGE_CATEGORIES } from '../data/heritageData';
+import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
+import { hasUsableCoordinates } from '../utils/heritageCoordinates';
 
 interface MapViewProps {
   sites: HeritageSite[];
@@ -44,18 +43,6 @@ const SAN_FERNANDO_CENTER: [number, number] = [15.0325, 120.6865];
 const SAN_FERNANDO_BOUNDS: L.LatLngBoundsLiteral = [
   [14.990, 120.630], // South-West border (Bacolor / Santo Tomas boundary)
   [15.075, 120.745]  // North-East border (Mexico / Angeles boundary)
-];
-
-// San Fernando Historic Core Walking Trail coordinates connecting major monuments
-const HERITAGE_WALK_TRAIL: [number, number][] = [
-  [15.0321, 120.6845], // Train Station
-  [15.0315, 120.6858], // Death March Marker 102
-  [15.0345, 120.6812], // Provincial Capitol & Boulevard
-  [15.0372, 120.6785], // PASUDECO Sugar Mill
-  [15.0412, 120.6721], // Giant Lantern Center (JASA)
-  [15.0287, 120.6908], // Metropolitan Cathedral (Poblacion)
-  [15.0275, 120.6922], // Henson-Hizon House
-  [15.0298, 120.6935]  // Lazatin Ancestral House
 ];
 
 // City of San Fernando Municipal Boundary polygon outline
@@ -98,10 +85,7 @@ export const MapView: React.FC<MapViewProps> = ({
 }) => {
   const [selectedSiteId, setSelectedSiteId] = useState<string>(sites[0]?.id || '');
   const [viewMode, setViewMode] = useState<'map' | 'list'>(initialViewMode);
-  const [nearbyOnly, setNearbyOnly] = useState(false);
   const [internalCategory, setInternalCategory] = useState<CategoryType | 'All'>('All');
-  const [sortBy, setSortBy] = useState<'popular' | 'distance' | 'oldest' | 'az'>('popular');
-  const [onlyAudio, setOnlyAudio] = useState(false);
 
   // Progressive Disclosure states
   const [isLayersOpen, setIsLayersOpen] = useState(false);
@@ -111,7 +95,6 @@ export const MapView: React.FC<MapViewProps> = ({
 
   // Map Tile & Layer States
   const [tileStyle, setTileStyle] = useState<MapTileStyle>('voyager');
-  const [showHeritageTrail, setShowHeritageTrail] = useState(true);
   const [showCityBoundary, setShowCityBoundary] = useState(true);
 
   // Sync category with prop if provided
@@ -135,7 +118,6 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Record<string, L.Marker>>({});
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const trailLayerRef = useRef<L.Polyline | null>(null);
   const boundaryLayerRef = useRef<L.Polygon | null>(null);
   const riverLayerRef = useRef<L.Polyline | null>(null);
 
@@ -144,22 +126,20 @@ export const MapView: React.FC<MapViewProps> = ({
     return sites
       .filter((site) => {
         const matchesCategory = activeCategory === 'All' || site.category === activeCategory;
-        const matchesAudio = !onlyAudio || Boolean(site.audioStory);
-        const matchesNearby = !nearbyOnly || site.distanceKm <= 1.2;
-        return matchesCategory && matchesAudio && matchesNearby;
+        return matchesCategory;
       })
-      .sort((a, b) => {
-        if (sortBy === 'popular') return b.scanCount - a.scanCount;
-        if (sortBy === 'distance') return a.distanceKm - b.distanceKm;
-        if (sortBy === 'oldest') return parseInt(a.yearBuilt) - parseInt(b.yearBuilt);
-        if (sortBy === 'az') return a.name.localeCompare(b.name);
-        return 0;
-      });
-  }, [sites, activeCategory, onlyAudio, nearbyOnly, sortBy]);
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [sites, activeCategory]);
 
-  const activeSite = sites.find((s) => s.id === selectedSiteId) || sites[0];
+  const activeSite = filteredAndSortedSites.find((s) => s.id === selectedSiteId);
 
-  const formatCategoryLabel = (category: CategoryType) => {
+  useEffect(() => {
+    if (!filteredAndSortedSites.some((site) => site.id === selectedSiteId)) {
+      setSelectedSiteId('');
+    }
+  }, [filteredAndSortedSites, selectedSiteId]);
+
+  const formatCategoryLabel = (category: HeritageSite['category']) => {
     switch (category) {
       case 'Churches':
         return 'Church';
@@ -176,7 +156,7 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  const getCategoryColor = (cat: CategoryType) => {
+  const getCategoryColor = (cat: HeritageSite['category']) => {
     switch (cat) {
       case 'Churches':
         return '#7e1925'; // Primary Maroon
@@ -196,7 +176,8 @@ export const MapView: React.FC<MapViewProps> = ({
   // Helper to create customized HTML Leaflet DivIcons
   const createSiteIcon = (site: HeritageSite, isSelected: boolean) => {
     const color = getCategoryColor(site.category);
-    const shortTitle = site.name.split(' ')[0] + ' ' + (site.name.split(' ')[1] || '');
+    const shortTitle = site.name.split(' ').slice(0, 2).join(' ');
+    const safeTitle = shortTitle.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
 
     return L.divIcon({
       className: 'heritage-custom-marker',
@@ -225,7 +206,7 @@ export const MapView: React.FC<MapViewProps> = ({
               ? 'bg-[#1e1b19] text-white border-[#1e1b19]'
               : 'bg-[#fff8f5] text-[#1e1b19] border-[#e7e0d6]'
           }">
-            ${shortTitle}
+            ${safeTitle}
           </div>
         </div>
       `,
@@ -280,15 +261,6 @@ export const MapView: React.FC<MapViewProps> = ({
     }).addTo(map);
     riverLayerRef.current = riverPolyline;
 
-    // Draw Historic Walking Trail
-    const trailPolyline = L.polyline(HERITAGE_WALK_TRAIL, {
-      color: '#b45309',
-      weight: 3.5,
-      opacity: 0.85,
-      dashArray: '4, 8'
-    }).addTo(map);
-    trailLayerRef.current = trailPolyline;
-
     mapInstanceRef.current = map;
 
     return () => {
@@ -324,17 +296,6 @@ export const MapView: React.FC<MapViewProps> = ({
     tileLayerRef.current = newLayer;
   }, [tileStyle]);
 
-  // Toggle Walking Trail Overlay
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !trailLayerRef.current) return;
-    if (showHeritageTrail) {
-      map.addLayer(trailLayerRef.current);
-    } else {
-      map.removeLayer(trailLayerRef.current);
-    }
-  }, [showHeritageTrail]);
-
   // Toggle City Boundary Overlay
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -357,10 +318,12 @@ export const MapView: React.FC<MapViewProps> = ({
 
     // Render filtered markers
     filteredAndSortedSites.forEach((site) => {
+      if (!hasUsableCoordinates(site.coordinates)) return;
+      const { lat, lng } = site.coordinates;
       const isSelected = site.id === selectedSiteId;
       const customIcon = createSiteIcon(site, isSelected);
 
-      const marker = L.marker([site.coordinates.lat, site.coordinates.lng], {
+      const marker = L.marker([lat, lng], {
         icon: customIcon,
         title: site.name
       }).addTo(map);
@@ -369,7 +332,7 @@ export const MapView: React.FC<MapViewProps> = ({
       marker.on('click', () => {
         setSelectedSiteId(site.id);
         setIsMapCardDismissed(false);
-        map.panTo([site.coordinates.lat, site.coordinates.lng], {
+        map.panTo([lat, lng], {
           animate: true,
           duration: 0.6
         });
@@ -393,7 +356,7 @@ export const MapView: React.FC<MapViewProps> = ({
     setSelectedSiteId(site.id);
     setIsMapCardDismissed(false);
     const map = mapInstanceRef.current;
-    if (map) {
+    if (map && hasUsableCoordinates(site.coordinates)) {
       map.setView([site.coordinates.lat, site.coordinates.lng], 16, {
         animate: true,
         duration: 0.8
@@ -501,7 +464,7 @@ export const MapView: React.FC<MapViewProps> = ({
           >
             <Info className="w-5 h-5 flex-shrink-0 text-[#7e1925] mt-0.5" />
             <p className="leading-relaxed">
-              <strong>Archival Curation:</strong> All historical sites and documentation are referenced to official markers recognized by the National Historical Commission of the Philippines (NHCP) and the City Government of San Fernando.
+              Browse the current heritage catalogue. Open a site for its recorded history and available visitor information.
             </p>
           </motion.div>
 
@@ -533,39 +496,10 @@ export const MapView: React.FC<MapViewProps> = ({
               })}
             </div>
 
-            {/* Sort & Audio Filter Bar */}
+            {/* Map View Switch */}
             <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-[#e8dfd5] font-outfit text-sm">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-semibold text-[#574141] flex items-center gap-1.5 uppercase tracking-wide">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-[#7e1925]" />
-                  Sort by:
-                </span>
-                <select
-                  id="explore-sort-select"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="rounded-xl border border-[#e8dfd5] bg-white px-3 py-1.5 text-xs font-semibold text-[#1e1b19] focus:border-[#7e1925] focus:outline-none cursor-pointer"
-                >
-                  <option value="popular">Most Visited & Scanned</option>
-                  <option value="distance">Nearest Distance (Km)</option>
-                  <option value="oldest">Historical Era (Oldest First)</option>
-                  <option value="az">Alphabetical (A - Z)</option>
-                </select>
-              </div>
-
               <div className="flex items-center gap-5">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#1e1b19] select-none">
-                  <input
-                    type="checkbox"
-                    checked={onlyAudio}
-                    onChange={(e) => setOnlyAudio(e.target.checked)}
-                    className="h-4 w-4 rounded border border-[#e8dfd5] text-[#7e1925] focus:ring-0 accent-[#7e1925] cursor-pointer"
-                  />
-                  <span className="flex items-center gap-1.5">
-                    <Volume2 className="w-3.5 h-3.5 text-[#b45309]" />
-                    Audio Narratives Only
-                  </span>
-                </label>
+
 
                 <button
                   onClick={() => {
@@ -613,9 +547,7 @@ export const MapView: React.FC<MapViewProps> = ({
                           className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                           loading="lazy"
                           referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                          }}
+                          onError={handleHeritageImageError}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
@@ -639,28 +571,20 @@ export const MapView: React.FC<MapViewProps> = ({
                           <Bookmark className={`h-3.5 w-3.5 ${isSaved ? 'fill-white' : ''}`} />
                         </button>
 
-                        {/* Distance & Year Chips */}
+                        {/* Known Date */}
                         <div className="absolute bottom-3 left-3.5 flex items-center gap-2 font-outfit text-xs font-semibold text-white">
-                          <span className="rounded-md bg-black/65 backdrop-blur-xs px-2.5 py-0.5 border border-white/20">
-                            {site.distanceKm} km
-                          </span>
-                          <span className="rounded-md bg-black/65 backdrop-blur-xs px-2.5 py-0.5 border border-white/20">
+                          {site.yearBuilt && <span className="rounded-md bg-black/65 backdrop-blur-xs px-2.5 py-0.5 border border-white/20">
                             {site.yearBuilt}
-                          </span>
+                          </span>}
                         </div>
 
                         {/* Audio guide badge */}
-                        {site.audioStory && (
-                          <span className="absolute bottom-3 right-3.5 flex items-center gap-1 rounded-full bg-[#3d0309]/85 text-[#ffd580] backdrop-blur-xs px-2.5 py-0.5 font-outfit text-[11px] font-semibold border border-[#f5b82a]/40">
-                            <Volume2 className="w-3 h-3 text-[#f5b82a]" />
-                            Audio
-                          </span>
-                        )}
+
                       </div>
 
                       {/* Body Content */}
                       <div className="p-5 sm:p-6">
-                        {site.nativeName && (
+                        {site.nativeName && site.nativeName !== site.name && (
                           <span className="font-outfit text-xs font-medium text-[#b45309] block mb-1">
                             {site.nativeName}
                           </span>
@@ -681,9 +605,6 @@ export const MapView: React.FC<MapViewProps> = ({
                     {/* Card Footer Actions */}
                     <div className="p-5 sm:p-6 pt-0">
                       <div className="border-t border-[#e8dfd5] pt-4 flex items-center justify-between">
-                        <span className="font-outfit text-xs font-semibold text-[#7e1925] bg-[#faf2ee] border border-[#e8dfd5] px-2.5 py-1 rounded-md">
-                          QR: #{site.qrCodeId}
-                        </span>
 
                         <button
                           id={`view-details-${site.id}`}
@@ -712,8 +633,6 @@ export const MapView: React.FC<MapViewProps> = ({
               <button
                 onClick={() => {
                   handleCategorySelect('All');
-                  setOnlyAudio(false);
-                  setNearbyOnly(false);
                 }}
                 className="rounded-xl bg-[#7e1925] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#580b14] transition-all cursor-pointer shadow-xs"
               >
@@ -851,18 +770,7 @@ export const MapView: React.FC<MapViewProps> = ({
                       <span className="text-[10px] font-bold text-[#8a7171] uppercase tracking-wider block">
                         Overlays
                       </span>
-                      <label className="flex items-center justify-between cursor-pointer select-none py-0.5">
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#1e1b19]">
-                          <Footprints className="w-3.5 h-3.5 text-[#b45309]" />
-                          Walking Trail
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={showHeritageTrail}
-                          onChange={(e) => setShowHeritageTrail(e.target.checked)}
-                          className="h-3.5 w-3.5 rounded text-[#7e1925] accent-[#7e1925] cursor-pointer"
-                        />
-                      </label>
+
                       <label className="flex items-center justify-between cursor-pointer select-none py-0.5">
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#1e1b19]">
                           <Lock className="w-3.5 h-3.5 text-[#7e1925]" />
@@ -1027,20 +935,7 @@ export const MapView: React.FC<MapViewProps> = ({
                       })}
                     </div>
 
-                    <div className="pt-2 border-t border-[#e8dfd5]">
-                      <label className="flex items-center justify-between cursor-pointer select-none py-1">
-                        <span className="text-[11px] font-semibold text-[#1e1b19] flex items-center gap-1.5">
-                          <Compass className="w-3.5 h-3.5 text-[#b45309]" />
-                          Core Zone (&le; 1.2km)
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={nearbyOnly}
-                          onChange={(e) => setNearbyOnly(e.target.checked)}
-                          className="h-3.5 w-3.5 rounded text-[#7e1925] accent-[#7e1925] cursor-pointer"
-                        />
-                      </label>
-                    </div>
+
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1052,7 +947,7 @@ export const MapView: React.FC<MapViewProps> = ({
           {/* Features Name, Description, Direction Button, and Explore Button      */}
           {/* ===================================================================== */}
           <AnimatePresence>
-            {activeSite && !isMapCardDismissed && (
+            {activeSite && hasUsableCoordinates(activeSite.coordinates) && !isMapCardDismissed && (
               <motion.div
                 key={activeSite.id}
                 id="map-floating-site-card"
@@ -1062,16 +957,14 @@ export const MapView: React.FC<MapViewProps> = ({
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute bottom-3 left-3 sm:bottom-5 sm:left-5 z-[1000] w-[calc(100%-1.5rem)] sm:w-[360px] max-h-[82%] overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md shadow-2xl overflow-hidden font-outfit"
               >
-                {/* Image Header with Close Button, Singular Category Badge, Bookmark, Distance */}
+                {/* Image Header with Close Button, Singular Category Badge, Bookmark */}
                 <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#faf2ee]">
                   <img
                     src={activeSite.heroImage}
                     alt={activeSite.name}
                     className="h-full w-full object-cover"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                    }}
+                    onError={handleHeritageImageError}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
@@ -1107,28 +1000,17 @@ export const MapView: React.FC<MapViewProps> = ({
 
                   {/* Distance & Year Chips */}
                   <div className="absolute bottom-2.5 left-3 flex items-center gap-2 font-outfit text-[11px] font-semibold text-white">
-                    <span className="rounded-md bg-black/65 backdrop-blur-xs px-2 py-0.5 border border-white/20">
-                      {activeSite.distanceKm} km
-                    </span>
-                    <span className="rounded-md bg-black/65 backdrop-blur-xs px-2 py-0.5 border border-white/20">
+                    {activeSite.yearBuilt && <span className="rounded-md bg-black/65 backdrop-blur-xs px-2 py-0.5 border border-white/20">
                       {activeSite.yearBuilt}
-                    </span>
+                    </span>}
                   </div>
 
-                  {activeSite.audioStory && (
-                    <span className="absolute bottom-2.5 right-3 flex items-center gap-1 rounded-full bg-[#3d0309]/90 text-[#ffd580] backdrop-blur-xs px-2 py-0.5 font-outfit text-[10px] font-semibold border border-[#f5b82a]/40">
-                      <Volume2 className="w-3 h-3 text-[#f5b82a]" />
-                      Audio
-                    </span>
-                  )}
+
                 </div>
 
                 {/* Card Lower Part: Name, Description, Direction Button, and Explore Button */}
                 <div className="p-4 sm:p-5 space-y-3 font-outfit">
                   <div>
-                    <span className="text-[10px] font-bold text-[#7e1925] uppercase tracking-wider block">
-                      {activeSite.era}
-                    </span>
                     <h3 className="font-outfit text-lg font-bold text-[#1e1b19] leading-snug mt-0.5 tracking-tight">
                       {activeSite.name}
                     </h3>

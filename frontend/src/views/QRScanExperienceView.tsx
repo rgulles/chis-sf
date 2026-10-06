@@ -161,13 +161,13 @@ export const QRScanExperienceView: React.FC<QRScanExperienceViewProps> = ({
             Put in your earphones and look up at the architecture. Our historian explains the hidden details right before your eyes.
           </p>
 
-          <AudioStoryPlayer
+{site.audioStory && (          <AudioStoryPlayer
             title={site.audioStory.title}
             narrator={site.audioStory.narrator}
             duration={site.audioStory.duration}
             durationSeconds={site.audioStory.durationSeconds}
             transcript={site.audioStory.transcript}
-          />
+          />)}
 
           <button
             onClick={() => setCurrentStep(2)}
@@ -221,7 +221,7 @@ export const QRScanExperienceView: React.FC<QRScanExperienceViewProps> = ({
       )}
 
       {/* STEP 3: THEN & NOW */}
-      {currentStep === 3 && (
+      {currentStep === 3 && site.archivalImage && site.modernImage && (
         <div className="space-y-4 rounded-3xl border border-[#E8DFD5] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-[#F4EFEA] pb-3">
             <h3 className="text-base font-bold font-serif text-[#23201F] flex items-center gap-1.5">

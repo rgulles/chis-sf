@@ -29,12 +29,12 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
-      const saved = sessionStorage.getItem('sf_heritage_chat_history');
+      const saved = sessionStorage.getItem('sf_heritage_chat_live_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch { /* Browser storage may be unavailable. */ }
     return INITIAL_CHATBOT_MESSAGES;
   });
 
@@ -48,8 +48,8 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
   // Sync to session storage
   useEffect(() => {
     try {
-      sessionStorage.setItem('sf_heritage_chat_history', JSON.stringify(messages));
-    } catch {}
+      sessionStorage.setItem('sf_heritage_chat_live_v1', JSON.stringify(messages));
+    } catch { /* Browser storage may be unavailable. */ }
   }, [messages]);
 
   // Scroll to bottom on new messages
@@ -86,40 +86,9 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. Attempt server-side Gemini route
-      let replyText = '';
-      let matchedSiteId: string | undefined;
-
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-            siteContext: sites.map(s => ({ id: s.id, name: s.name, category: s.category, address: s.address }))
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.reply && !data.useFallback) {
-            replyText = data.reply;
-            // Match any site mentioned in user text or reply
-            const lowerQuery = (messageText + ' ' + replyText).toLowerCase();
-            const found = sites.find(s => lowerQuery.includes(s.name.toLowerCase()) || lowerQuery.includes(s.id));
-            if (found) matchedSiteId = found.id;
-          }
-        }
-      } catch (networkErr) {
-        // Fallback to local engine
-      }
-
-      // 2. If no server response or fallback requested, use local expert engine
-      if (!replyText) {
-        const local = getLocalHeritageResponse(messageText, sites);
-        replyText = local.text;
-        matchedSiteId = local.matchedSiteId;
-      }
+      const local = getLocalHeritageResponse(messageText, sites);
+      const replyText = local.text;
+      const matchedSiteId = local.matchedSiteId;
 
       const botMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -130,11 +99,11 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
       };
 
       setMessages(prev => [...prev, botMessage]);
-    } catch (err) {
+    } catch {
       const fallbackMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `**Komusta!** San Fernando is celebrated for its historic **Metropolitan Cathedral**, the **1892 Train Station**, the **PASUDECO Sugar Mill**, and the world-famous **Giant Lantern Festival**. Please ask any question about our heritage!`,
+        content: 'Heritage information is unavailable. Please browse the current catalogue or try again.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, fallbackMsg]);
@@ -146,8 +115,8 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
   const handleResetChat = () => {
     setMessages(INITIAL_CHATBOT_MESSAGES);
     try {
-      sessionStorage.removeItem('sf_heritage_chat_history');
-    } catch {}
+      sessionStorage.removeItem('sf_heritage_chat_live_v1');
+    } catch { /* Browser storage may be unavailable. */ }
   };
 
   // Helper to render simple markdown formatting (bolding, lists, paragraphs)
@@ -212,8 +181,8 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
                 id="heritage-chatbot-trigger-btn"
                 onClick={() => setIsOpen(true)}
                 className="group relative flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#7e1925] via-[#6d131e] to-[#4e0910] text-white shadow-[0_10px_28px_-4px_rgba(126,25,37,0.5)] border-2 border-[#ffd580]/70 hover:border-[#ffd580] transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
-                title="Ask Katulung AI (Heritage Guide)"
-                aria-label="Ask Katulung AI (Heritage Guide)"
+                title="Ask Katulung (Heritage Guide)"
+                aria-label="Ask Katulung (Heritage Guide)"
               >
                 {/* Subtle Pulse ring */}
                 <span className="absolute -inset-1 rounded-full bg-[#ffd580] opacity-25 animate-ping pointer-events-none" />
@@ -392,7 +361,7 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
                     <span className="h-1.5 w-1.5 rounded-full bg-[#7e1925] animate-bounce [animation-delay:0.2s]" />
                     <span className="h-1.5 w-1.5 rounded-full bg-[#7e1925] animate-bounce [animation-delay:0.4s]" />
                   </div>
-                  <span className="text-[11px] font-medium text-[#8a7171]">Consulting heritage archives...</span>
+                  <span className="text-[11px] font-medium text-[#8a7171]">Reading saved heritage information...</span>
                 </motion.div>
               )}
 
@@ -414,7 +383,7 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about landmarks, history, food..."
+                  placeholder="Ask about a heritage site..."
                   disabled={isLoading}
                   className="flex-1 rounded-xl border border-[#e8dfd5] bg-[#fcfaf7] px-3.5 py-2 text-xs text-[#1e1b19] placeholder-[#8a7171] focus:border-[#7e1925] focus:bg-white focus:outline-none transition-colors"
                 />
@@ -432,7 +401,7 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
               </form>
 
               <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#8a7171] px-1">
-                <span>San Fernando Tourism & NHCP Data</span>
+                <span>Current heritage catalogue</span>
                 {onPlanRoute && (
                   <button
                     onClick={() => {
@@ -441,7 +410,7 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
                     }}
                     className="text-[#7e1925] hover:underline font-semibold cursor-pointer"
                   >
-                    Plan Itinerary ➔
+                    View Saved Plan ➔
                   </button>
                 )}
               </div>

@@ -33,6 +33,9 @@ Route::get('heritage-sites/{heritageSiteId}/timelines', [HeritageTimelineControl
 Route::apiResource('heritage-timelines', HeritageTimelineController::class)->only('show');
 
 Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+    Route::get('admin/heritage-sites', [HeritageSiteController::class, 'adminIndex']);
+    Route::get('admin/heritage-sites/{heritageSite}', [HeritageSiteController::class, 'adminShow']);
+    Route::get('admin/site-images', [SiteImageController::class, 'adminIndex']);
     Route::apiResource('heritage-sites', HeritageSiteController::class)->only(['store', 'update', 'destroy']);
     Route::apiResource('site-images', SiteImageController::class)->only(['store', 'update', 'destroy']);
     Route::apiResource('events', EventController::class)->only(['store', 'update', 'destroy']);

@@ -7,10 +7,12 @@ import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const compile = (source, module = ts.ModuleKind.CommonJS) => ts.transpileModule(source, {
+const imageModuleUrl = `data:text/javascript;base64,${Buffer.from(ts.transpileModule(read('../src/utils/heritageImages.ts'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } }).outputText).toString('base64')}`;
+const compile = (source, module = ts.ModuleKind.CommonJS) => ts.transpileModule(source.replace(/(['"'])(?:\.\.\/utils\/heritageImages|\.\/heritageImages)\1/g, JSON.stringify(imageModuleUrl)), {
   compilerOptions: { module, target: ts.ScriptTarget.ES2023, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 const api = await import(`data:text/javascript;base64,${Buffer.from(compile(read('../src/api/client.ts'), ts.ModuleKind.ESNext)).toString('base64')}`);
+const imageHelpers = await import(imageModuleUrl);
 const adminData = await import(`data:text/javascript;base64,${Buffer.from(compile(read('../src/utils/adminData.ts'), ts.ModuleKind.ESNext)).toString('base64')}`);
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status });
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -18,9 +20,9 @@ const site = { id: 1, name: 'Original site', address: 'Address', status: 'active
   { id: 4, heritage_site_id: 1, year: '1920', title: 'Original timeline' },
 ] };
 const lists = {
-  '/api/heritage-sites': [site],
+  '/api/admin/heritage-sites': [site],
   '/api/events': [{ id: 2, title: 'Original event', location: 'Location', event_date: '2026-10-06 18:24:35' }],
-  '/api/site-images': [{ id: 3, heritage_site_id: 1, image_path: 'test.jpg', caption: 'Original image' }],
+  '/api/admin/site-images': [{ id: 3, heritage_site_id: 1, image_path: 'test.jpg', caption: 'Original image' }],
 };
 const resources = [
   { kind: 'site', tab: 'Heritage Sites', add: 'Add Site', route: '/api/heritage-sites', id: 1, field: 'name', save: 'Save Heritage Site', item: 'Original site' },
@@ -51,19 +53,24 @@ function harness() {
     },
     useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
     useCallback(callback) { cursor++; return callback; },
-    useEffect(callback) {
+    useEffect(callback, deps) {
       const index = cursor++;
-      if (!effects[index]) { effects[index] = true; callbacks.push(callback); }
+      if (!effects[index] || (deps?.length === 1 && typeof deps[0] !== 'function' && !Object.is(effects[index].deps?.[0], deps[0]))) {
+        const previous = effects[index];
+        callbacks.push(() => { previous?.cleanup?.(); effects[index] = { deps, cleanup: callback() }; });
+      }
     },
   };
   const exports = {};
   vm.runInNewContext(compile(read('../src/views/AdminView.tsx')), {
-    exports, Error, console, confirm: () => true,
+    exports, Error, console, URL, confirm: () => true,
     require(name) {
+      if (name === imageModuleUrl) return imageHelpers;
       if (name === 'react') return hooks;
       if (name === 'react/jsx-runtime') return require(name);
       if (name === '../api/client') return api;
       if (name === '../utils/adminData') return adminData;
+      if (name === '../data/heritageCategories') return { HERITAGE_CATEGORIES: ['All', 'Historical Buildings', 'Churches', 'Museums', 'Monuments', 'Cultural Sites'] };
       return new Proxy({}, { get: (_, key) => Object.assign(() => null, { displayName: String(key) }) });
     },
   });
@@ -125,7 +132,7 @@ for (const resource of resources) {
     tree = view.render();
     assert.equal(form(tree, resource.kind), undefined);
     assert.ok(text(find(tree, (node) => node.props?.role === 'status')).includes('created successfully'));
-    assert.equal(calls.filter(([url, options]) => url === '/api/heritage-sites' && options.method === 'GET').length, 2);
+    assert.equal(calls.filter(([url, options]) => url === '/api/admin/heritage-sites' && options.method === 'GET').length, 2);
   });
 
   test(`${resource.kind}: validation failure preserves values, and retry clears the error`, async () => {
@@ -164,7 +171,7 @@ for (const resource of resources) {
     resolve(reply({ message: 'Success' }));
     await first;
     assert.ok(text(find(view.render(), (node) => node.props?.role === 'status')).includes('successfully'));
-    assert.equal(calls.filter(([url, options]) => url === '/api/heritage-sites' && options.method === 'GET').length, 2);
+    assert.equal(calls.filter(([url, options]) => url === '/api/admin/heritage-sites' && options.method === 'GET').length, 2);
   });
 
   test(`${resource.kind}: failed delete keeps the item and displays a safe error`, async () => {
@@ -173,7 +180,7 @@ for (const resource of resources) {
     assert.ok(text(view.render()).includes(resource.item));
     assert.ok(text(find(view.render(), (node) => node.props?.role === 'alert')).includes('request failed'));
     assert.equal(text(view.render()).includes('SQLSTATE'), false);
-    assert.equal(calls.filter(([url, options]) => url === '/api/heritage-sites' && options.method === 'GET').length, 1);
+    assert.equal(calls.filter(([url, options]) => url === '/api/admin/heritage-sites' && options.method === 'GET').length, 1);
   });
 
   test(`${resource.kind}: edit saves use PUT and show update feedback`, async () => {
@@ -301,9 +308,8 @@ test('admin actions describe archive, cancellation, and image references accurat
   button(view.render(), 'Site Images').props.onClick();
   assert.ok(button(view.render(), 'Add Image Reference'));
   assert.ok(find(view.render(), (node) => node.type === 'button' && node.props.title === 'Remove Image Reference'));
-  assert.equal(text(view.render()).includes('Upload'), false);
   button(view.render(), 'Add Image Reference').props.onClick();
-  assert.ok(text(view.render()).includes('does not upload a file'));
+  assert.ok(text(view.render()).includes('Upload Image'));
 });
 
 test('timeline and image edits submit the selected parent site', async () => {
@@ -316,4 +322,157 @@ test('timeline and image edits submit the selected parent site', async () => {
     await form(view.render(), resource.kind).props.onSubmit({ preventDefault() {} });
     assert.equal(JSON.parse(calls.find(([, options]) => options.method === 'PUT')[1].body).heritage_site_id, 7);
   }
+});
+
+test('heritage edit preserves zero coordinates, supports restoration and sends only site fields', async () => {
+  const archived = { ...site, status: 'archived', category: 'Churches', latitude: 0, longitude: 0,
+    created_by: 99, images: [{ id: 3 }], description: 'Overview', history: 'History' };
+  const { view, calls } = await loaded(resources[0], () => reply(archived), {
+    ...lists, '/api/admin/heritage-sites': [archived],
+  });
+  find(view.render(), node => node.type === 'button' && node.props.title === 'Edit').props.onClick();
+  let tree = view.render();
+  assert.equal(find(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 15.031').props.value, 0);
+  assert.equal(find(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 120.689').props.value, 0);
+  const category = find(tree, node => node.type === 'select' && node.props.value === 'Churches');
+  assert.deepEqual(category.props.children[2].map(node => node.props.value), [
+    'Historical Buildings', 'Churches', 'Museums', 'Monuments', 'Cultural Sites',
+  ]);
+  find(tree, node => node.type === 'select' && node.props.value === 'archived')
+    .props.onChange({ target: { value: 'active' } });
+  tree = view.render();
+  find(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 15.031')
+    .props.onChange({ target: { value: '15oops' } });
+  await form(view.render(), 'site').props.onSubmit({ preventDefault() {} });
+  const payload = JSON.parse(calls.find(([, options]) => options.method === 'PUT')[1].body);
+  assert.equal(payload.status, 'active');
+  assert.equal(payload.latitude, '15oops'); // Backend must reject it, rather than receiving a truncated 15.
+  assert.equal(payload.longitude, '0');
+  for (const field of ['id', 'created_by', 'images', 'timelines']) assert.equal(field in payload, false);
+});
+
+test('visitor form loads saved values and sends unchanged, edited and cleared values', async () => {
+  const values = { opening_hours: 'Weekdays', entrance_fee: 'Admission on request',
+    accessibility_notes: 'Ground floor', visit_notes: 'Call first', contact_information: 'Tourism desk' };
+  const record = { ...site, ...values, description: 'Overview', history: 'History' };
+  const { view, calls } = await loaded(resources[0], () => reply(record), {
+    ...lists, '/api/admin/heritage-sites': [record],
+  });
+  find(view.render(), node => node.type === 'button' && node.props.title === 'Edit').props.onClick();
+  for (const [field, value] of Object.entries(values)) {
+    const input = find(view.render(), node => node.type === 'textarea' && node.props.name === field);
+    assert.equal(input.props.value, value);
+    assert.equal(input.props.required, undefined);
+  }
+  await form(view.render(), 'site').props.onSubmit({ preventDefault() {} });
+  let payload = JSON.parse(calls.find(([, options]) => options.method === 'PUT')[1].body);
+  for (const [field, value] of Object.entries(values)) assert.equal(payload[field], value);
+  find(view.render(), node => node.type === 'button' && node.props.title === 'Edit').props.onClick();
+  find(view.render(), node => node.props?.name === 'opening_hours').props.onChange({ target: { value: '  Updated hours  ' } });
+  find(view.render(), node => node.props?.name === 'entrance_fee').props.onChange({ target: { value: '   ' } });
+  await form(view.render(), 'site').props.onSubmit({ preventDefault() {} });
+  payload = JSON.parse(calls.filter(([, options]) => options.method === 'PUT').at(-1)[1].body);
+  assert.equal(payload.opening_hours, 'Updated hours');
+  assert.equal(payload.entrance_fee, null);
+  assert.equal(payload.visit_notes, values.visit_notes);
+  assert.equal(payload.description, 'Overview');
+  assert.equal(payload.history, 'History');
+});
+
+test('new heritage form leaves visitor information blank and submits nulls', async () => {
+  const { view, calls } = await loaded(resources[0], () => reply({ id: 8 }));
+  button(view.render(), 'Add Site').props.onClick();
+  const fields = ['opening_hours', 'entrance_fee', 'accessibility_notes', 'visit_notes', 'contact_information'];
+  for (const field of fields) assert.equal(find(view.render(), node => node.props?.name === field).props.value, '');
+  await form(view.render(), 'site').props.onSubmit({ preventDefault() {} });
+  const payload = JSON.parse(calls.find(([, options]) => options.method === 'POST')[1].body);
+  for (const field of fields) assert.equal(payload[field], null);
+});
+
+test('image form round trips cover/order and still reassigns the parent', async () => {
+  const record = { id: 3, heritage_site_id: 1, image_path: 'https://example.test/image.jpg', caption: 'Caption', is_cover: true, sort_order: 9 };
+  const { view, calls } = await loaded(resources[2], () => reply(record), {
+    ...lists, '/api/admin/site-images': [record],
+  });
+  find(view.render(), node => node.type === 'button' && (node.props.title === 'Edit'
+    || find(node.props.children, child => child.type?.displayName === 'Edit3'))).props.onClick();
+  assert.equal(find(view.render(), node => node.props?.name === 'is_cover').props.checked, true);
+  assert.equal(find(view.render(), node => node.props?.name === 'sort_order').props.value, 9);
+  await form(view.render(), 'image').props.onSubmit({ preventDefault() {} });
+  let payload = JSON.parse(calls.find(([, options]) => options.method === 'PUT')[1].body);
+  assert.equal(payload.is_cover, true);
+  assert.equal(payload.sort_order, 9);
+  assert.equal(payload.caption, 'Caption');
+  find(view.render(), node => node.type === 'button' && (node.props.title === 'Edit'
+    || find(node.props.children, child => child.type?.displayName === 'Edit3'))).props.onClick();
+  find(view.render(), node => node.props?.name === 'is_cover').props.onChange({ target: { checked: false } });
+  find(view.render(), node => node.props?.name === 'sort_order').props.onChange({ target: { value: '2' } });
+  find(form(view.render(), 'image'), node => node.type === 'select').props.onChange({ target: { value: '7' } });
+  await form(view.render(), 'image').props.onSubmit({ preventDefault() {} });
+  payload = JSON.parse(calls.filter(([, options]) => options.method === 'PUT').at(-1)[1].body);
+  assert.equal(payload.is_cover, false);
+  assert.equal(payload.sort_order, '2');
+  assert.equal(payload.heritage_site_id, 7);
+  assert.equal('id' in payload, false);
+});
+
+test('image file picker previews locally and submits authenticated multipart without manual content type', async () => {
+  const { view, calls } = await loaded(resources[2], () => reply({ id: 3 }));
+  button(view.render(), 'Add Image Reference').props.onClick();
+  const file = new File(['test image bytes'], 'local.png', { type: 'image/png' });
+  find(view.render(), node => node.props?.id === 'admin-site-image-upload').props.onChange({ target: { files: [file] } });
+  view.render(); view.flush();
+  let tree = view.render();
+  assert.ok(text(tree).includes('local.png'));
+  assert.ok(find(tree, node => node.props?.id === 'admin-site-image-preview').props.src.startsWith('blob:'));
+  assert.equal(find(tree, node => node.props?.placeholder === 'e.g. heritage-sites/photo.jpg').props.required, false);
+  await form(tree, 'image').props.onSubmit({ preventDefault() {} });
+  const options = calls.find(([url, options]) => url === '/api/site-images' && options.method === 'POST')[1];
+  assert.ok(options.body instanceof FormData);
+  assert.equal(options.body.get('image').name, 'local.png');
+  assert.equal(options.body.get('is_cover'), '0');
+  assert.equal(options.body.get('sort_order'), '0');
+  assert.equal(options.body.has('image_path'), false);
+  assert.equal(options.headers.Authorization, 'Bearer admin-token');
+  assert.equal(options.headers['Content-Type'], undefined);
+});
+
+test('image upload update uses method override and preserves Laravel validation errors', async () => {
+  const file = new File(['bytes'], 'local.png', { type: 'image/png' });
+  let captured;
+  fetch = async (url, options) => { captured = [url, options]; return reply({ errors: { image: ['The image is invalid.'] } }, 422); };
+  await assert.rejects(api.apiUpdateSiteImage('3', { imageFile: file, heritage_site_id: 1, caption: 'Caption', is_cover: true, sort_order: 5 }), error => {
+    assert.equal(error.status, 422);
+    assert.deepEqual(error.validationErrors.image, ['The image is invalid.']);
+    return true;
+  });
+  assert.equal(captured[1].method, 'POST');
+  assert.equal(captured[1].body.get('_method'), 'PUT');
+  assert.equal(captured[1].body.get('caption'), 'Caption');
+  assert.equal(captured[1].body.get('is_cover'), '1');
+});
+
+
+test('timeline form loads and saves display year and explicit order, including reassignment', async () => {
+  const record = { id: 4, heritage_site_id: 1, year: 'circa 1920', title: 'Original timeline', description: 'Recorded history', sort_order: 8 };
+  const { view, calls } = await loaded(resources[3], () => reply(record), { ...lists,
+    '/api/admin/heritage-sites': [{ ...site, timelines: [record] }, { id: 7, name: 'Other site', timelines: [] }] });
+  const edit = () => find(view.render(), node => node.type === 'button' && (node.props.title === 'Edit' || find(node.props.children, child => child.type?.displayName === 'Edit3'))).props.onClick();
+  edit();
+  assert.equal(find(view.render(), node => node.props?.id === 'admin-timeline-order').props.value, 8);
+  assert.equal(find(view.render(), node => node.type === 'input' && node.props.value === 'circa 1920').props.type, 'text');
+  await form(view.render(), 'timeline').props.onSubmit({ preventDefault() {} });
+  let payload = JSON.parse(calls.find(([, options]) => options.method === 'PUT')[1].body);
+  assert.equal(payload.sort_order, 8); assert.equal(payload.year, 'circa 1920');
+  edit();
+  find(view.render(), node => node.props?.id === 'admin-timeline-order').props.onChange({ target: { value: '3' } });
+  find(form(view.render(), 'timeline'), node => node.type === 'select').props.onChange({ target: { value: '7' } });
+  await form(view.render(), 'timeline').props.onSubmit({ preventDefault() {} });
+  payload = JSON.parse(calls.filter(([, options]) => options.method === 'PUT').at(-1)[1].body);
+  assert.equal(payload.sort_order, '3'); assert.equal(payload.heritage_site_id, 7);
+  button(view.render(), 'Add Timeline').props.onClick();
+  assert.equal(find(view.render(), node => node.props?.id === 'admin-timeline-order').props.value, 0);
+  await form(view.render(), 'timeline').props.onSubmit({ preventDefault() {} });
+  const created = JSON.parse(calls.find(([url, options]) => url === '/api/heritage-timelines' && options.method === 'POST')[1].body);
+  assert.equal(created.sort_order, 0);
 });

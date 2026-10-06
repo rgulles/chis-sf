@@ -150,10 +150,10 @@ class AdminAuthorizationTest extends TestCase
         $this->deleteJson($uri, [], $headers)->assertSuccessful();
         $table = $this->records[$resource]->getTable();
         $id = $response->json('id');
-        if ($resource === 'heritage-sites' || $resource === 'events') {
+        if ($resource === 'heritage-sites') {
             $this->assertDatabaseHas($table, [
                 'id' => $id,
-                'status' => $resource === 'heritage-sites' ? 'archived' : 'cancelled',
+                'status' => 'archived',
             ]);
         } else {
             $this->assertDatabaseMissing($table, ['id' => $id]);

@@ -1,42 +1,58 @@
-import React from 'react';
-import { Bookmark, Navigation, MapPin, Sparkles, Calendar, ArrowLeft, Share2, KeyRound, ShieldCheck } from 'lucide-react';
-import type { HeritageSite, CommunityPhoto } from '../types';
-import { ThenNowSlider } from '../components/ThenNowSlider';
-import { AudioStoryPlayer } from '../components/AudioStoryPlayer';
-import { VisitorPhotoWall } from '../components/VisitorPhotoWall';
+import React, { useState } from 'react';
+import { Bookmark, Navigation, MapPin, Calendar, ArrowLeft, Share2 } from 'lucide-react';
+import type { HeritageSite } from '../types';
+import { heritageSiteUrl } from '../utils/heritageNavigation';
+import { hasUsableCoordinates } from '../utils/heritageCoordinates';
+import { handleHeritageImageError } from '../utils/heritageImages';
 
 interface SiteDetailViewProps {
   site: HeritageSite;
   onBack: () => void;
   onOpenDirections: (site: HeritageSite) => void;
-  onOpenInteractiveHistory: (site: HeritageSite) => void;
   isSaved: boolean;
   onToggleSave: (siteId: string) => void;
   onAddToPlan: (siteId: string) => void;
-  userName?: string;
-  onPhotoUploaded?: (photo: CommunityPhoto) => void;
 }
 
 export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
   site,
   onBack,
   onOpenDirections,
-  onOpenInteractiveHistory,
   isSaved,
   onToggleSave,
-  onAddToPlan,
-  userName,
-  onPhotoUploaded
+  onAddToPlan
 }) => {
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: `${site.name} — San Fernando Heritage Platform`,
-        text: `Discover the story of ${site.name} in San Fernando, Pampanga.`,
-        url: window.location.href
-      }).catch(() => {});
-    } else {
-      navigator.clipboard?.writeText(window.location.href);
+  const images = site.images || [];
+  const mainImage = images.find(image => image.isCover) || images[0];
+  const galleryImages = images.filter(image => image.id !== mainImage?.id);
+  const visitorInformation = [
+    { label: 'Opening Hours', value: site.visitInfo?.openingHours },
+    { label: 'Entrance Fee', value: site.visitInfo?.entranceFee },
+    { label: 'Accessibility', value: site.visitInfo?.accessibilityNotes },
+    { label: 'Visit Notes', value: site.visitInfo?.visitNotes },
+    { label: 'Contact', value: site.visitInfo?.contactInformation },
+  ].filter(row => typeof row.value === 'string' && row.value.trim().length > 0);
+  const [shareMessage, setShareMessage] = useState('');
+  const [sharing, setSharing] = useState(false);
+  const handleShare = async () => {
+    if (sharing) return;
+    setSharing(true);
+    setShareMessage('');
+    try {
+      const url = heritageSiteUrl(site.id, window.location.href);
+      if (navigator.share) {
+        await navigator.share({ title: site.name, url });
+        setShareMessage('Shared');
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        setShareMessage('Link copied');
+      } else {
+        setShareMessage('Sharing is unavailable in this browser. Copy the address bar link.');
+      }
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setShareMessage('Unable to share this site. Please try again.');
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -50,11 +66,13 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
           className="flex items-center gap-1.5 rounded border border-[#e7e0d6] bg-white px-3 py-1.5 label-compact text-[#1e1b19] hover:border-[#7e1925] transition-colors"
         >
           <ArrowLeft className="h-4 w-4 text-[#7e1925]" />
-          <span>Back to Archive</span>
+          <span>Back</span>
         </button>
 
         <div className="flex items-center gap-2">
           <button
+            id="detail-share-btn"
+            disabled={sharing}
             onClick={handleShare}
             className="flex h-8 w-8 items-center justify-center rounded border border-[#e7e0d6] bg-white text-[#574141] hover:text-[#7e1925] transition-colors"
             title="Share this site"
@@ -77,7 +95,9 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
         </div>
       </div>
 
-      {/* HERO SECTION - Archival Presentation */}
+      {shareMessage && <p role="status">{shareMessage}</p>}
+
+      {/* Site identity */}
       <div className="rounded-lg border border-[#e7e0d6] bg-white overflow-hidden">
         <div className="relative h-72 sm:h-96 md:h-[420px] w-full bg-[#faf2ee]">
           <img
@@ -85,25 +105,23 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
             alt={site.name}
             className="h-full w-full object-cover"
             referrerPolicy="no-referrer"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-            }}
+            onError={handleHeritageImageError}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
 
           {/* Floating Category Tag */}
           <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#fff8f5]/95 backdrop-blur-md px-3 py-1 label-compact text-[#7e1925] border border-[#e7e0d6]">
+            {site.category && <span className="rounded-full bg-[#fff8f5]/95 backdrop-blur-md px-3 py-1 label-compact text-[#7e1925] border border-[#e7e0d6]">
               {site.category}
-            </span>
-            <span className="rounded-full bg-[#1e1b19]/80 backdrop-blur-md px-3 py-1 label-compact text-[#ffdbca] border border-white/10">
-              Circa {site.yearBuilt}
-            </span>
+            </span>}
+            {site.yearBuilt && site.yearBuilt !== 'Unknown' && <span className="rounded-full bg-[#1e1b19]/80 backdrop-blur-md px-3 py-1 label-compact text-[#ffdbca] border border-white/10">
+              Date: {site.yearBuilt}
+            </span>}
           </div>
 
           {/* Title and location overlay */}
           <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
-            {site.nativeName && (
+            {site.nativeName && site.nativeName !== site.name && (
               <span className="font-serif italic text-sm text-[#ffdbca] block">
                 {site.nativeName}
               </span>
@@ -116,17 +134,19 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
                 <MapPin className="h-3.5 w-3.5 text-[#fd8a42]" />
                 {site.address}
               </span>
-              <span>•</span>
-              <span className="label-compact text-white">{site.era}</span>
             </div>
           </div>
         </div>
+
+        {mainImage?.caption && <p className="body-sm text-[#574141] px-4 py-3">{mainImage.caption}</p>}
 
         {/* Action Row */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[#faf2ee] border-t border-[#e7e0d6]">
           <div className="flex items-center gap-2">
             <button
               id="directions-btn"
+              disabled={!hasUsableCoordinates(site.coordinates)}
+              title={hasUsableCoordinates(site.coordinates) ? 'Get directions' : 'Location coordinates unavailable'}
               onClick={() => onOpenDirections(site)}
               className="flex items-center gap-1.5 rounded bg-[#7e1925] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#580b14] transition-colors"
             >
@@ -144,19 +164,30 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
             </button>
           </div>
 
-          <button
-            id="deep-dive-story-btn"
-            onClick={() => onOpenInteractiveHistory(site)}
-            className="flex items-center gap-1.5 label-compact text-[#7e1925] hover:text-[#580b14]"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#b45309]" />
-            <span>Open Immersive Story Page</span>
-          </button>
+
         </div>
       </div>
 
+      {galleryImages.length > 0 && (
+        <section id="section-site-gallery" className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-[#e7e0d6] pb-2">
+            <span className="h-4 w-1 bg-[#7e1925]" />
+            <h2 className="headline-md text-[#1e1b19]">Gallery</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {galleryImages.map(image => (
+              <figure key={image.id} className="rounded border border-[#e7e0d6] bg-white overflow-hidden">
+                <img src={image.imageUrl} alt={image.caption || site.name} loading="lazy"
+                  onError={handleHeritageImageError} className="w-full h-56 object-cover" />
+                {image.caption && <figcaption className="body-sm text-[#574141] p-4">{image.caption}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* SECTION 1: ABOUT THIS PLACE */}
-      <section id="section-about-place" className="space-y-3">
+      {site.fullDescription?.trim() && <section id="section-about-place" className="space-y-3">
         <div className="flex items-center gap-2 border-b border-[#e7e0d6] pb-2">
           <span className="h-4 w-1 bg-[#7e1925]" />
           <h2 className="headline-md text-[#1e1b19]">
@@ -168,7 +199,24 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
             {site.fullDescription}
           </p>
         </div>
-      </section>
+      </section>}
+
+      {visitorInformation.length > 0 && (
+        <section id="section-visitor-information" className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-[#e7e0d6] pb-2">
+            <span className="h-4 w-1 bg-[#7e1925]" />
+            <h2 className="headline-md text-[#1e1b19]">Visitor Information</h2>
+          </div>
+          <dl className="rounded border border-[#e7e0d6] bg-white p-6 space-y-4">
+            {visitorInformation.map(({ label, value }) => (
+              <div key={label}>
+                <dt className="font-semibold text-[#1e1b19] body-sm">{label}</dt>
+                <dd className="body-sm text-[#574141] mt-1 whitespace-pre-line break-words">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       {/* SECTION 2: THE STORY */}
       {site.story && site.story !== 'No history recorded.' && (
@@ -186,20 +234,6 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
             </p>
           </div>
 
-          {/* Inline Audio Narrative Player - Voices of Pampanga */}
-          {site.audioStory && site.audioStory.durationSeconds > 0 && (
-            <div className="mt-8 pt-6 border-t border-[#e7e0d6]">
-              <AudioStoryPlayer
-                title={site.audioStory.title}
-                narrator={site.audioStory.narrator}
-                duration={site.audioStory.duration}
-                durationSeconds={site.audioStory.durationSeconds}
-                transcript={site.audioStory.transcript}
-                kapampanganTranscript={site.audioStory.kapampanganTranscript}
-                chapters={site.audioStory.chapters}
-              />
-            </div>
-          )}
         </div>
       </section>
       )}
@@ -214,7 +248,7 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
               Historical Timeline
             </h2>
           </div>
-          <span className="label-compact text-[#574141]">Chronological Milestones</span>
+          <span className="label-compact text-[#574141]">Historical Milestones</span>
         </div>
 
         <div className="rounded border border-[#e7e0d6] bg-white p-6">
@@ -241,119 +275,6 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
       </section>
       )}
 
-      {/* SECTION 4: THEN & NOW (Interactive Slider) */}
-      {site.archivalImage && site.archivalImage !== site.modernImage && site.archivalImage !== '/images/sites/cathedral-hero.jpg' && (
-      <section id="section-then-now" className="space-y-3">
-        <div className="flex items-center justify-between border-b border-[#e7e0d6] pb-2">
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-1 bg-[#7e1925]" />
-            <h2 className="headline-md text-[#1e1b19]">
-              Then & Now
-            </h2>
-          </div>
-          <span className="label-prominent text-[#7e1925]">
-            Archival Photographic Comparison
-          </span>
-        </div>
-
-        <ThenNowSlider
-          archivalImage={site.archivalImage}
-          modernImage={site.modernImage}
-          caption={site.thenNowCaption}
-          thenYear={`Archival (${site.yearBuilt.split(' ')[0]})`}
-          nowYear="Present Day"
-        />
-      </section>
-      )}
-
-      {/* SECTION 5: DID YOU KNOW? */}
-      {site.didYouKnow && site.didYouKnow.length > 0 && (
-      <section id="section-did-you-know" className="space-y-3">
-        <div className="flex items-center gap-2 border-b border-[#e7e0d6] pb-2">
-          <span className="h-4 w-1 bg-[#b45309]" />
-          <h2 className="headline-md text-[#1e1b19]">
-            Archival Annotations
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {site.didYouKnow.map((fact, idx) => (
-            <div
-              key={idx}
-              className="rounded border border-[#e7e0d6] bg-white p-4 space-y-2 flex flex-col justify-between"
-            >
-              <div className="flex items-center gap-1.5 label-compact text-[#b45309]">
-                <Sparkles className="w-3.5 h-3.5 text-[#b45309]" />
-                <span>Historical Note #{idx + 1}</span>
-              </div>
-              <p className="body-sm text-[#1e1b19] leading-relaxed">
-                {fact}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-      )}
-
-      {/* SECTION 6: UNLOCKING HOUSEHOLD VAULTS (Subterranean Secrets & Ancestral Heirlooms) */}
-      {site.householdVaults && site.householdVaults.length > 0 && (
-        <section id="section-household-vaults" className="space-y-4">
-          <div className="flex items-center justify-between border-b border-[#e7e0d6] pb-2">
-            <div className="flex items-center gap-2">
-              <span className="h-4 w-1 bg-[#7e1925]" />
-              <h2 className="headline-md text-[#1e1b19]">
-                Unlocking Household Vaults
-              </h2>
-            </div>
-            <span className="label-compact text-[#D49B24] font-semibold flex items-center gap-1">
-              <KeyRound className="w-3.5 h-3.5 text-[#D49B24]" />
-              Subterranean Passages & Heirlooms
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {site.householdVaults.map((vault) => (
-              <div
-                key={vault.id}
-                className="rounded-lg border border-[#e7e0d6] bg-white p-5 space-y-2.5 hover:border-[#D49B24] transition-colors shadow-xs"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="rounded bg-[#faf2ee] border border-[#e7e0d6] px-2 py-0.5 text-[10px] font-bold text-[#7e1925] uppercase tracking-wider">
-                    {vault.category}
-                  </span>
-                  <span className="text-[10px] text-[#8a7171] font-serif italic">
-                    Curated Archive
-                  </span>
-                </div>
-
-                <h3 className="font-serif text-base font-bold text-[#1e1b19]">
-                  {vault.title}
-                </h3>
-
-                <p className="body-sm text-[#574141] leading-relaxed">
-                  {vault.description}
-                </p>
-
-                <div className="pt-2 border-t border-[#e7e0d6]/70 flex items-start gap-1.5 text-xs text-[#231416] bg-[#faf2ee]/60 rounded p-2.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#D49B24] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-[#7e1925]">Significance: </span>
-                    <span className="text-[#574141]">{vault.historicalSignificance}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* SECTION 8: COMMUNITY PHOTO WALL & VISITOR MEMORIES */}
-      <VisitorPhotoWall
-        siteId={site.id}
-        siteName={site.name}
-        defaultUserName={userName}
-        onPhotoUploaded={onPhotoUploaded}
-      />
     </div>
   );
 };

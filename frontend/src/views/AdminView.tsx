@@ -20,6 +20,8 @@ import {
 } from '../api/client';
 import type { UserProfile } from '../types';
 import { eventDateForInput, eventDateForSubmission, replaceEventDate, storageImageUrl } from '../utils/adminData';
+import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
+import { HERITAGE_IMAGE_PLACEHOLDER, handleHeritageImageError } from '../utils/heritageImages';
 
 const TIME_OPTIONS = [
   '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
@@ -137,7 +139,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
   const handleDeleteImage = async (id: string) => {
     if (pendingRequests.current.has(`delete:image:${id}`)) return;
     if (confirm('Remove this image reference? The stored file will not be deleted.')) {
-      await runMutation(`delete:image:${id}`, () => apiDeleteSiteImage(id), 'Image reference removed successfully. The stored file was not deleted.');
+      await runMutation(`delete:image:${id}`, () => apiDeleteSiteImage(id), 'Image removed successfully.');
     }
   };
 
@@ -205,14 +207,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
   
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageForm, setImageForm] = useState<any>({});
+  const [siteImageFile, setSiteImageFile] = useState<File | null>(null);
+  const [siteImagePreview, setSiteImagePreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!siteImageFile) { setSiteImagePreview(null); return; }
+    const url = URL.createObjectURL(siteImageFile);
+    setSiteImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [siteImageFile]);
 
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [timelineForm, setTimelineForm] = useState<any>({});
 
   const handleSaveTimeline = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = { ...timelineForm, sort_order: timelineForm.sort_order ?? 0 };
     await runMutation('save:timeline', () => timelineForm.id
-      ? apiUpdateTimeline(timelineForm.id, timelineForm) : apiCreateTimeline(timelineForm),
+      ? apiUpdateTimeline(timelineForm.id, payload) : apiCreateTimeline(payload),
     `Timeline ${timelineForm.id ? 'updated' : 'created'} successfully.`, () => setTimelineModalOpen(false), 'timeline');
   };
 
@@ -226,10 +238,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
   const handleSaveSite = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      ...siteForm,
-      created_by: parseInt(user.id, 10),
-      latitude: siteForm.latitude ? parseFloat(siteForm.latitude) : null,
-      longitude: siteForm.longitude ? parseFloat(siteForm.longitude) : null,
+      name: siteForm.name,
+      category: siteForm.category || null,
+      year_built: siteForm.year_built || null,
+      description: siteForm.description,
+      history: siteForm.history,
+      address: siteForm.address,
+      status: siteForm.status,
+      latitude: String(siteForm.latitude ?? '').trim() || null,
+      longitude: String(siteForm.longitude ?? '').trim() || null,
+      opening_hours: siteForm.opening_hours?.trim() || null,
+      entrance_fee: siteForm.entrance_fee?.trim() || null,
+      accessibility_notes: siteForm.accessibility_notes?.trim() || null,
+      visit_notes: siteForm.visit_notes?.trim() || null,
+      contact_information: siteForm.contact_information?.trim() || null,
     };
     await runMutation('save:site', () => siteForm.id
       ? apiUpdateSite(siteForm.id, payload) : apiCreateSite(payload),
@@ -256,9 +278,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
 
   const handleSaveImage = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      heritage_site_id: imageForm.heritage_site_id,
+      image_path: imageForm.image_path,
+      caption: imageForm.caption?.trim() || null,
+      is_cover: Boolean(imageForm.is_cover),
+      sort_order: imageForm.sort_order ?? 0,
+      imageFile: siteImageFile,
+    };
     await runMutation('save:image', () => imageForm.id
-      ? apiUpdateSiteImage(imageForm.id, imageForm) : apiCreateSiteImage(imageForm),
-    `Image ${imageForm.id ? 'updated' : 'created'} successfully.`, () => setImageModalOpen(false), 'image');
+      ? apiUpdateSiteImage(imageForm.id, payload) : apiCreateSiteImage(payload),
+    `Image ${imageForm.id ? 'updated' : 'created'} successfully.`, () => { setImageModalOpen(false); setSiteImageFile(null); }, 'image');
   };
 
   const renderSidebarItem = (tab: TabType, label: string, Icon: any) => (
@@ -393,7 +423,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                           <span className="font-medium text-gray-700">Add Event</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button onClick={() => openForm('image', () => { setImageForm({}); setImageModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={() => openForm('image', () => { setSiteImageFile(null); setImageForm({}); setImageModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Image Reference</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
@@ -403,11 +433,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                       <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Heritage Sites</h3>
                       <div className="space-y-4">
                         {sites.slice(-5).reverse().map(s => {
-                          const mainImg = s.images?.[0]?.image_path;
+                          const mainImg = (s.images?.find((image: any) => image.is_cover) || s.images?.[0])?.image_path;
                           return (
                           <div key={s.id} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
                             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
-                              <img src={mainImg ? storageImageUrl(mainImg) : '/images/sites/cathedral-hero.jpg'} alt="" className="w-full h-full object-cover" />
+                              <img src={mainImg ? storageImageUrl(mainImg) : HERITAGE_IMAGE_PLACEHOLDER} onError={handleHeritageImageError} alt="" className="w-full h-full object-cover" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold text-gray-900 truncate">{s.name}</p>
@@ -472,7 +502,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Site Images</h1>
-                    <button onClick={() => openForm('image', () => { setImageForm({}); setImageModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <button onClick={() => openForm('image', () => { setSiteImageFile(null); setImageForm({}); setImageModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
                       <Plus className="w-4 h-4" /> Add Image Reference
                     </button>
                   </div>
@@ -482,12 +512,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                       const site = sites.find(s => s.id === img.heritage_site_id);
                       return (
                         <div key={img.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col hover:shadow-md transition-shadow">
-                          <img src={storageImageUrl(img.image_path)} alt={img.caption} className="w-full h-44 object-cover" />
+                          <img src={storageImageUrl(img.image_path)} onError={handleHeritageImageError} alt={img.caption || 'Site image'} className="w-full h-44 object-cover" />
                           <div className="p-4 flex-1 flex flex-col">
                             <p className="text-sm font-bold text-gray-900 truncate mb-1">{img.caption || 'No Caption'}</p>
+                            <p className="text-xs text-gray-500 mb-2">{img.is_cover ? 'Cover image · ' : ''}Order: {img.sort_order ?? 0}</p>
                             <p className="text-xs text-gray-500 truncate mb-4 bg-gray-50 p-1.5 rounded-md border border-gray-100">Site: {site?.name || img.heritage_site_id}</p>
                             <div className="mt-auto flex justify-end gap-2">
-                              <button onClick={() => openForm('image', () => { setImageForm(img); setImageModalOpen(true); })} className="text-blue-600 p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"><Edit3 className="w-4 h-4" /></button>
+                              <button onClick={() => openForm('image', () => { setSiteImageFile(null); setImageForm(img); setImageModalOpen(true); })} className="text-blue-600 p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"><Edit3 className="w-4 h-4" /></button>
                               <button disabled={pending.has(`delete:image:${img.id}`)} aria-busy={pending.has(`delete:image:${img.id}`)} title="Remove Image Reference" aria-label="Remove Image Reference" onClick={() => handleDeleteImage(img.id)} className="text-red-600 p-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">{pending.has(`delete:image:${img.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
                             </div>
                           </div>
@@ -638,7 +669,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-semibold text-gray-700">Category</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.category || ''} onChange={e => setSiteForm({...siteForm, category: e.target.value})} placeholder="e.g. Churches" />
+                  <select className="w-full border border-gray-300 rounded-xl p-2.5 outline-none bg-white" value={siteForm.category || ''} onChange={e => setSiteForm({...siteForm, category: e.target.value})}>
+                    <option value="">Unspecified</option>
+                    {siteForm.category && !HERITAGE_CATEGORIES.some(category => category !== 'All' && category === siteForm.category) && (
+                      <option value={siteForm.category}>{siteForm.category} (choose a supported category)</option>
+                    )}
+                    {HERITAGE_CATEGORIES.filter(category => category !== 'All').map(category => <option key={category} value={category}>{category}</option>)}
+                  </select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-semibold text-gray-700">Year Built</label>
@@ -657,11 +694,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-semibold text-gray-700">Latitude</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude || ''} onChange={e => setSiteForm({...siteForm, latitude: e.target.value})} placeholder="e.g. 15.031" />
+                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude ?? ''} onChange={e => setSiteForm({...siteForm, latitude: e.target.value})} placeholder="e.g. 15.031" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-semibold text-gray-700">Longitude</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude || ''} onChange={e => setSiteForm({...siteForm, longitude: e.target.value})} placeholder="e.g. 120.689" />
+                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude ?? ''} onChange={e => setSiteForm({...siteForm, longitude: e.target.value})} placeholder="e.g. 120.689" />
                 </div>
               </div>
               
@@ -674,6 +711,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <label className="font-semibold text-gray-700">History</label>
                 <textarea required rows={5} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm({...siteForm, history: e.target.value})} placeholder="Full historical context..." />
               </div>
+              <section className="space-y-4 border-t border-gray-200 pt-4" aria-labelledby="admin-visitor-information-title">
+                <h3 id="admin-visitor-information-title" className="font-bold text-gray-900">Visitor Information</h3>
+                <p className="text-xs text-gray-500">Optional. Leave unknown information blank.</p>
+                {[
+                  { field: 'opening_hours', label: 'Opening Hours', maxLength: 1000, rows: 2 },
+                  { field: 'entrance_fee', label: 'Entrance Fee / Admission', maxLength: 1000, rows: 2 },
+                  { field: 'accessibility_notes', label: 'Accessibility Notes', maxLength: 3000, rows: 3 },
+                  { field: 'visit_notes', label: 'Visit Notes', maxLength: 3000, rows: 3 },
+                  { field: 'contact_information', label: 'Contact Information', maxLength: 2000, rows: 2 },
+                ].map(({ field, label, maxLength, rows }) => (
+                  <div key={field} className="space-y-1.5">
+                    <label htmlFor={`admin-site-${field}`} className="font-semibold text-gray-700">{label}</label>
+                    <textarea id={`admin-site-${field}`} name={field} rows={rows} maxLength={maxLength}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none"
+                      value={siteForm[field] ?? ''} onChange={e => setSiteForm({ ...siteForm, [field]: e.target.value })} />
+                  </div>
+                ))}
+              </section>
               </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
@@ -1054,7 +1109,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
               <h2 className="text-xl font-bold text-gray-900">{imageForm.id ? 'Edit Image Reference' : 'Add Image Reference'}</h2>
-              <button type="button" disabled={pending.has('save:image')} onClick={() => setImageModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <button type="button" disabled={pending.has('save:image')} onClick={() => { setImageModalOpen(false); setSiteImageFile(null); }} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
             </div>
             <form id="admin-image-form" onSubmit={handleSaveImage} className="p-6 space-y-5 text-sm">
               {renderFormError('image')}
@@ -1068,17 +1123,40 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
               </div>
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Image Path or URL</label>
-                <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
-                <p className="text-xs text-gray-500 mt-1">Enter a path relative to backend storage or an existing HTTPS image URL. This saves a reference; it does not upload a file.</p>
+                <input required={!siteImageFile} type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
+                <p className="text-xs text-gray-500 mt-1">Use an existing URL/path or upload a file. A selected upload takes precedence.</p>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="admin-site-image-upload" className="font-semibold text-gray-700">Upload Image</label>
+                <input id="admin-site-image-upload" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={e => setSiteImageFile(e.target.files?.[0] || null)} />
+                <p className="text-xs text-gray-500">JPEG, PNG, WEBP or GIF. Maximum 5 MB.</p>
+                {siteImageFile && <p className="text-xs text-gray-700">Selected: {siteImageFile.name}</p>}
+                {((siteImageFile && siteImagePreview) || imageForm.image_path) && <img id="admin-site-image-preview"
+                  src={(siteImageFile && siteImagePreview) || storageImageUrl(imageForm.image_path)} onError={handleHeritageImageError}
+                  alt="Image preview" className="w-full h-40 object-contain rounded border border-gray-200" />}
               </div>
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Caption</label>
                 <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={imageForm.caption || ''} onChange={e => setImageForm({...imageForm, caption: e.target.value})} placeholder="Image caption..." />
               </div>
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 font-semibold text-gray-700">
+                  <input name="is_cover" type="checkbox" checked={Boolean(imageForm.is_cover)}
+                    onChange={e => setImageForm({ ...imageForm, is_cover: e.target.checked })} />
+                  Cover Image
+                </label>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="admin-image-sort-order" className="font-semibold text-gray-700">Sort Order</label>
+                <input id="admin-image-sort-order" name="sort_order" type="number" min={0} max={2147483647} step={1} required
+                  className="w-full border border-gray-300 rounded-xl p-2.5 outline-none" value={imageForm.sort_order ?? 0}
+                  onChange={e => setImageForm({ ...imageForm, sort_order: e.target.value })} />
+              </div>
               </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" disabled={pending.has('save:image')} onClick={() => setImageModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button type="button" disabled={pending.has('save:image')} onClick={() => { setImageModalOpen(false); setSiteImageFile(null); }} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
               <button type="submit" form="admin-image-form" disabled={pending.has('save:image')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:image') ? 'Saving...' : 'Save Image'}</button>
             </div>
           </div>
@@ -1110,12 +1188,18 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 </div>
                 <div className="space-y-1.5 col-span-2">
                   <label className="font-semibold text-gray-700">Year</label>
-                  <input required type="number" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. 1920" value={timelineForm.year || ''} onChange={e => setTimelineForm({...timelineForm, year: e.target.value})} />
+                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. 1920 or circa 1920" value={timelineForm.year || ''} onChange={e => setTimelineForm({...timelineForm, year: e.target.value})} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="font-semibold text-gray-700">Description</label>
                 <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={timelineForm.description || ''} onChange={e => setTimelineForm({...timelineForm, description: e.target.value})} placeholder="Event description..." />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="admin-timeline-order" className="font-semibold text-gray-700">Sort Order</label>
+                <input id="admin-timeline-order" type="number" min={0} max={2147483647} step={1} required
+                  value={timelineForm.sort_order ?? 0} onChange={e => setTimelineForm({ ...timelineForm, sort_order: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl p-2.5 outline-none" />
               </div>
               </fieldset>
             </form>

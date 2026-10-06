@@ -1,3 +1,4 @@
+import { handleHeritageImageError } from '../utils/heritageImages';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, X, MapPin, Calendar, ArrowRight, Clock } from 'lucide-react';
 import type { HeritageSite, EventItem } from '../types';
@@ -33,11 +34,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
   const filteredSites = useMemo(() => {
     if (!query.trim()) return [];
-    const q = query.toLowerCase();
+    const q = query.trim().toLowerCase();
     return sites.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
-        s.barangay.toLowerCase().includes(q) ||
+        s.address.toLowerCase().includes(q) ||
         s.category.toLowerCase().includes(q) ||
         s.shortDescription.toLowerCase().includes(q) ||
         s.story.toLowerCase().includes(q)
@@ -58,7 +59,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
   if (!isOpen) return null;
 
-  const popularSearches = ['Cathedral', 'Train Station', 'Ligligan Parul', 'Lazatin', 'Death March', 'Bahay na Bato', 'Churches'];
+  const popularSearches = sites.slice(0, 7).map(site => site.name);
 
   return (
     <div id="search-modal-backdrop" className="fixed inset-0 z-50 flex items-start justify-center bg-[#1c1917]/65 p-4 pt-16 sm:pt-24 backdrop-blur-sm animate-in fade-in duration-200">
@@ -98,7 +99,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           {!query.trim() ? (
             <div>
               <p className="label-prominent text-[#8a7171] mb-3">
-                Archival Suggestions
+                Current Heritage Sites
               </p>
               {/* Category Chips: Ivory background (#f3ede4), text #1e1b19, border 1px solid #e7e0d6, radius 9999px */}
               <div className="flex flex-wrap gap-2">
@@ -138,12 +139,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                         <div className="flex items-center gap-3">
                           <img
                             src={site.heroImage}
+                              onError={handleHeritageImageError}
                             alt={site.name}
                             className="h-12 w-12 rounded-sm object-cover"
                             referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                            }}
                           />
                           <div>
                             <h4 className="font-serif text-sm font-semibold text-[#1e1b19]">{site.name}</h4>
@@ -152,7 +151,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                               <span>•</span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="w-3 h-3 text-[#b45309]" />
-                                {site.barangay}
+                                {site.address}
                               </span>
                             </div>
                           </div>

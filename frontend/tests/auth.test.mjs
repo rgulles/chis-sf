@@ -7,9 +7,11 @@ import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const compile = (source, module = ts.ModuleKind.CommonJS) => ts.transpileModule(source, {
+const imageModuleUrl = `data:text/javascript;base64,${Buffer.from(ts.transpileModule(read('../src/utils/heritageImages.ts'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } }).outputText).toString('base64')}`;
+const compile = (source, module = ts.ModuleKind.CommonJS) => ts.transpileModule(source.replace(/(['"'])(?:\.\.\/utils\/heritageImages|\.\/heritageImages)\1/g, JSON.stringify(imageModuleUrl)), {
   compilerOptions: { module, target: ts.ScriptTarget.ES2023, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
+const navigation = await import(`data:text/javascript;base64,${Buffer.from(compile(read('../src/utils/heritageNavigation.ts'), ts.ModuleKind.ESNext)).toString('base64')}`);
 const api = await import(`data:text/javascript;base64,${Buffer.from(compile(read('../src/api/client.ts'), ts.ModuleKind.ESNext)).toString('base64')}`);
 const admin = { id: 1, name: 'Administrator', email: 'curator@example.com', role: 'admin' };
 const traveler = { id: 2, name: 'Visitor', email: 'adminsf@csfp.gov.ph', role: 'traveler' };
@@ -62,6 +64,7 @@ function componentHarness(path, exportName, props = {}, overrides = {}) {
     exports, console, Error, localStorage: globalThis.localStorage,
     window: { scrollTo() {} },
     require(name) {
+      if (name.endsWith('/utils/heritageNavigation')) return navigation;
       if (name === 'react') return hooks;
       if (name === 'react/jsx-runtime') return require(name);
       if (name.endsWith('/api/client')) return {
@@ -242,7 +245,7 @@ test('profile admin controls ignore email, ID format, and old admin flags', () =
 for (const [label, user] of [['admin', admin], ['traveler', traveler]]) {
   test(`${label} logout revokes the captured token, leaves Admin, and survives refresh`, async () => {
     api.setJwtToken('active-token');
-    localStorage.setItem('sf_saved_sites', '["saved-site"]');
+    localStorage.setItem('sf_saved_sites', '["42"]');
     const calls = [];
     fetch = async (url, options) => {
       calls.push([url, options]);
@@ -266,7 +269,7 @@ for (const [label, user] of [['admin', admin], ['traveler', traveler]]) {
     tree = harness.render();
     assert.equal(api.getJwtToken(), null);
     assert.equal(localStorage.getItem('sf_user_profile'), null);
-    assert.equal(localStorage.getItem('sf_saved_sites'), '["saved-site"]');
+    assert.equal(localStorage.getItem('sf_saved_sites'), '["42"]');
     assert.equal(find(tree, (node) => node.type?.displayName === 'Header').props.user, null);
     assert.equal(find(tree, (node) => node.type?.displayName === 'Header').props.currentView, 'home');
     assert.equal(find(tree, (node) => node.type?.displayName === 'AdminView'), undefined);

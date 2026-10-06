@@ -6,6 +6,8 @@ import type {
   UserPlan,
 } from '../types';
 
+import { heritageImageUrl, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
+
 const API_BASE = '/api';
 let authGeneration = 0;
 
@@ -159,41 +161,39 @@ export async function apiUpdateProfile(userUpdates: Partial<UserProfile>): Promi
 // Backend to Frontend Data Mapper for Heritage Sites
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapBackendSite(raw: any): HeritageSite {
-  const images = Array.isArray(raw.images) ? raw.images : [];
-  const heroImg = images.length > 0 ? `/storage/${images[0].image_path}` : '/images/sites/cathedral-hero.jpg';
-  const archivalImg = images.length > 1 ? `/storage/${images[1].image_path}` : heroImg;
-  const modernImg = images.length > 2 ? `/storage/${images[2].image_path}` : heroImg;
+  const images = (Array.isArray(raw.images) ? raw.images : []).map((image: any) => ({
+    id: String(image.id),
+    imageUrl: heritageImageUrl(typeof image.image_path === 'string' ? image.image_path : ''),
+    caption: typeof image.caption === 'string' ? image.caption.trim() || null : null,
+    isCover: image.is_cover === true || image.is_cover === 1 || image.is_cover === '1',
+    sortOrder: Number.isInteger(Number(image.sort_order)) ? Number(image.sort_order) : 0,
+  })).sort((a: any, b: any) => a.sortOrder - b.sortOrder || Number(a.id) - Number(b.id));
+  const heroImg = (images.find((image: any) => image.isCover) || images[0])?.imageUrl || HERITAGE_IMAGE_PLACEHOLDER;
+  const lat = raw.latitude == null || String(raw.latitude).trim() === '' ? NaN : Number(raw.latitude);
+  const lng = raw.longitude == null || String(raw.longitude).trim() === '' ? NaN : Number(raw.longitude);
+  const validCoordinates = Number.isFinite(lat) && lat >= -90 && lat <= 90
+    && Number.isFinite(lng) && lng >= -180 && lng <= 180;
+  const visitorText = (value: unknown): string | null => typeof value === 'string' ? value.trim() || null : null;
 
   return {
     id: String(raw.id),
+    ...(raw.status === 'active' || raw.status === 'archived' ? { status: raw.status } : {}),
     name: raw.name || 'Unnamed Site',
-    nativeName: raw.name,
-    category: raw.category || 'Cultural Sites',
-    yearBuilt: raw.year_built || 'Unknown',
-    era: 'Unknown',
-    address: raw.address || 'San Fernando, Pampanga',
-    barangay: 'Poblacion',
-    distanceKm: 0,
-    coordinates: {
-      lat: raw.latitude !== null ? Number(raw.latitude) : 15.0287,
-      lng: raw.longitude !== null ? Number(raw.longitude) : 120.6908,
-      mapX: 50,
-      mapY: 50
-    },
-    shortDescription: raw.description || 'No description available.',
+    category: raw.category || '',
+    yearBuilt: raw.year_built || '',
+    address: raw.address || '',
+    coordinates: validCoordinates ? {
+      lat,
+      lng
+    } : null,
+    shortDescription: raw.description || '',
     fullDescription: raw.description || '',
-    story: raw.history || 'No history recorded.',
+    story: raw.history || '',
     heroImage: heroImg,
-    archivalImage: archivalImg,
-    modernImage: modernImg,
-    thenNowCaption: images.length > 1 ? 'Comparison' : '',
-    audioStory: {
-      title: 'Story of ' + (raw.name || 'Site'),
-      duration: '0m',
-      durationSeconds: 0,
-      narrator: 'System',
-      transcript: raw.description || ''
-    },
+    images,
+    archivalImage: '',
+    modernImage: '',
+    thenNowCaption: '',
     timeline: Array.isArray(raw.timelines) ? raw.timelines.map((t: any) => ({
       year: t.year,
       title: t.title,
@@ -203,16 +203,12 @@ function mapBackendSite(raw: any): HeritageSite {
     historicalCharacters: [],
     visitInfo: {
       address: raw.address || '',
-      openingHours: '8:00 AM - 5:00 PM',
-      entranceFee: 'Free',
-      accessibility: 'Varies',
-      duration: '1 hr',
-      guideAvailable: false,
-      bestTime: 'Morning'
-    },
-    qrCodeId: `qr-${raw.id}`,
-    scanCount: 0,
-    badgeName: 'heritage-explorer'
+      openingHours: visitorText(raw.opening_hours),
+      entranceFee: visitorText(raw.entrance_fee),
+      accessibilityNotes: visitorText(raw.accessibility_notes),
+      visitNotes: visitorText(raw.visit_notes),
+      contactInformation: visitorText(raw.contact_information)
+    }
   };
 }
 
@@ -222,25 +218,28 @@ export async function apiFetchSites(): Promise<HeritageSite[]> {
     const res = await fetch(`${API_BASE}/heritage-sites`);
     if (!res.ok) throw new Error('Failed to fetch sites');
     const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('Invalid heritage catalogue response');
     return data.map(mapBackendSite);
   } catch {
-    return [];
+    throw new Error('Unable to load heritage sites. Please try again.');
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiFetchRawSites(): Promise<any[]> {
-  return adminList('/heritage-sites');
+  return adminList('/admin/heritage-sites');
 }
 
 export async function apiFetchSiteById(id: string): Promise<HeritageSite | null> {
   try {
-    const res = await fetch(`${API_BASE}/heritage-sites/${id}`);
-    if (!res.ok) return null;
+    const res = await fetch(`${API_BASE}/heritage-sites/${encodeURIComponent(id)}`);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error('Failed to fetch heritage site');
     const data = await res.json();
+    if (!data || String(data.id) !== id || data.status !== 'active') throw new Error('Invalid heritage site response');
     return mapBackendSite(data);
   } catch {
-    return null;
+    throw new Error('Unable to load this heritage site. Please try again.');
   }
 }
 
@@ -353,18 +352,32 @@ export async function apiDeleteSite(id: string): Promise<void> {
 }
 
 // Admin: Site Images
+function buildSiteImagePayload(data: Record<string, unknown>): Record<string, unknown> | FormData {
+  if (typeof File !== 'undefined' && data.imageFile instanceof File) {
+    const form = new FormData();
+    form.append('image', data.imageFile);
+    for (const key of ['heritage_site_id', 'caption', 'is_cover', 'sort_order']) {
+      const value = data[key];
+      if (value !== undefined) form.append(key, value == null ? '' : typeof value === 'boolean' ? (value ? '1' : '0') : String(value));
+    }
+    return form;
+  }
+  const { imageFile: _imageFile, ...reference } = data;
+  return reference;
+}
+
 export async function apiFetchSiteImages(): Promise<unknown[]> {
-  return adminList('/site-images');
+  return adminList('/admin/site-images');
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCreateSiteImage(data: any): Promise<unknown> {
-  return adminRequest('/site-images', 'POST', data);
+  return adminRequest('/site-images', 'POST', buildSiteImagePayload(data));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiUpdateSiteImage(id: string, data: any): Promise<unknown> {
-  return adminRequest(`/site-images/${id}`, 'PUT', data);
+  return adminRequest(`/site-images/${id}`, 'PUT', buildSiteImagePayload(data));
 }
 
 export async function apiDeleteSiteImage(id: string): Promise<void> {

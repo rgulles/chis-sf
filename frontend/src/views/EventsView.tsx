@@ -1,3 +1,4 @@
+import { handleHeritageImageError } from '../utils/heritageImages';
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, MapPin, Clock, Plus, Check, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
@@ -200,9 +201,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     alt={site.name}
                     className="h-20 w-20 rounded-xl object-cover flex-shrink-0"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/sites/cathedral-hero.jpg';
-                    }}
+                    onError={handleHeritageImageError}
                   />
                   <div>
                     <span className="font-outfit text-xs font-bold uppercase tracking-wider text-[#b45309] block">
@@ -211,7 +210,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     <h4 className="font-outfit text-base font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug">
                       {site.name}
                     </h4>
-                    <p className="font-outfit text-xs text-[#574141] mt-1">{site.barangay}</p>
+                    <p className="font-outfit text-xs text-[#574141] mt-1">{site.address}</p>
                   </div>
                 </div>
               ))}
