@@ -22,6 +22,8 @@ import type { UserProfile } from '../types';
 import { eventDateForInput, eventDateForSubmission, replaceEventDate, storageImageUrl } from '../utils/adminData';
 import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
 import { HERITAGE_IMAGE_PLACEHOLDER, handleHeritageImageError } from '../utils/heritageImages';
+import { AdminItineraries } from '../components/AdminItineraries';
+import { AdminCheckins } from '../components/AdminCheckins';
 
 const TIME_OPTIONS = [
   '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
@@ -36,7 +38,7 @@ interface AdminViewProps {
   onLogout: () => void;
 }
 
-type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines';
+type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines' | 'itineraries' | 'checkins';
 type FormType = 'site' | 'event' | 'image' | 'timeline';
 
 export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
@@ -319,7 +321,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
       <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-200 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
           <span className="text-[#7A1C30] font-bold text-xl tracking-tight">CHIS Admin</span>
-          <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
+          <button aria-label="Close admin navigation" className="ml-auto min-h-11 min-w-11 lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
@@ -329,6 +331,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
           {renderSidebarItem('images', 'Site Images', ImageIcon)}
           {renderSidebarItem('timelines', 'Timelines', Clock)}
           {renderSidebarItem('events', 'Events', CalendarIcon)}
+          {renderSidebarItem('itineraries', 'Recommended Itineraries', Map)}
+          {renderSidebarItem('checkins', 'Heritage Check-In', Map)}
         </div>
       </aside>
 
@@ -336,7 +340,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6">
           <div className="flex items-center">
-            <button onClick={() => setSidebarOpen(true)} className="text-gray-500 hover:text-gray-700 lg:hidden">
+            <button aria-label="Open admin navigation" onClick={() => setSidebarOpen(true)} className="min-h-11 min-w-11 text-gray-500 hover:text-gray-700 lg:hidden">
               <Menu className="w-6 h-6" />
             </button>
             <span className="ml-4 font-bold text-gray-900 capitalize lg:hidden">{activeTab.replace('-', ' ')}</span>
@@ -377,6 +381,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
             <div className="max-w-6xl mx-auto">
               
               {/* DASHBOARD TAB */}
+              {activeTab === 'itineraries' && <AdminItineraries sites={sites} />}
+              {activeTab === 'checkins' && <AdminCheckins sites={sites} />}
               {activeTab === 'dashboard' && (
                 <div className="space-y-6">
                   <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>

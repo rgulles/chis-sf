@@ -20,6 +20,7 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/framework/csfp-heritage-import.lock
 /storage/app/certificates/
 /vendor
 Homestead.json

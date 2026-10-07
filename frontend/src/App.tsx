@@ -4,7 +4,8 @@ import type {
   HeritageSite,
   EventItem,
   CategoryType,
-  UserProfile
+  UserProfile,
+  HeritagePassport
 } from './types';
 
 
@@ -30,10 +31,16 @@ import { SavedView } from './views/SavedView';
 import { AboutView } from './views/AboutView';
 import { TourismOfficeView } from './views/TourismOfficeView';
 import { AdminView } from './views/AdminView';
+import { CheckinView } from './views/CheckinView';
+import { PassportView } from './views/PassportView';
+import { apiFetchPassport } from './api/client';
 
 export default function App() {
   // Navigation & View State
   const [currentView, setCurrentView] = useState<ViewType>(() => parseHeritageRoute(window.location?.hash || '').view);
+  const [checkinToken, setCheckinToken] = useState(() => /^#\/check-in\/([a-f0-9]{64})\/?$/.exec(window.location?.hash || '')?.[1] || 'invalid');
+  const [passportState, setPassportState] = useState<{ userId: string; data: HeritagePassport | null; error: string } | null>(null);
+  const [passportRevision, setPassportRevision] = useState(0);
   const [routeSiteId, setRouteSiteId] = useState<string | null>(() => parseHeritageRoute(window.location?.hash || '').siteId);
   const [detailStatus, setDetailStatus] = useState<'loading' | 'ready' | 'not-found' | 'error'>('loading');
   const [detailRetry, setDetailRetry] = useState(0);
@@ -70,6 +77,18 @@ export default function App() {
 
   // Cached profiles never establish authentication; Laravel verifies the bearer token.
   const [user, setUser] = useState<UserProfile | null>(null);
+  const passport = user && passportState?.userId === String(user.id) ? passportState.data : null;
+  const passportError = user && passportState?.userId === String(user.id) ? passportState.error : '';
+  const passportUserId = user ? String(user.id) : null;
+  useEffect(() => {
+    if (!passportUserId) return;
+    let cancelled = false;
+    const userId = passportUserId;
+    apiFetchPassport().then(data => { if (!cancelled) setPassportState({ userId, data, error: '' }); }).catch(() => {
+      if (!cancelled) setPassportState({ userId, data: null, error: 'Unable to load your passport. Please try again.' });
+    });
+    return () => { cancelled = true; };
+  }, [passportUserId, passportRevision]);
   const authRevision = useRef(0);
 
   const handleAuthenticatedLogin = (authenticatedUser: UserProfile) => {
@@ -82,11 +101,13 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [directionsTargetSite, setDirectionsTargetSite] = useState<HeritageSite | null>(null);
+  const [sitesLoading, setSitesLoading] = useState(true);
 
   // Load live data from Laravel API on mount
   useEffect(() => {
     let cancelled = false;
     async function loadBackendData() {
+      setSitesLoading(true);
       try {
         const fetchedSites = await apiFetchSites();
         if (!cancelled) {
@@ -102,6 +123,8 @@ export default function App() {
           setDirectionsTargetSite(null);
           setSitesError(err instanceof Error ? err.message : 'Unable to load heritage sites. Please try again.');
         }
+      } finally {
+        if (!cancelled) setSitesLoading(false);
       }
       try {
         const fetchedEvents = await apiFetchEvents();
@@ -119,6 +142,7 @@ export default function App() {
       if (routeHash.current === window.location.hash) return;
       routeHash.current = window.location.hash;
       const route = parseHeritageRoute(window.location.hash);
+      setCheckinToken(/^#\/check-in\/([a-f0-9]{64})\/?$/.exec(window.location.hash)?.[1] || 'invalid');
       setSelectedSite(null);
       setDetailStatus('loading');
       setRouteSiteId(route.siteId);
@@ -199,6 +223,7 @@ export default function App() {
     authRevision.current += 1;
     void apiLogout();
     setUser(null);
+    setPassportState(null);
     setIsAuthOpen(false);
     navigateTo('home');
   };
@@ -285,6 +310,8 @@ export default function App() {
 
       {/* MAIN VIEW CONTENT CONTAINER */}
       <main id="main-content-viewport" className="flex-1">
+        {currentView === 'check-in' && <CheckinView key={`${checkinToken}-${user?.id || 'guest'}`} token={checkinToken} user={user} onLogin={() => setIsAuthOpen(true)} onSessionExpired={() => { authRevision.current++; void apiLogout(); setUser(null); setPassportState(null); setIsAuthOpen(true); }} onPassport={() => navigateTo('passport')} onSite={handleSelectSite} onExplore={() => navigateTo('explore')} onVerified={() => setPassportRevision(value => value + 1)} />}
+        {currentView === 'passport' && <PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => setPassportRevision(value => value + 1)} onSite={handleSelectSite} />}
         {sitesError && (
           <div role="alert" className="mx-auto max-w-7xl px-4 py-3 text-sm text-red-800 bg-red-50">
             {sitesError}
@@ -373,8 +400,13 @@ export default function App() {
         {/* PAGE 9: PLAN YOUR VISIT */}
         {currentView === 'plan' && (
           <PlanView
+            visitedSiteIds={passport ? passport.visits.map(visit => String(visit.heritage_site_id)) : undefined}
+            onPassport={() => navigateTo('passport')}
             sites={sites}
             savedSiteIds={savedSiteIds}
+            catalogueReady={!sitesLoading && !sitesError}
+            catalogueError={sitesError}
+            onToggleSaveSite={handleToggleSaveSite}
             onSelectSite={handleSelectSite}
             onExploreClick={() => navigateTo('explore')}
           />

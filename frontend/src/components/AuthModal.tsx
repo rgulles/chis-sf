@@ -388,9 +388,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <input
                     type={showRegisterPassword ? 'text' : 'password'}
                     required
+                    minLength={8}
+                    maxLength={128}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Create a password"
+                    placeholder="Create a password (at least 8 characters)"
                     className="w-full rounded-xl border border-[#ded5cb] bg-white pl-3.5 pr-10 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-outfit"
                   />
                   <button

@@ -8,6 +8,19 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    public function register(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|max:128',
+            'role' => 'prohibited',
+        ]);
+        $user = User::create([...$data, 'role' => 'traveler']);
+
+        return response()->json(['user' => $user, 'token' => $user->createToken('chis-token')->plainTextToken], 201);
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([

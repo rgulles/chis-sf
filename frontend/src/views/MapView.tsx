@@ -1,6 +1,9 @@
-import { handleHeritageImageError } from '../utils/heritageImages';
+import { HERITAGE_MARKER_STYLES, heritageMarkerHtml } from '../utils/heritageMap';
+import { handleHeritageImageError, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import './heritageMap.css';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin,
@@ -24,6 +27,7 @@ import {
 import type { HeritageSite, CategoryType } from '../types';
 import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
 import { hasUsableCoordinates } from '../utils/heritageCoordinates';
+import { loadCityBoundary, FALLBACK_CITY_CENTER, FALLBACK_CITY_BOUNDS, type CityBounds } from '../utils/cityBoundary';
 
 interface MapViewProps {
   sites: HeritageSite[];
@@ -36,47 +40,18 @@ interface MapViewProps {
   onCategoryChange?: (category: CategoryType | 'All') => void;
 }
 
-// Authentic geographic center and strict boundaries of the City of San Fernando, Pampanga
-const SAN_FERNANDO_CENTER: [number, number] = [15.0325, 120.6865];
+function fitCity(map: L.Map, bounds: CityBounds) {
+  // Match the minimum zoom to the viewport, including narrow mobile screens.
+  const zoom = map.getBoundsZoom(bounds, false, L.point(24, 24));
+  map.setMinZoom(Math.max(10, Math.min(13, zoom)));
+  map.fitBounds(bounds, { padding: [12, 12], maxZoom: 14, animate: false });
+}
 
-// Strict bounding box locked exclusively to San Fernando (prevents dragging outside city limits)
-const SAN_FERNANDO_BOUNDS: L.LatLngBoundsLiteral = [
-  [14.990, 120.630], // South-West border (Bacolor / Santo Tomas boundary)
-  [15.075, 120.745]  // North-East border (Mexico / Angeles boundary)
-];
-
-// City of San Fernando Municipal Boundary polygon outline
-const SAN_FERNANDO_BOUNDARY: [number, number][] = [
-  [15.068, 120.645],
-  [15.073, 120.675],
-  [15.071, 120.710],
-  [15.062, 120.738],
-  [15.045, 120.742],
-  [15.018, 120.735],
-  [14.995, 120.705],
-  [14.992, 120.672],
-  [15.008, 120.640],
-  [15.038, 120.632],
-  [15.068, 120.645]
-];
-
-// Historical San Fernando River (Sapang Balen) flow line
-const SAN_FERNANDO_RIVER: [number, number][] = [
-  [15.053, 120.655],
-  [15.044, 120.669],
-  [15.036, 120.681],
-  [15.030, 120.688],
-  [15.025, 120.696],
-  [15.016, 120.710],
-  [15.006, 120.725]
-];
-
-type MapTileStyle = 'voyager' | 'osm' | 'satellite';
+type MapTileStyle = 'osm' | 'satellite';
 
 export const MapView: React.FC<MapViewProps> = ({
   sites,
   onSelectSite,
-  onPlanRoute,
   savedSiteIds,
   onToggleSaveSite,
   initialViewMode = 'list',
@@ -94,7 +69,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const [isMapCardDismissed, setIsMapCardDismissed] = useState(false);
 
   // Map Tile & Layer States
-  const [tileStyle, setTileStyle] = useState<MapTileStyle>('voyager');
+  const [tileStyle, setTileStyle] = useState<MapTileStyle>('osm');
   const [showCityBoundary, setShowCityBoundary] = useState(true);
 
   // Sync category with prop if provided
@@ -106,12 +81,12 @@ export const MapView: React.FC<MapViewProps> = ({
     setInternalCategory(cat);
   };
 
-  // Sync initial view mode changes if parent re-routes
-  useEffect(() => {
-    if (initialViewMode) {
-      setViewMode(initialViewMode);
-    }
-  }, [initialViewMode]);
+  // Reconcile parent navigation before rendering to avoid a stale view.
+  const [previousInitialViewMode, setPreviousInitialViewMode] = useState(initialViewMode);
+  if (previousInitialViewMode !== initialViewMode) {
+    setPreviousInitialViewMode(initialViewMode);
+    setViewMode(initialViewMode);
+  }
 
   // Map DOM reference and Leaflet instance
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -119,25 +94,28 @@ export const MapView: React.FC<MapViewProps> = ({
   const markersRef = useRef<Record<string, L.Marker>>({});
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const boundaryLayerRef = useRef<L.Polygon | null>(null);
-  const riverLayerRef = useRef<L.Polyline | null>(null);
+  const outsideFocusLayerRef = useRef<L.Polygon | null>(null);
+  const cityBoundsRef = useRef<CityBounds>(FALLBACK_CITY_BOUNDS);
+  const needsInitialFitRef = useRef(true);
+  const visibleMapRef = useRef(initialViewMode === 'map');
+  const boundaryVisibleRef = useRef(true);
+  useEffect(() => { visibleMapRef.current = viewMode === 'map'; }, [viewMode]);
+  useEffect(() => { boundaryVisibleRef.current = showCityBoundary; }, [showCityBoundary]);
 
   // Filtered & Sorted Sites for Directory & Map (Search bar removed per user request)
   const filteredAndSortedSites = useMemo(() => {
     return sites
       .filter((site) => {
         const matchesCategory = activeCategory === 'All' || site.category === activeCategory;
-        return matchesCategory;
+        return site.status === 'active' && matchesCategory;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [sites, activeCategory]);
 
   const activeSite = filteredAndSortedSites.find((s) => s.id === selectedSiteId);
 
-  useEffect(() => {
-    if (!filteredAndSortedSites.some((site) => site.id === selectedSiteId)) {
-      setSelectedSiteId('');
-    }
-  }, [filteredAndSortedSites, selectedSiteId]);
+  // Clear filtered or removed selections before rendering.
+  if (selectedSiteId && !activeSite) setSelectedSiteId('');
 
   const formatCategoryLabel = (category: HeritageSite['category']) => {
     switch (category) {
@@ -156,116 +134,66 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  const getCategoryColor = (cat: HeritageSite['category']) => {
-    switch (cat) {
-      case 'Churches':
-        return '#7e1925'; // Primary Maroon
-      case 'Historical Buildings':
-        return '#b45309'; // Ochre Amber
-      case 'Museums':
-        return '#2d5a27'; // Heritage Green
-      case 'Monuments':
-        return '#44413a'; // Slate Charcoal
-      case 'Cultural Sites':
-        return '#9b4500'; // Terracotta
-      default:
-        return '#7e1925';
-    }
-  };
+  const createSiteIcon = (site: HeritageSite, isSelected: boolean) => L.divIcon({
+    className: 'heritage-custom-marker',
+    html: heritageMarkerHtml(site, isSelected),
+    iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20]
+  });
 
-  // Helper to create customized HTML Leaflet DivIcons
-  const createSiteIcon = (site: HeritageSite, isSelected: boolean) => {
-    const color = getCategoryColor(site.category);
-    const shortTitle = site.name.split(' ').slice(0, 2).join(' ');
-    const safeTitle = shortTitle.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
-
-    return L.divIcon({
-      className: 'heritage-custom-marker',
-      html: `
-        <div class="relative flex flex-col items-center group cursor-pointer" style="transform: translate(-50%, -100%);">
-          ${
-            isSelected
-              ? `<span class="absolute -top-1 left-1/2 -translate-x-1/2 h-10 w-10 rounded-full animate-ping opacity-75" style="background-color: ${color}40;"></span>`
-              : ''
-          }
-          <div class="flex items-center justify-center rounded-full text-white shadow-md transition-transform duration-200 ${
-            isSelected
-              ? 'h-9 w-9 ring-2 ring-white scale-110'
-              : 'h-7 w-7 hover:scale-105 ring-1 ring-white/90'
-          }" style="background-color: ${color};">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-          </div>
-          <!-- Pointer tip triangle -->
-          <div class="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] -mt-[1px]" style="border-t-color: ${color};"></div>
-          <!-- Label pill -->
-          <div class="mt-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-semibold border shadow-xs transition-colors ${
-            isSelected
-              ? 'bg-[#1e1b19] text-white border-[#1e1b19]'
-              : 'bg-[#fff8f5] text-[#1e1b19] border-[#e7e0d6]'
-          }">
-            ${safeTitle}
-          </div>
-        </div>
-      `,
-      iconSize: [0, 0],
-      iconAnchor: [0, 0],
-      popupAnchor: [0, -36]
-    });
-  };
-
-  // Initialize the real Leaflet map restricted strictly to San Fernando
+  // Initialize the real Leaflet map focused to San Fernando
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    // Create the map with strict bounds locking (zoomControl disabled for custom upper-left buttons)
+    // The fallback keeps the map usable while the local geographic asset loads.
     const map = L.map(mapContainerRef.current, {
-      center: SAN_FERNANDO_CENTER,
-      zoom: 14,
-      minZoom: 13,
+      center: FALLBACK_CITY_CENTER,
+      zoom: 12,
+      minZoom: 10,
       maxZoom: 18,
-      maxBounds: SAN_FERNANDO_BOUNDS,
-      maxBoundsViscosity: 1.0,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      maxBounds: FALLBACK_CITY_BOUNDS,
+      maxBoundsViscosity: 0.75,
       zoomControl: false,
       attributionControl: true
     });
 
-    // Initial tile layer (CartoDB Voyager: Standard)
-    const initialTileLayer = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> • San Fernando Heritage'
-      }
-    ).addTo(map);
-    tileLayerRef.current = initialTileLayer;
-
-    // Draw San Fernando Municipal Boundary polygon
-    const boundaryPolygon = L.polygon(SAN_FERNANDO_BOUNDARY, {
-      color: '#7e1925',
-      weight: 2,
-      opacity: 0.8,
-      dashArray: '6, 6',
-      fillColor: '#7e1925',
-      fillOpacity: 0.03
-    }).addTo(map);
-    boundaryLayerRef.current = boundaryPolygon;
-
-    // Draw San Fernando River (Sapang Balen)
-    const riverPolyline = L.polyline(SAN_FERNANDO_RIVER, {
-      color: '#3b82f6',
-      weight: 3,
-      opacity: 0.6,
-      smoothFactor: 1
-    }).addTo(map);
-    riverLayerRef.current = riverPolyline;
-
     mapInstanceRef.current = map;
+    // Update presentation without rebuilding markers or changing geographic positions.
+    const updateLabelZoom = () => mapContainerRef.current?.classList?.toggle('heritage-map-close-zoom', (map.getZoom?.() ?? 12) >= 15);
+    map.on?.('zoomend', updateLabelZoom);
+    updateLabelZoom();
+    let cancelled = false;
+    void loadCityBoundary().then(boundary => {
+      if (cancelled || !boundary) return;
+      cityBoundsRef.current = boundary.bounds;
+      map.setMaxBounds(boundary.navigationBounds);
+      outsideFocusLayerRef.current = L.polygon(boundary.mask, {
+        stroke: false, fillColor: '#413b38', fillOpacity: 0.24,
+        fillRule: 'evenodd', interactive: false,
+      });
+      boundaryLayerRef.current = L.polygon(boundary.polygons, {
+        color: '#7e1925', weight: 3, opacity: 0.9, fill: false, interactive: false,
+      });
+      if (boundaryVisibleRef.current) {
+        outsideFocusLayerRef.current.addTo(map);
+        boundaryLayerRef.current.addTo(map);
+      }
+      needsInitialFitRef.current = true;
+      if (visibleMapRef.current) {
+        map.invalidateSize();
+        fitCity(map, boundary.bounds);
+        needsInitialFitRef.current = false;
+      }
+    });
 
     return () => {
+      cancelled = true;
+      map.off?.('zoomend', updateLabelZoom);
       map.remove();
       mapInstanceRef.current = null;
+      boundaryLayerRef.current = null;
+      outsideFocusLayerRef.current = null;
     };
   }, []);
 
@@ -281,12 +209,9 @@ export const MapView: React.FC<MapViewProps> = ({
     let url = '';
     let attribution = '';
 
-    if (tileStyle === 'voyager') {
-      url = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-      attribution = '&copy; OpenStreetMap &copy; CARTO • San Fernando Heritage';
-    } else if (tileStyle === 'osm') {
-      url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-      attribution = '&copy; OpenStreetMap contributors • City of San Fernando';
+    if (tileStyle === 'osm') {
+      url = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+      attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> • City of San Fernando';
     } else if (tileStyle === 'satellite') {
       url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       attribution = '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
@@ -302,8 +227,10 @@ export const MapView: React.FC<MapViewProps> = ({
     if (!map || !boundaryLayerRef.current) return;
     if (showCityBoundary) {
       map.addLayer(boundaryLayerRef.current);
+      if (outsideFocusLayerRef.current) map.addLayer(outsideFocusLayerRef.current);
     } else {
       map.removeLayer(boundaryLayerRef.current);
+      if (outsideFocusLayerRef.current) map.removeLayer(outsideFocusLayerRef.current);
     }
   }, [showCityBoundary]);
 
@@ -325,8 +252,18 @@ export const MapView: React.FC<MapViewProps> = ({
 
       const marker = L.marker([lat, lng], {
         icon: customIcon,
-        title: site.name
+        title: site.name,
+        alt: `${site.name}, ${site.category}`,
+        keyboard: true,
+        riseOnHover: true,
+        riseOffset: 600,
+        zIndexOffset: isSelected ? 1000 : 0
       }).addTo(map);
+      const element = marker.getElement?.();
+      element?.setAttribute('aria-pressed', String(isSelected));
+      element?.setAttribute('aria-label', `${site.name}, ${site.category}`);
+      element?.addEventListener('focus', () => marker.setZIndexOffset(isSelected ? 1000 : 600));
+      element?.addEventListener('blur', () => marker.setZIndexOffset(isSelected ? 1000 : 0));
 
       // Clicking marker selects site and brings up the in-map card in the lower left
       marker.on('click', () => {
@@ -346,7 +283,13 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (viewMode === 'map' && mapInstanceRef.current) {
       const timer = setTimeout(() => {
-        mapInstanceRef.current?.invalidateSize();
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        map.invalidateSize();
+        if (needsInitialFitRef.current) {
+          fitCity(map, cityBoundsRef.current);
+          needsInitialFitRef.current = false;
+        }
       }, 150);
       return () => clearTimeout(timer);
     }
@@ -367,10 +310,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const handleRecenterSanFernando = () => {
     const map = mapInstanceRef.current;
     if (map) {
-      map.setView(SAN_FERNANDO_CENTER, 14, {
-        animate: true,
-        duration: 0.8
-      });
+      fitCity(map, cityBoundsRef.current);
     }
   };
 
@@ -385,7 +325,7 @@ export const MapView: React.FC<MapViewProps> = ({
   return (
     <div id="explore-map-combined-page" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-28 font-outfit">
       {/* Header Banner - Editorial & Modern */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
@@ -399,24 +339,15 @@ export const MapView: React.FC<MapViewProps> = ({
             <span className="font-outfit text-xs text-[#8a7171]">• City of San Fernando, Pampanga</span>
           </div>
           <h1 id="explore-map-header-title" className="font-outfit text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e1b19] tracking-tight leading-tight">
-            Explore San Fernando’s Heritage
+            Explore San Fernando Heritage
           </h1>
           <p className="font-outfit text-base text-[#574141] max-w-3xl leading-relaxed font-normal">
-            Discover Spanish colonial churches, revolutionary command posts, sugar-era ancestral mansions, and living artisan workshops through an interactive city map and curated archive directory.
+            Discover heritage sites across the City of San Fernando, Pampanga.
           </p>
         </div>
 
-        {/* Action Controls: Plan Route & View Mode Switcher */}
+        {/* View Mode Switcher */}
         <div className="flex items-center gap-3 flex-wrap">
-          <button
-            id="plan-route-map-btn"
-            onClick={onPlanRoute}
-            className="flex items-center gap-1.5 rounded-xl bg-[#7e1925] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#580b14] transition-all shadow-xs hover:scale-[1.02] cursor-pointer"
-          >
-            <Navigation className="w-4 h-4" />
-            <span>Plan Route</span>
-          </button>
-
           {/* List / Map View Mode Switcher */}
           <div className="flex items-center rounded-xl border border-[#e8dfd5] bg-[#faf2ee] p-1 shadow-xs">
             <button
@@ -456,7 +387,7 @@ export const MapView: React.FC<MapViewProps> = ({
       {viewMode === 'list' && (
         <div className="space-y-8">
           {/* Archival Curation Notice */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
@@ -469,7 +400,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </motion.div>
 
           {/* Filter Controls Container (Search bar removed per user request) */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
@@ -482,6 +413,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 return (
                   <button
                     key={cat}
+                    aria-pressed={activeCategory === cat}
                     id={`filter-cat-${cat.replace(/\s+/g, '-').toLowerCase()}`}
                     onClick={() => handleCategorySelect(cat as CategoryType | 'All')}
                     className={`flex-shrink-0 rounded-full px-4 py-2 font-outfit text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
@@ -621,7 +553,7 @@ export const MapView: React.FC<MapViewProps> = ({
               })}
             </div>
           ) : (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="rounded-2xl border border-dashed border-[#e8dfd5] p-12 text-center bg-white space-y-3 font-outfit"
@@ -646,38 +578,45 @@ export const MapView: React.FC<MapViewProps> = ({
       {/* ========================================================================= */}
       {/* 2. INTERACTIVE MAP VIEW (Full-Width Map Only + In-Map Controls & Card)    */}
       {/* ========================================================================= */}
-      <div className={viewMode === 'map' ? 'block space-y-4' : 'hidden'}>
+      <div className={viewMode === 'map' ? 'block space-y-4' : 'hidden'} onKeyDown={event => {
+        if (event.key === 'Escape') {
+          setIsLayersOpen(false);
+          setIsLegendOpen(false);
+          setIsFilterOpen(false);
+        }
+      }}>
         {/* FULL-WIDTH MAP CANVAS */}
-        <div className="relative h-[600px] sm:h-[680px] lg:h-[750px] w-full rounded-2xl border border-[#e8dfd5] bg-[#faf2ee] overflow-hidden shadow-xs">
+        <div className="relative pt-32 sm:pt-0 h-[680px] sm:h-[680px] lg:h-[750px] w-full rounded-2xl border border-[#e8dfd5] bg-[#faf2ee] overflow-hidden shadow-xs">
           {/* Leaflet Map Target Div */}
           <div
             id="san-fernando-real-map"
             ref={mapContainerRef}
             className="h-full w-full select-none"
+            aria-label="Heritage map focused on San Fernando, Pampanga"
           />
 
           {/* ===================================================================== */}
-          {/* UPPER LEFT CONTROLS: (Horizontally on web, vertically on phone)       */}
+          {/* Zoom, recenter, layers and legend; separate filter row on mobile. */}
           {/* Controls: [+ and -] [Center City] [Style] [Legend]                    */}
           {/* All logo/icon only, with collapsible popovers                         */}
           {/* ===================================================================== */}
-          <div className="absolute top-3 left-3 z-[1000] flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="absolute top-3 left-3 z-[1000] flex flex-row items-center gap-2">
             {/* Zoom Controls (+ and -) */}
-            <div className="flex flex-col sm:flex-row items-center rounded-xl bg-white/95 backdrop-blur-md border border-[#e8dfd5] shadow-md overflow-hidden">
+            <div className="flex flex-row items-center rounded-xl bg-white/95 backdrop-blur-md border border-[#e8dfd5] shadow-sm overflow-hidden">
               <button
                 id="map-zoom-in-btn"
                 onClick={handleZoomIn}
-                className="p-2 text-[#1e1b19] hover:bg-[#faf2ee] hover:text-[#7e1925] transition-colors cursor-pointer"
+                className="p-3 text-[#1e1b19] hover:bg-[#faf2ee] hover:text-[#7e1925] transition-colors cursor-pointer"
                 title="Zoom In"
                 aria-label="Zoom In"
               >
                 <Plus className="w-4 h-4" />
               </button>
-              <div className="w-4 sm:w-[1px] h-[1px] sm:h-4 bg-[#e8dfd5]" />
+              <div className="w-[1px] h-4 bg-[#e8dfd5]" />
               <button
                 id="map-zoom-out-btn"
                 onClick={handleZoomOut}
-                className="p-2 text-[#1e1b19] hover:bg-[#faf2ee] hover:text-[#7e1925] transition-colors cursor-pointer"
+                className="p-3 text-[#1e1b19] hover:bg-[#faf2ee] hover:text-[#7e1925] transition-colors cursor-pointer"
                 title="Zoom Out"
                 aria-label="Zoom Out"
               >
@@ -689,7 +628,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <button
               id="recenter-san-fernando-btn"
               onClick={handleRecenterSanFernando}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 backdrop-blur-md text-[#7e1925] border border-[#e8dfd5] hover:bg-white hover:border-[#7e1925] transition-all shadow-md cursor-pointer"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/95 backdrop-blur-md text-[#7e1925] border border-[#e8dfd5] hover:bg-white hover:border-[#7e1925] transition-all shadow-sm cursor-pointer"
               title="Center City"
               aria-label="Center City"
             >
@@ -697,15 +636,16 @@ export const MapView: React.FC<MapViewProps> = ({
             </button>
 
             {/* Style (Collapse - Icon Only) */}
-            <div className="relative">
+            <div className="static sm:relative">
               <button
                 id="toggle-layers-disclosure-btn"
+                aria-expanded={isLayersOpen}
                 onClick={() => {
                   setIsLayersOpen(!isLayersOpen);
                   setIsLegendOpen(false);
                   setIsFilterOpen(false);
                 }}
-                className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-all shadow-md cursor-pointer ${
+                className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-all shadow-sm cursor-pointer ${
                   isLayersOpen
                     ? 'bg-[#7e1925] text-white border-[#7e1925]'
                     : 'bg-white/95 backdrop-blur-md text-[#1e1b19] border-[#e8dfd5] hover:bg-white hover:border-[#7e1925]'
@@ -716,7 +656,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 <Layers className="w-4 h-4" />
               </button>
 
-              {/* Style Popover: Standard, OSM, Satellite */}
+              {/* Style Popover: OpenStreetMap, Satellite */}
               <AnimatePresence>
                 {isLayersOpen && (
                   <motion.div
@@ -724,11 +664,12 @@ export const MapView: React.FC<MapViewProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.95 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute left-0 top-11 w-52 rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs shadow-2xl space-y-2.5 z-[1010]"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-28 sm:top-12 w-52 rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs shadow-2xl space-y-2.5 z-[1010]"
                   >
                     <div className="flex items-center justify-between font-bold text-[#1e1b19] pb-1 border-b border-[#e8dfd5]">
                       <span className="text-[10px] uppercase tracking-wider text-[#8a7171]">Map Style</span>
                       <button
+                        aria-label="Close map styles"
                         onClick={() => setIsLayersOpen(false)}
                         className="text-[#8a7171] hover:text-[#1e1b19] cursor-pointer"
                       >
@@ -736,17 +677,9 @@ export const MapView: React.FC<MapViewProps> = ({
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1 rounded-xl bg-[#faf2ee] p-1 border border-[#e8dfd5]">
+                    <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#faf2ee] p-1 border border-[#e8dfd5]">
                       <button
-                        onClick={() => setTileStyle('voyager')}
-                        className={`rounded-lg py-1.5 text-center font-bold text-[11px] transition-colors cursor-pointer ${
-                          tileStyle === 'voyager' ? 'bg-[#7e1925] text-white shadow-xs' : 'text-[#574141] hover:text-[#1e1b19]'
-                        }`}
-                        title="Standard map style"
-                      >
-                        Standard
-                      </button>
-                      <button
+                        aria-pressed={tileStyle === 'osm'}
                         onClick={() => setTileStyle('osm')}
                         className={`rounded-lg py-1.5 text-center font-bold text-[11px] transition-colors cursor-pointer ${
                           tileStyle === 'osm' ? 'bg-[#7e1925] text-white shadow-xs' : 'text-[#574141] hover:text-[#1e1b19]'
@@ -756,6 +689,7 @@ export const MapView: React.FC<MapViewProps> = ({
                         OSM
                       </button>
                       <button
+                        aria-pressed={tileStyle === 'satellite'}
                         onClick={() => setTileStyle('satellite')}
                         className={`rounded-lg py-1.5 text-center font-bold text-[11px] transition-colors cursor-pointer ${
                           tileStyle === 'satellite' ? 'bg-[#7e1925] text-white shadow-xs' : 'text-[#574141] hover:text-[#1e1b19]'
@@ -774,7 +708,7 @@ export const MapView: React.FC<MapViewProps> = ({
                       <label className="flex items-center justify-between cursor-pointer select-none py-0.5">
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#1e1b19]">
                           <Lock className="w-3.5 h-3.5 text-[#7e1925]" />
-                          City Limits
+                          City boundary and outside dimming
                         </span>
                         <input
                           type="checkbox"
@@ -790,15 +724,16 @@ export const MapView: React.FC<MapViewProps> = ({
             </div>
 
             {/* Legend (Collapse - Icon Only) */}
-            <div className="relative">
+            <div className="static sm:relative">
               <button
                 id="toggle-legend-disclosure-btn"
+                aria-expanded={isLegendOpen}
                 onClick={() => {
                   setIsLegendOpen(!isLegendOpen);
                   setIsLayersOpen(false);
                   setIsFilterOpen(false);
                 }}
-                className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-all shadow-md cursor-pointer ${
+                className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-all shadow-sm cursor-pointer ${
                   isLegendOpen
                     ? 'bg-[#7e1925] text-white border-[#7e1925]'
                     : 'bg-white/95 backdrop-blur-md text-[#1e1b19] border-[#e8dfd5] hover:bg-white hover:border-[#7e1925]'
@@ -817,11 +752,12 @@ export const MapView: React.FC<MapViewProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.95 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute left-0 top-11 w-52 rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs space-y-2 shadow-2xl z-[1010]"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-28 sm:top-12 w-52 max-h-60 sm:max-h-none overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs space-y-1 shadow-2xl z-[1010]"
                   >
                     <div className="flex items-center justify-between font-bold text-[#1e1b19] pb-1.5 border-b border-[#e8dfd5]">
                       <span className="text-[10px] uppercase tracking-wider text-[#8a7171]">Legend</span>
                       <button
+                        aria-label="Close legend"
                         onClick={() => setIsLegendOpen(false)}
                         className="text-[#8a7171] hover:text-[#1e1b19] p-0.5 rounded cursor-pointer"
                         title="Close legend"
@@ -829,30 +765,18 @@ export const MapView: React.FC<MapViewProps> = ({
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#7e1925]" />
-                      <span className="text-[#1e1b19]">Churches</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#b45309]" />
-                      <span className="text-[#1e1b19]">Historical Buildings</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#2d5a27]" />
-                      <span className="text-[#1e1b19]">Museums</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#44413a]" />
-                      <span className="text-[#1e1b19]">Monuments</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#9b4500]" />
-                      <span className="text-[#1e1b19]">Cultural Landmarks</span>
-                    </div>
-                    <div className="pt-1.5 border-t border-[#e8dfd5] flex items-center gap-1.5 text-[11px] text-[#3b82f6]">
-                      <span className="h-0.5 w-3 bg-[#3b82f6]"></span>
-                      <span>San Fernando River</span>
-                    </div>
+                    {HERITAGE_CATEGORIES.filter(category => category !== 'All').map(category => {
+                      const style = HERITAGE_MARKER_STYLES[category];
+                      return <div key={category} className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: style.color }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            {style.paths.map(path => <path key={path} d={path} />)}
+                          </svg>
+                        </span>
+                        <span className="text-[#1e1b19]">{category}</span>
+                      </div>;
+                    })}
+                    <p className="border-t border-[#e8dfd5] pt-2 text-[#574141]">City of San Fernando, Pampanga boundary</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -863,16 +787,17 @@ export const MapView: React.FC<MapViewProps> = ({
           {/* UPPER RIGHT: Category Filter Collapse Button                          */}
           {/* When clicked, lets user select categories (e.g., Church) to filter    */}
           {/* ===================================================================== */}
-          <div className="absolute top-3 right-3 z-[1000]">
-            <div className="relative">
+          <div className="absolute top-16 left-3 sm:top-3 sm:left-auto sm:right-3 z-[1000]">
+            <div className="static sm:relative">
               <button
                 id="toggle-map-filter-btn"
+                aria-expanded={isFilterOpen}
                 onClick={() => {
                   setIsFilterOpen(!isFilterOpen);
                   setIsLayersOpen(false);
                   setIsLegendOpen(false);
                 }}
-                className={`flex items-center gap-1.5 h-9 px-3 rounded-xl border transition-all shadow-md cursor-pointer ${
+                className={`flex items-center gap-1.5 h-11 px-3 rounded-xl border transition-all shadow-sm cursor-pointer ${
                   isFilterOpen || activeCategory !== 'All'
                     ? 'bg-[#7e1925] text-white border-[#7e1925]'
                     : 'bg-white/95 backdrop-blur-md text-[#1e1b19] border-[#e8dfd5] hover:bg-white hover:border-[#7e1925]'
@@ -895,11 +820,12 @@ export const MapView: React.FC<MapViewProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.95 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute right-0 top-11 w-60 rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs shadow-2xl space-y-2 z-[1010]"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-12 w-60 max-h-60 sm:max-h-none overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs shadow-2xl space-y-2 z-[1010]"
                   >
                     <div className="flex items-center justify-between font-bold text-[#1e1b19] pb-1.5 border-b border-[#e8dfd5]">
                       <span className="text-[10px] uppercase tracking-wider text-[#8a7171]">Filter Locations</span>
                       <button
+                        aria-label="Close category filters"
                         onClick={() => setIsFilterOpen(false)}
                         className="text-[#8a7171] hover:text-[#1e1b19] cursor-pointer"
                       >
@@ -910,17 +836,18 @@ export const MapView: React.FC<MapViewProps> = ({
                     <div className="space-y-1">
                       {HERITAGE_CATEGORIES.map((cat) => {
                         const isSelected = activeCategory === cat;
-                        const count = cat === 'All' 
-                          ? sites.length 
+                        const count = cat === 'All'
+                          ? sites.length
                           : sites.filter(s => s.category === cat).length;
                         return (
                           <button
                             key={cat}
+                            aria-pressed={activeCategory === cat}
                             id={`map-filter-option-${cat.toLowerCase().replace(/\s+/g, '-')}`}
                             onClick={() => {
                               handleCategorySelect(cat as CategoryType | 'All');
                             }}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left font-semibold transition-colors cursor-pointer ${
+                            className={`w-full min-h-11 flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left font-semibold transition-colors cursor-pointer ${
                               isSelected
                                 ? 'bg-[#7e1925] text-white'
                                 : 'text-[#1e1b19] hover:bg-[#faf2ee]'
@@ -955,12 +882,12 @@ export const MapView: React.FC<MapViewProps> = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute bottom-3 left-3 sm:bottom-5 sm:left-5 z-[1000] w-[calc(100%-1.5rem)] sm:w-[360px] max-h-[82%] overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md shadow-2xl overflow-hidden font-outfit"
+                className="absolute bottom-7 left-3 sm:bottom-8 sm:left-5 z-[1000] w-[calc(100%-1.5rem)] sm:w-[310px] max-h-[270px] sm:max-h-[300px] overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md shadow-lg font-outfit"
               >
                 {/* Image Header with Close Button, Singular Category Badge, Bookmark */}
-                <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#faf2ee]">
+                <div className="relative h-24 sm:h-28 w-full overflow-hidden bg-[#faf2ee]">
                   <img
-                    src={activeSite.heroImage}
+                    src={activeSite.heroImage || HERITAGE_IMAGE_PLACEHOLDER}
                     alt={activeSite.name}
                     className="h-full w-full object-cover"
                     referrerPolicy="no-referrer"
@@ -977,8 +904,10 @@ export const MapView: React.FC<MapViewProps> = ({
                   <div className="absolute top-3 right-3 flex items-center gap-1.5">
                     <button
                       id={`map-card-save-${activeSite.id}`}
+                      aria-label={savedSiteIds.includes(activeSite.id) ? 'Unsave site' : 'Save site'}
+                      aria-pressed={savedSiteIds.includes(activeSite.id)}
                       onClick={() => onToggleSaveSite(activeSite.id)}
-                      className={`flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-all cursor-pointer shadow-xs ${
+                      className={`flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-md transition-all cursor-pointer shadow-xs ${
                         savedSiteIds.includes(activeSite.id)
                           ? 'bg-[#7e1925] text-white'
                           : 'bg-black/50 text-white hover:bg-black/75 border border-white/20'
@@ -990,15 +919,16 @@ export const MapView: React.FC<MapViewProps> = ({
 
                     <button
                       id="close-in-map-card-btn"
+                      aria-label="Close site card"
                       onClick={() => setIsMapCardDismissed(true)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 border border-white/20 backdrop-blur-md transition-all cursor-pointer shadow-xs"
+                      className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 border border-white/20 backdrop-blur-md transition-all cursor-pointer shadow-xs"
                       title="Close card"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
 
-                  {/* Distance & Year Chips */}
+                  {/* Recorded Year */}
                   <div className="absolute bottom-2.5 left-3 flex items-center gap-2 font-outfit text-[11px] font-semibold text-white">
                     {activeSite.yearBuilt && <span className="rounded-md bg-black/65 backdrop-blur-xs px-2 py-0.5 border border-white/20">
                       {activeSite.yearBuilt}
@@ -1009,21 +939,16 @@ export const MapView: React.FC<MapViewProps> = ({
                 </div>
 
                 {/* Card Lower Part: Name, Description, Direction Button, and Explore Button */}
-                <div className="p-4 sm:p-5 space-y-3 font-outfit">
+                <div className="p-3 sm:p-4 space-y-2 font-outfit">
                   <div>
                     <h3 className="font-outfit text-lg font-bold text-[#1e1b19] leading-snug mt-0.5 tracking-tight">
                       {activeSite.name}
                     </h3>
                     <div className="mt-1 flex items-center gap-1.5 text-xs text-[#574141]">
                       <MapPin className="h-3.5 w-3.5 text-[#7e1925] flex-shrink-0" />
-                      <span className="truncate">{activeSite.address}</span>
+                      <span className="break-words">{activeSite.address}</span>
                     </div>
                   </div>
-
-                  {/* Description */}
-                  <p className="text-xs text-[#574141] line-clamp-2 sm:line-clamp-3 leading-relaxed">
-                    {activeSite.shortDescription}
-                  </p>
 
                   {/* Lower Part Buttons: Direction button and Explore button */}
                   <div className="flex items-center gap-2 pt-1">
@@ -1047,7 +972,7 @@ export const MapView: React.FC<MapViewProps> = ({
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-[#7e1925] hover:bg-[#580b14] py-2 text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs hover:scale-[1.01] cursor-pointer"
                       title="Explore heritage site details"
                     >
-                      <span>Explore</span>
+                      <span>View Site</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1057,18 +982,22 @@ export const MapView: React.FC<MapViewProps> = ({
           </AnimatePresence>
         </div>
 
+        <p className="text-xs text-[#574141]">City of San Fernando, Pampanga</p>
+        {filteredAndSortedSites.length === 0 && <p role="status" className="rounded-xl border border-[#e8dfd5] bg-white p-4 text-sm text-[#574141]">No heritage sites in this category. Choose another category or All.</p>}
+        {filteredAndSortedSites.length > 0 && !filteredAndSortedSites.some(site => hasUsableCoordinates(site.coordinates)) && <p role="status" className="text-sm text-[#574141]">No mapped locations in this category. Recorded sites are available in the directory.</p>}
         {/* Quick Landmark Jump Bar Below Map */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 text-xs no-scrollbar">
           <span className="font-outfit font-bold text-[#574141] whitespace-nowrap flex items-center gap-1 uppercase tracking-wider">
             <Compass className="w-3.5 h-3.5 text-[#7e1925]" />
             Jump to:
           </span>
-          {filteredAndSortedSites.map((site) => {
-            const isActive = site.id === selectedSiteId && !isMapCardDismissed;
+          {filteredAndSortedSites.filter(site => hasUsableCoordinates(site.coordinates)).map((site) => {
+            const isActive = site.id === selectedSiteId;
             return (
               <button
                 key={site.id}
                 id={`quick-jump-${site.id}`}
+                aria-pressed={isActive}
                 onClick={() => handleSelectSiteFromCardOrChip(site)}
                 className={`whitespace-nowrap rounded-xl px-3.5 py-1.5 font-outfit text-xs font-bold transition-all border cursor-pointer ${
                   isActive

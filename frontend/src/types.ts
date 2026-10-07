@@ -140,6 +140,28 @@ export interface UserPlan {
   siteIds: string[];
 }
 
+export interface ItineraryStop {
+  id: string;
+  siteId: string;
+  sortOrder: number;
+  site: HeritageSite | null;
+}
+
+export interface Itinerary {
+  id: string;
+  name: string;
+  description: string | null;
+  status: 'active' | 'archived';
+  stops: ItineraryStop[];
+}
+
+export interface ItineraryInput {
+  name: string;
+  description: string | null;
+  status: 'active' | 'archived';
+  stops: { heritage_site_id: number; sort_order: number }[];
+}
+
 export interface AchievementBadge {
   id: string;
   title: string;
@@ -169,6 +191,8 @@ export interface UserProfile {
 }
 
 export type ViewType = 
+  | 'check-in'
+  | 'passport'
   | 'home'
   | 'explore'
   | 'map'
@@ -183,6 +207,44 @@ export type ViewType =
   | 'contact'
   | 'tourism-office'
   | 'admin';
+
+export interface PassportVisit {
+  id: number;
+  heritage_site_id: number;
+  verified_at: string;
+  points_awarded: number;
+  site: HeritageSite;
+}
+
+export interface HeritagePassport {
+  total_points: number;
+  visited_count: number;
+  eligible_site_count: number;
+  visited_eligible_count: number;
+  visits: PassportVisit[];
+  eligible_sites: HeritageSite[];
+}
+
+export interface CheckinContext {
+  enabled: boolean;
+  coordinates_configured: boolean;
+  site: HeritageSite;
+}
+
+export interface CheckinResult {
+  status: 'verified' | 'already_visited';
+  points_earned: number;
+  visit: { id: number; heritage_site_id: number; verified_at: string; points_awarded: number };
+}
+
+export interface CheckinConfig {
+  id: number;
+  heritage_site_id: number;
+  public_token: string;
+  enabled: boolean;
+  radius_meters: number;
+  verified_visitors?: number;
+}
 
 export interface CommunityPhoto {
   id: string;

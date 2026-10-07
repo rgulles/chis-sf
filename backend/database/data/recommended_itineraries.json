@@ -1,0 +1,43 @@
+{
+  "routes": [
+    {
+      "key": "csfp-downtown-walk",
+      "name": "Downtown Heritage Walk",
+      "description": "Explore the cathedral, civic landmarks, and ancestral houses of downtown San Fernando. Follow the listed stop order at your own pace.",
+      "stops": [
+        ["Metropolitan Cathedral of San Fernando"],
+        ["City Hall of San Fernando"],
+        ["Pampanga Hotel"],
+        ["Baluyut Bridge"],
+        ["Lazatin House", "Lazatin Residence"],
+        ["Consunji House"],
+        ["Hizon-Singian House"]
+      ]
+    },
+    {
+      "key": "csfp-capitol-route",
+      "name": "Sto. Niño / Capitol Heritage Route",
+      "description": "Visit the provincial capitol area and nearby heritage landmarks. Stops are a curated sequence, not a navigation route.",
+      "stops": [
+        ["Pampanga Provincial Capitol"],
+        ["Arnedo Park"],
+        ["Presidio (Pampanga Provincial Jail)", "Presidio"],
+        ["Death March Marker"],
+        ["San Fernando Train Station"],
+        ["Santungan ning Kulturang Kapampangan"]
+      ]
+    },
+    {
+      "key": "csfp-cultural-route",
+      "name": "Cultural Heritage Route",
+      "description": "Discover cultural and religious heritage across San Fernando, including Calulut. Arrange your own transport between stops.",
+      "stops": [
+        ["Monumento Fernandino"],
+        ["Archdiocesan Museum and Archives"],
+        ["Mother of Good Counsel Seminary"],
+        ["City of San Fernando Giant Lantern and Tourist Information Center"],
+        ["Heritage Parochial Church, Complex of San Vicente Ferrer"]
+      ]
+    }
+  ]
+}

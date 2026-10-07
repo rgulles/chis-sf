@@ -4,6 +4,7 @@ import type { HeritageSite } from '../types';
 import { heritageSiteUrl } from '../utils/heritageNavigation';
 import { hasUsableCoordinates } from '../utils/heritageCoordinates';
 import { handleHeritageImageError } from '../utils/heritageImages';
+import { SiteCheckinNotice } from '../components/SiteCheckinNotice';
 
 interface SiteDetailViewProps {
   site: HeritageSite;
@@ -58,6 +59,7 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
 
   return (
     <div id="site-detail-page" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10 pb-28">
+      <SiteCheckinNotice siteId={site.id} />
       {/* Top Navigation Bar */}
       <div className="flex items-center justify-between border-b border-[#e7e0d6] pb-3">
         <button

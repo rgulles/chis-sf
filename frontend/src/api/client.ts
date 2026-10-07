@@ -4,12 +4,77 @@ import type {
   CommunityPhoto,
   UserProfile,
   UserPlan,
+  Itinerary,
+  ItineraryInput,
+  HeritagePassport,
+  CheckinContext,
+  CheckinResult,
+  CheckinConfig,
 } from '../types';
 
 import { heritageImageUrl, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
 
 const API_BASE = '/api';
 let authGeneration = 0;
+
+export class CheckinApiError extends Error {
+  status: number;
+  code: string;
+  constructor(message: string, status: number, code: string) { super(message); this.status = status; this.code = code; }
+}
+
+async function passportRequest(path: string, method = 'GET', data?: unknown, authenticated = true): Promise<unknown> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method, headers: authenticated ? getAuthHeaders() : { Accept: 'application/json' },
+    ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    const code = typeof result?.code === 'string' ? result.code : 'error';
+    const message = response.status === 401 ? 'Please sign in again to continue.' : response.status === 404 ? 'This QR is invalid, revoked, or the site is unavailable.'
+      : response.status === 429 ? 'Too many attempts. Please wait a minute and try again.'
+      : ['outside', 'weak_accuracy', 'disabled', 'unavailable'].includes(code) && typeof result?.message === 'string' ? result.message : 'Unable to complete this request. Please try again.';
+    throw new CheckinApiError(message, response.status, code);
+  }
+  if (!result || typeof result !== 'object') throw new Error('The server returned an invalid response.');
+  return result;
+}
+
+export async function apiResolveCheckin(token: string): Promise<CheckinContext> {
+  const data = await passportRequest(`/check-in/${encodeURIComponent(token)}`, 'GET', undefined, false) as Omit<CheckinContext, 'site'> & { site: unknown };
+  if (typeof data.enabled !== 'boolean' || typeof data.coordinates_configured !== 'boolean' || !data.site) throw new Error('Invalid check-in response.');
+  return { ...data, site: mapBackendSite(data.site) };
+}
+
+export async function apiVerifyCheckin(token: string, location: { latitude: number; longitude: number; accuracy: number | null }): Promise<CheckinResult> {
+  const data = await passportRequest(`/check-in/${encodeURIComponent(token)}/verify`, 'POST', location) as CheckinResult;
+  if (!['verified', 'already_visited'].includes(data.status) || !data.visit || !Number.isFinite(data.points_earned)) throw new Error('Invalid verification response.');
+  return data;
+}
+
+export async function apiFetchPassport(): Promise<HeritagePassport> {
+  const data = await passportRequest('/passport') as HeritagePassport;
+  if (![data.total_points, data.visited_count, data.eligible_site_count, data.visited_eligible_count].every(value => Number.isInteger(value) && value >= 0)
+    || !Array.isArray(data.visits) || !Array.isArray(data.eligible_sites)) throw new Error('Invalid passport response.');
+  return { ...data, visits: data.visits.map(visit => ({ ...visit, site: mapBackendSite(visit.site) })), eligible_sites: data.eligible_sites.map(mapBackendSite) };
+}
+
+export async function apiCheckinAvailability(id: string): Promise<boolean> {
+  const data = await passportRequest(`/heritage-sites/${encodeURIComponent(id)}/check-in`, 'GET', undefined, false) as { enabled: boolean };
+  return data.enabled === true;
+}
+
+export async function apiFetchCheckinConfigs(): Promise<CheckinConfig[]> {
+  return await adminList('/admin/check-in-configs') as CheckinConfig[];
+}
+
+export async function apiSaveCheckinConfig(id: string, enabled: boolean, radius_meters: number): Promise<CheckinConfig> {
+  return await adminRequest(`/admin/heritage-sites/${encodeURIComponent(id)}/check-in`, 'PUT', { enabled, radius_meters }) as CheckinConfig;
+}
+
+export async function apiRotateCheckinToken(id: string): Promise<CheckinConfig> {
+  return await adminRequest(`/admin/heritage-sites/${encodeURIComponent(id)}/check-in/rotate`, 'POST') as CheckinConfig;
+}
 
 export function getJwtToken(): string | null {
   return localStorage.getItem('chis_jwt_token');
@@ -364,6 +429,61 @@ function buildSiteImagePayload(data: Record<string, unknown>): Record<string, un
   }
   const { imageFile: _imageFile, ...reference } = data;
   return reference;
+}
+
+function mapItinerary(value: unknown): Itinerary {
+  const raw = value as Record<string, unknown>;
+  if (!raw || !/^[1-9]\d*$/.test(String(raw.id)) || typeof raw.name !== 'string'
+    || !['active', 'archived'].includes(String(raw.status)) || !Array.isArray(raw.stops)) throw new Error('Invalid itinerary response.');
+  return {
+    id: String(raw.id), name: raw.name, description: typeof raw.description === 'string' ? raw.description : null,
+    status: raw.status as Itinerary['status'],
+    // Preserve the relationship order returned by Laravel, including tied sort orders.
+    stops: raw.stops.map((value: unknown) => {
+      const stop = value as Record<string, unknown>;
+      if (!stop || !/^[1-9]\d*$/.test(String(stop.id)) || !/^[1-9]\d*$/.test(String(stop.heritage_site_id)) || !Number.isInteger(stop.sort_order)) throw new Error('Invalid itinerary stop.');
+      const site = stop.heritage_site as Record<string, unknown> | null;
+      if (site && String(site.id) !== String(stop.heritage_site_id)) throw new Error('Incorrect itinerary site reference.');
+      return { id: String(stop.id), siteId: String(stop.heritage_site_id), sortOrder: Number(stop.sort_order), site: site ? mapBackendSite(site) : null };
+    }),
+  };
+}
+
+export async function apiFetchItineraries(): Promise<Itinerary[]> {
+  try {
+    const response = await fetch(`${API_BASE}/itineraries`, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error();
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) throw new Error();
+    return data.map(mapItinerary).filter(route => route.status === 'active').map(route => ({ ...route, stops: route.stops.filter(stop => stop.site?.status === 'active') }));
+  } catch { throw new Error('Unable to load recommended itineraries. Please try again.'); }
+}
+
+export async function apiFetchItineraryById(id: string): Promise<Itinerary | null> {
+  try {
+    const response = await fetch(`${API_BASE}/itineraries/${encodeURIComponent(id)}`, { headers: { Accept: 'application/json' } });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error();
+    const route = mapItinerary(await response.json());
+    if (route.id !== id) throw new Error();
+    return route.status === 'active' ? { ...route, stops: route.stops.filter(stop => stop.site?.status === 'active') } : null;
+  } catch { throw new Error('Unable to load this itinerary. Please try again.'); }
+}
+
+export async function apiFetchAdminItineraries(): Promise<Itinerary[]> {
+  return (await adminList('/admin/itineraries')).map(mapItinerary);
+}
+
+export async function apiSaveItinerary(data: ItineraryInput, id?: string): Promise<Itinerary> {
+  return mapItinerary(await adminRequest(id ? `/itineraries/${encodeURIComponent(id)}` : '/itineraries', id ? 'PUT' : 'POST', data));
+}
+
+export async function apiArchiveItinerary(id: string): Promise<void> {
+  await adminRequest(`/itineraries/${encodeURIComponent(id)}`, 'DELETE');
+}
+
+export async function apiRestoreItinerary(id: string): Promise<void> {
+  await adminRequest(`/itineraries/${encodeURIComponent(id)}`, 'PATCH', { status: 'active' });
 }
 
 export async function apiFetchSiteImages(): Promise<unknown[]> {
