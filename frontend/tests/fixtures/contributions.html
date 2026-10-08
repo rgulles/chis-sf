@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Contribution responsive test</title></head>
+<body>
+<div id="root" class="max-w-5xl mx-auto p-4"></div>
+<script type="module">
+  import React from 'react';
+  import { createRoot } from 'react-dom/client';
+  import { VisitorExperiences } from '/src/components/VisitorExperiences.tsx';
+  import { AdminContributions } from '/src/components/AdminContributions.tsx';
+  import { AdminCheckins } from '/src/components/AdminCheckins.tsx';
+  import { SiteDetailView } from '/src/views/SiteDetailView.tsx';
+  import '/src/index.css';
+  const mode = new URLSearchParams(location.search).get('mode') || 'visitor';
+  const verificationMode = mode.startsWith('verification');
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK1sAAAAASUVORK5CYII=';
+  const item = { id: 1, visitor_name: 'A visitor with a long display name', caption: 'A memorable visit. ' + 'longcaption'.repeat(30), created_at: '2026-10-09T12:00:00Z', images: [png, png, png] };
+  let status = 'pending';
+  let verified = false;
+  const verificationSites = [
+    { id: 1, heritage_site_id: 1, name: 'Official landmark with a long descriptive heritage site name', status: 'active', category: 'Churches', address: 'Central Street', has_coordinates: true, enabled: true, radius_meters: 75, verified_visitors: 12 },
+    { id: null, heritage_site_id: 2, name: 'Unconfigured Museum', status: 'active', category: 'Museums', address: 'Market Road', has_coordinates: true, enabled: false, radius_meters: 100, verified_visitors: 0 },
+    { id: null, heritage_site_id: 3, name: 'Archived landmark', status: 'archived', category: 'Monuments', address: 'Old Road', has_coordinates: true, enabled: false, radius_meters: 100, verified_visitors: 0 },
+    { id: null, heritage_site_id: 4, name: 'Missing coordinates', status: 'active', category: 'Cultural Sites', address: 'North Road', has_coordinates: false, enabled: false, radius_meters: 100, verified_visitors: 0 },
+  ];
+  window.__configListRequests = 0; window.__configSaves = 0;
+  window.__geoCalls = 0; window.__passportRefreshes = 0;
+  window.__availabilityRequests = 0;
+  if (verificationMode) {
+    const locate = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+    navigator.geolocation.getCurrentPosition = (...args) => { window.__geoCalls++; locate(...args); };
+  }
+  window.confirm = () => true;
+  window.fetch = async (url, options = {}) => {
+    let body;
+    if (String(url).endsWith('/admin/check-in-configs')) { window.__configListRequests++; body = verificationSites; }
+    else if (mode === 'checkins' && options.method === 'PUT') {
+      window.__configSaves++;
+      const id = Number(String(url).match(/heritage-sites\/(\d+)/)[1]);
+      const row = verificationSites.find(site => site.heritage_site_id === id);
+      Object.assign(row, JSON.parse(options.body), { id }); body = row;
+    } else if (String(url).includes('/admin/contributions')) {
+      if (options.method === 'PATCH') { status = JSON.parse(options.body).status; body = { id: 1, status }; }
+      else if (options.method === 'DELETE') return new Response(null, { status: 204 });
+      else body = String(url).endsWith('status=' + status) ? [{ ...item, status, heritage_site: { id: 1, name: 'Official landmark', status: 'active' } }] : [];
+    } else if (String(url).endsWith('/check-in')) { window.__availabilityRequests++; body = { enabled: true }; }
+    else if (String(url).endsWith('/verify-visit')) { verified = true; body = { status: 'verified', points_earned: 100, visit: { id: 1, heritage_site_id: 1, verified_at: '2026-10-09T12:00:00Z', points_awarded: 100 } }; }
+    else if (String(url).endsWith('/mine')) body = { verified: verificationMode ? verified : mode !== 'unverified', active: true, can_submit: verificationMode ? verified : true, contribution: null };
+    else if (options.method === 'POST') body = { id: 1, status: 'pending' };
+    else body = [item];
+    return new Response(JSON.stringify(body), { status: options.method === 'POST' ? 201 : 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  const user = { id: '2', name: 'Visitor', role: 'traveler' };
+  const detailSite = { id: '1', name: 'Official landmark', category: 'Churches', address: 'Address', yearBuilt: '1900', heroImage: png, images: [], timeline: [], historicalCharacters: [], didYouKnow: [], story: 'Recorded history', fullDescription: 'Recorded description', visitInfo: {}, visitVerificationEnabled: true, coordinates: { lat: 15.03, lng: 120.69 } };
+  if (mode === 'verification-legacy') delete detailSite.visitVerificationEnabled;
+  createRoot(document.getElementById('root')).render(React.createElement(mode === 'checkins' ? AdminCheckins : mode === 'admin' ? AdminContributions : verificationMode ? SiteDetailView : VisitorExperiences,
+    mode === 'admin' || mode === 'checkins' ? {} : verificationMode ? { site: detailSite, user, onBack() {}, onOpenDirections() {}, onToggleSave() {}, onAddToPlan() {}, onVerified() { window.__passportRefreshes++; } } : { site: { id: '1', name: 'Official landmark', visitVerificationEnabled: true }, user: mode === 'guest' ? null : user, onLogin() {} }));
+</script>
+</body></html>

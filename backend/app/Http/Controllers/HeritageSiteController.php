@@ -5,12 +5,28 @@ namespace App\Http\Controllers;
 use App\Models\HeritageSite;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
+use App\Services\HeritageVisitAvailability;
 
 class HeritageSiteController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return HeritageSite::with(['images', 'timelines'])->where('status', 'active')->get();
+        $data = $request->validate(['search' => 'sometimes|nullable|string|max:500']);
+        $query = HeritageSite::select(['id', 'name', 'category', 'year_built', 'address', 'latitude', 'longitude', 'description', 'status'])
+            ->with('coverImage')->where('status', 'active');
+        // Search retains full description/history matching without shipping those texts in the catalogue.
+        if (filled($data['search'] ?? null)) {
+            $needle = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], trim($data['search'])).'%';
+            $query->where(function ($query) use ($needle) {
+                foreach (['name', 'address', 'category', 'description', 'history'] as $field) {
+                    $query->orWhereRaw("LOWER({$field}) LIKE LOWER(?) ESCAPE '!'", [$needle]);
+                }
+            });
+        }
+        return $query->get()->map(fn ($site) => [...$site->only(['id', 'name', 'category', 'year_built', 'address', 'latitude', 'longitude', 'status']),
+            'short_description' => Str::limit($site->description ?? '', 240),
+            'cover_image' => $site->coverImage?->only(['id', 'image_path', 'caption', 'is_cover', 'sort_order'])]);
     }
 
     public function adminIndex()
@@ -18,11 +34,14 @@ class HeritageSiteController extends Controller
         return HeritageSite::with(['images', 'timelines'])->get();
     }
 
-    public function show(HeritageSite $heritageSite)
+    public function show(string $heritageSite)
     {
-        abort_unless($heritageSite->status === 'active', 404);
-
-        return $this->adminShow($heritageSite);
+        $site = HeritageVisitAvailability::withEnabledConfig(
+            HeritageSite::whereKey($heritageSite)->where('status', 'active')->with(['images', 'timelines'])
+        )->firstOrFail();
+        $data = $site->toArray();
+        unset($data['verification_config_enabled'], $data['created_by']);
+        return [...$data, 'visit_verification_enabled' => HeritageVisitAvailability::enabled($site)];
     }
 
     public function adminShow(HeritageSite $heritageSite)

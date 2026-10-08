@@ -71,7 +71,7 @@ function ReadAloudControls({ text }: { text: string }) {
       setNotice('Restarted from the beginning at the new speed.');
     }
   };
-  return <section id="heritage-read-aloud" className="ui-card p-4 space-y-3" aria-label="Heritage read aloud">
+  return <section id="heritage-read-aloud" className="border-y border-[#e7ded4] bg-[#fdf9f4] p-4 space-y-3" aria-label="Heritage read aloud">
     <h2 className="text-base font-semibold flex items-center gap-2"><Volume2 size={18} aria-hidden="true" />Listen to this heritage story</h2>
     {!supported ? <p role="status" className="ui-muted">Read aloud is not supported in this browser.</p> : <>
       <div className="flex flex-wrap items-center gap-2">

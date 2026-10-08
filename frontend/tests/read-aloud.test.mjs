@@ -106,7 +106,8 @@ test('Site Detail mounts real-content read aloud near history and keeps verifica
   const source = read('../src/views/SiteDetailView.tsx');
   assert.match(source, /<HeritageReadAloud key=\{site.id} site=\{site}/);
   assert.ok(source.indexOf('section-about-place') < source.indexOf('<HeritageReadAloud'));
-  assert.ok(source.indexOf('<HeritageReadAloud') < source.indexOf('section-the-story'));
+  assert.ok(source.indexOf('section-the-story') < source.indexOf('<HeritageReadAloud'));
+  assert.ok(source.indexOf('<HeritageReadAloud') < source.indexOf('section-timeline'));
   assert.ok(source.indexOf('section-timeline') < source.indexOf('section-site-gallery'));
   assert.ok(source.indexOf('section-visitor-information') < source.indexOf('<VisitVerification'));
 });

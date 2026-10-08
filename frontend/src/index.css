@@ -455,3 +455,10 @@ mark,
   background-color: #dc2626;
   color: #ffffff;
 }
+.passport-progress { appearance: none; border: 0; background: #544737; color: #c6931d; }
+.passport-progress::-webkit-progress-bar { background: #544737; }
+.passport-progress::-webkit-progress-value { background: #c6931d; }
+.passport-progress::-moz-progress-bar { background: #c6931d; }
+.heritage-document .ui-button-primary, .heritage-document .ui-button-secondary { border-radius: 2px; }
+.heritage-document #visit-verification { border-radius: 2px; border-color: #e7ded4; background: #fdf9f4; }
+.heritage-document #visitor-experiences .ui-card { border-radius: 2px; box-shadow: none; }

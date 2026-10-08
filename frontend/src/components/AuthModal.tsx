@@ -196,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="grid grid-cols-3 gap-2.5 text-center">
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
                   <span className="font-sans text-2xl font-extrabold text-[#1e1b19] block leading-none mb-1">
-                    {passport?.visited_count ?? 0}
+                    {passport?.visited_count ?? '—'}
                   </span>
                   <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">PASSPORT STAMPS</p>
                 </div>
@@ -210,37 +210,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
                   <span className="font-sans text-lg font-bold text-[#1e1b19] block leading-none mb-1 mt-0.5">
-                    Level {Math.max(1, Math.floor((passport?.visited_count || 0) / 2) + 1)}
+                    {passport ? `${passport.total_points} Points` : '—'}
                   </span>
-                  <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">RANK</p>
+                  <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">HERITAGE POINTS</p>
                 </div>
               </div>
 
               {/* Digital Heritage Passport Banner */}
               <div className="rounded-xl bg-[#7e1925] text-white p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white flex-shrink-0">
                       <Award className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
                       <h5 className="font-sans text-xs font-bold uppercase tracking-wider text-white truncate">
-                        DIGITAL HERITAGE PASSPORT
+                        Heritage Passport
                       </h5>
                       <p className="text-xs text-white/80 mt-0.5 truncate">
-                        {passport ? `${passport.visited_eligible_count} of ${passport.eligible_site_count} sites explored` : 'Loading passport...'}
+                        {passport ? `${passport.visited_eligible_count} of ${passport.eligible_site_count} sites explored` : 'View your verified visit stamps'}
                       </p>
                     </div>
                   </div>
                   <button
+                    id="profile-open-passport"
                     type="button"
                     onClick={() => {
                       onClose();
                       if (onOpenPassport) onOpenPassport();
                     }}
-                    className="px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex-shrink-0"
+                    className="min-h-11 w-full sm:w-auto px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors cursor-pointer flex-shrink-0"
                   >
-                    OPEN
+                    View Heritage Passport
                   </button>
                 </div>
               </div>

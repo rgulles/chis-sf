@@ -1,8 +1,9 @@
 import { HERITAGE_MARKER_STYLES, heritageMarkerHtml } from '../utils/heritageMap';
 import { handleHeritageImageError, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import type Leaflet from 'leaflet';
+import { loadLeaflet } from '../utils/loadLeaflet';
+import { ErrorState } from '../components/ErrorState';
 import './heritageMap.css';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -28,6 +29,7 @@ import type { HeritageSite, CategoryType } from '../types';
 import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
 import { hasUsableCoordinates } from '../utils/heritageCoordinates';
 import { loadCityBoundary, FALLBACK_CITY_CENTER, FALLBACK_CITY_BOUNDS, type CityBounds } from '../utils/cityBoundary';
+import type { RoadRoute } from '../utils/osrm';
 
 interface MapViewProps {
   sites: HeritageSite[];
@@ -38,9 +40,11 @@ interface MapViewProps {
   initialViewMode?: 'map' | 'list';
   selectedCategory?: CategoryType | 'All';
   onCategoryChange?: (category: CategoryType | 'All') => void;
+  roadRoute?: RoadRoute;
+  orderedStops?: boolean;
 }
 
-function fitCity(map: L.Map, bounds: CityBounds) {
+function fitCity(map: Leaflet.Map, bounds: CityBounds, L: typeof Leaflet) {
   // Match the minimum zoom to the viewport, including narrow mobile screens.
   const zoom = map.getBoundsZoom(bounds, false, L.point(24, 24));
   map.setMinZoom(Math.max(10, Math.min(13, zoom)));
@@ -56,10 +60,20 @@ export const MapView: React.FC<MapViewProps> = ({
   onToggleSaveSite,
   initialViewMode = 'list',
   selectedCategory: propCategory,
-  onCategoryChange: propOnCategoryChange
+  onCategoryChange: propOnCategoryChange,
+  roadRoute, orderedStops = false
 }) => {
   const [selectedSiteId, setSelectedSiteId] = useState<string>(sites[0]?.id || '');
   const [viewMode, setViewMode] = useState<'map' | 'list'>(initialViewMode);
+  const [L, setLeaflet] = useState<typeof Leaflet | null>(null);
+  const [mapLoadError, setMapLoadError] = useState(''), [mapRetry, setMapRetry] = useState(0);
+  useEffect(() => {
+    if (viewMode !== 'map' || L) return;
+    let cancelled = false;
+    loadLeaflet().then(runtime => { if (!cancelled) { setLeaflet(runtime); setMapLoadError(''); } })
+      .catch(() => { if (!cancelled) setMapLoadError('Unable to load the map. Please try again.'); });
+    return () => { cancelled = true; };
+  }, [viewMode, L, mapRetry]);
   const [internalCategory, setInternalCategory] = useState<CategoryType | 'All'>('All');
 
   // Progressive Disclosure states
@@ -90,11 +104,12 @@ export const MapView: React.FC<MapViewProps> = ({
 
   // Map DOM reference and Leaflet instance
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<Record<string, L.Marker>>({});
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const boundaryLayerRef = useRef<L.Polygon | null>(null);
-  const outsideFocusLayerRef = useRef<L.Polygon | null>(null);
+  const mapInstanceRef = useRef<Leaflet.Map | null>(null);
+  const markersRef = useRef<Record<string, Leaflet.Marker>>({});
+  const routeLayerRef = useRef<Leaflet.Polyline | null>(null);
+  const tileLayerRef = useRef<Leaflet.TileLayer | null>(null);
+  const boundaryLayerRef = useRef<Leaflet.Polygon | null>(null);
+  const outsideFocusLayerRef = useRef<Leaflet.Polygon | null>(null);
   const cityBoundsRef = useRef<CityBounds>(FALLBACK_CITY_BOUNDS);
   const needsInitialFitRef = useRef(true);
   const visibleMapRef = useRef(initialViewMode === 'map');
@@ -134,15 +149,9 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  const createSiteIcon = (site: HeritageSite, isSelected: boolean) => L.divIcon({
-    className: 'heritage-custom-marker',
-    html: heritageMarkerHtml(site, isSelected),
-    iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20]
-  });
-
   // Initialize the real Leaflet map focused to San Fernando
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    if (!L || !mapContainerRef.current || mapInstanceRef.current) return;
 
     // The fallback keeps the map usable while the local geographic asset loads.
     const map = L.map(mapContainerRef.current, {
@@ -182,7 +191,8 @@ export const MapView: React.FC<MapViewProps> = ({
       needsInitialFitRef.current = true;
       if (visibleMapRef.current) {
         map.invalidateSize();
-        fitCity(map, boundary.bounds);
+        if (routeLayerRef.current) { map.setMinZoom(1); map.fitBounds(routeLayerRef.current.getBounds(), { padding: [28, 28], maxZoom: 16 }); }
+        else fitCity(map, boundary.bounds, L);
         needsInitialFitRef.current = false;
       }
     });
@@ -195,12 +205,12 @@ export const MapView: React.FC<MapViewProps> = ({
       boundaryLayerRef.current = null;
       outsideFocusLayerRef.current = null;
     };
-  }, []);
+  }, [L]);
 
   // Update Tile Layer when tileStyle state changes
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !L) return;
 
     if (tileLayerRef.current) {
       map.removeLayer(tileLayerRef.current);
@@ -219,7 +229,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
     const newLayer = L.tileLayer(url, { attribution, maxZoom: 19 }).addTo(map);
     tileLayerRef.current = newLayer;
-  }, [tileStyle]);
+  }, [tileStyle, L]);
 
   // Toggle City Boundary Overlay
   useEffect(() => {
@@ -237,10 +247,15 @@ export const MapView: React.FC<MapViewProps> = ({
   // Update Site Markers on Map
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !L) return;
+    const createSiteIcon = (site: HeritageSite, isSelected: boolean) => L.divIcon({
+      className: 'heritage-custom-marker',
+      html: orderedStops ? `<span class="itinerary-map-number">${sites.findIndex(stop => stop.id === site.id) + 1}</span>` : heritageMarkerHtml(site, isSelected),
+      iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20]
+    });
 
     // Clear existing markers
-    (Object.values(markersRef.current) as L.Marker[]).forEach((marker) => marker.remove());
+    (Object.values(markersRef.current) as Leaflet.Marker[]).forEach((marker) => marker.remove());
     markersRef.current = {};
 
     // Render filtered markers
@@ -277,23 +292,38 @@ export const MapView: React.FC<MapViewProps> = ({
 
       markersRef.current[site.id] = marker;
     });
-  }, [filteredAndSortedSites, selectedSiteId]);
+  }, [filteredAndSortedSites, selectedSiteId, L, orderedStops, sites]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!L || !map || viewMode !== 'map') return;
+    routeLayerRef.current?.remove();
+    routeLayerRef.current = null;
+    if (roadRoute) {
+      const line = L.polyline(roadRoute.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]), { color: '#7E1925', weight: 4, opacity: 0.85 }).addTo(map);
+      routeLayerRef.current = line;
+      map.setMinZoom(1);
+      map.fitBounds(line.getBounds(), { padding: [28, 28], maxZoom: 16 });
+      needsInitialFitRef.current = false;
+    }
+    return () => { routeLayerRef.current?.remove(); routeLayerRef.current = null; };
+  }, [roadRoute, L, viewMode]);
 
   // Recalculate Leaflet size when toggling to Map View
   useEffect(() => {
-    if (viewMode === 'map' && mapInstanceRef.current) {
+    if (viewMode === 'map' && mapInstanceRef.current && L) {
       const timer = setTimeout(() => {
         const map = mapInstanceRef.current;
         if (!map) return;
         map.invalidateSize();
         if (needsInitialFitRef.current) {
-          fitCity(map, cityBoundsRef.current);
+          fitCity(map, cityBoundsRef.current, L);
           needsInitialFitRef.current = false;
         }
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [viewMode]);
+  }, [viewMode, L]);
 
   const handleSelectSiteFromCardOrChip = (site: HeritageSite) => {
     setSelectedSiteId(site.id);
@@ -309,8 +339,8 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const handleRecenterSanFernando = () => {
     const map = mapInstanceRef.current;
-    if (map) {
-      fitCity(map, cityBoundsRef.current);
+    if (map && L) {
+      fitCity(map, cityBoundsRef.current, L);
     }
   };
 
@@ -585,6 +615,8 @@ export const MapView: React.FC<MapViewProps> = ({
           setIsFilterOpen(false);
         }
       }}>
+        {!L && !mapLoadError && <p role="status">Loading map…</p>}
+        {mapLoadError && <ErrorState message={mapLoadError} onRetry={() => setMapRetry(value => value + 1)} />}
         {/* FULL-WIDTH MAP CANVAS */}
         <div className="relative pt-32 sm:pt-0 h-[680px] sm:h-[680px] lg:h-[750px] w-full rounded-2xl border border-[#e8dfd5] bg-[#faf2ee] overflow-hidden shadow-xs">
           {/* Leaflet Map Target Div */}

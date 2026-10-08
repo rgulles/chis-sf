@@ -2,6 +2,8 @@ import { handleHeritageImageError } from '../utils/heritageImages';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, X, MapPin, Calendar, ArrowRight, Clock } from 'lucide-react';
 import type { HeritageSite, EventItem } from '../types';
+import { apiFetchSites } from '../api/client';
+import { ErrorState } from './ErrorState';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -21,6 +23,18 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   onSelectEvent
 }) => {
   const [query, setQuery] = useState<string>('');
+  const [lookup, setLookup] = useState<{ query: string; sites?: HeritageSite[]; error?: string } | null>(null);
+  const [retry, setRetry] = useState(0);
+  const needsLookup = sites.some(site => site.isSummary);
+  useEffect(() => {
+    if (!isOpen || !query.trim() || !needsLookup) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      apiFetchSites(query.trim()).then(sites => { if (!cancelled) setLookup({ query, sites }); })
+        .catch(failure => { if (!cancelled) setLookup({ query, error: failure instanceof Error ? failure.message : 'Unable to search heritage sites.' }); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [isOpen, query, needsLookup, retry]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,7 +49,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const filteredSites = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.trim().toLowerCase();
-    return sites.filter(
+    const local = sites.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.address.toLowerCase().includes(q) ||
@@ -43,7 +57,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         s.shortDescription.toLowerCase().includes(q) ||
         s.story.toLowerCase().includes(q)
     );
-  }, [query, sites]);
+    const remote = needsLookup && lookup?.query === query ? lookup.sites || [] : [];
+    const matches = new Map([...local, ...remote].map(site => [site.id, site]));
+    return [...matches.values()];
+  }, [query, sites, needsLookup, lookup]);
 
   const filteredEvents = useMemo(() => {
     if (!query.trim()) return [];
@@ -117,6 +134,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             </div>
           ) : (
             <div className="space-y-5">
+              {needsLookup && lookup?.query !== query && <p role="status">Searching heritage sites…</p>}
+              {lookup?.query === query && lookup.error && <ErrorState message={lookup.error} onRetry={() => setRetry(value => value + 1)} />}
               {/* Heritage Sites Matches */}
               <div>
                 <div className="flex items-center justify-between mb-2.5">

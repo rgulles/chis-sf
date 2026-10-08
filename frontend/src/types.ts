@@ -6,6 +6,7 @@ export type CategoryType =
   | 'Cultural Sites';
 
 export interface TimelineEvent {
+  id?: number | string;
   year: string;
   title: string;
   description: string;
@@ -73,7 +74,17 @@ export interface HeritageImage {
   sortOrder: number;
 }
 
+export interface VerificationAvailability {
+  /** Missing means unresolved, never disabled. */
+  enabled?: boolean;
+  loading: boolean;
+  error?: string;
+}
+
 export interface HeritageSite {
+  /** Missing metadata is resolved through the compatibility availability endpoint. */
+  visitVerificationEnabled?: boolean;
+  isSummary?: boolean;
   id: string;
   status?: 'active' | 'archived';
   name: string;
@@ -231,11 +242,16 @@ export interface CheckinResult {
 }
 
 export interface CheckinConfig {
-  id: number;
+  id: number | null;
   heritage_site_id: number;
+  name: string;
+  status: string;
+  category: string;
+  address: string;
+  has_coordinates: boolean;
   enabled: boolean;
   radius_meters: number;
-  verified_visitors?: number;
+  verified_visitors: number;
 }
 
 export interface CommunityPhoto {
@@ -248,4 +264,22 @@ export interface CommunityPhoto {
   likes: number;
   tags?: string[];
   isUserUploaded?: boolean;
+}
+export type ContributionStatus = 'pending' | 'approved' | 'rejected';
+export interface VisitorContribution {
+  id: number;
+  caption: string | null;
+  created_at: string;
+  visitor_name: string;
+  images: string[];
+}
+export interface MyContribution {
+  verified: boolean;
+  active: boolean;
+  can_submit: boolean;
+  contribution: { id: number; status: ContributionStatus } | null;
+}
+export interface AdminContribution extends VisitorContribution {
+  status: ContributionStatus;
+  heritage_site: { id: number; name: string; status: string };
 }

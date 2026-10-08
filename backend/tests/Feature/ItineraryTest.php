@@ -46,6 +46,29 @@ class ItineraryTest extends TestCase
         return ['Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken];
     }
 
+    public function test_public_summaries_have_one_cover_no_gallery_timeline_or_admin_fields_and_bounded_queries(): void
+    {
+        foreach (range(1, 4) as $index) {
+            $site = $this->site('Stop '.$index);
+            $site->images()->create(['image_path' => 'heritage-sites/first.jpg', 'sort_order' => 0]);
+            $site->images()->create(['image_path' => 'heritage-sites/cover.jpg', 'is_cover' => true, 'sort_order' => 9]);
+            $site->timelines()->create(['year' => '1900', 'title' => 'History', 'description' => 'Recorded history']);
+            $route = Itinerary::create(['name' => 'Route '.$index]);
+            $route->stops()->create(['heritage_site_id' => $site->id, 'sort_order' => 0]);
+        }
+        \Illuminate\Support\Facades\DB::enableQueryLog(); \Illuminate\Support\Facades\DB::flushQueryLog();
+        $response = $this->getJson('/api/itineraries')->assertOk()->assertJsonCount(4);
+        $queries = \Illuminate\Support\Facades\DB::getQueryLog(); \Illuminate\Support\Facades\DB::disableQueryLog();
+        $this->assertCount(4, $queries);
+        foreach ($response->json() as $route) {
+            $this->assertSame(['id', 'name', 'description', 'status', 'stops'], array_keys($route));
+            $summary = $route['stops'][0]['heritage_site'];
+            $this->assertSame('heritage-sites/cover.jpg', $summary['cover_image']['image_path']);
+            foreach (['images', 'timelines', 'history', 'description', 'opening_hours', 'created_by'] as $field) $this->assertArrayNotHasKey($field, $summary);
+        }
+        $this->getJson('/api/itineraries/'.$route['id'])->assertOk()->assertJsonMissingPath('stops.0.heritage_site.timelines')->assertJsonMissingPath('stops.0.heritage_site.images');
+    }
+
     public function test_public_reads_active_routes_with_ordered_live_stops_and_omit_archived_sites(): void
     {
         $route = Itinerary::create(['name' => 'Live route']);
@@ -64,8 +87,10 @@ class ItineraryTest extends TestCase
         $response = $this->getJson('/api/itineraries/'.$route->id)->assertOk()->assertJsonCount(3, 'stops')
             ->assertJsonPath('stops.0.heritage_site.name', 'First')
             ->assertJsonPath('stops.1.heritage_site.name', 'Second')->assertJsonPath('stops.2.heritage_site.name', 'Third')
-            ->assertJsonPath('stops.0.heritage_site.description', 'Admin updated live description')
-            ->assertJsonPath('stops.0.heritage_site.latitude', null)->assertJsonCount(1, 'stops.0.heritage_site.images');
+            ->assertJsonMissingPath('stops.0.heritage_site.description')
+            ->assertJsonMissingPath('stops.0.heritage_site.timelines')
+            ->assertJsonMissingPath('stops.0.heritage_site.images')
+            ->assertJsonPath('stops.0.heritage_site.latitude', null)->assertJsonPath('stops.0.heritage_site.cover_image.image_path', '/existing-official.jpg');
         $this->assertStringNotContainsString('Archived heritage', $response->getContent());
         $this->getJson('/api/itineraries')->assertOk()->assertJsonCount(1)->assertJsonCount(3, '0.stops');
         $this->getJson('/api/itineraries/'.$archived->id)->assertNotFound();

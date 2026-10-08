@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class HeritageCheckinConfig extends Model
 {
@@ -20,6 +21,11 @@ class HeritageCheckinConfig extends Model
     public function heritageSite(): BelongsTo
     {
         return $this->belongsTo(HeritageSite::class);
+    }
+
+    public function visits(): HasMany
+    {
+        return $this->hasMany(HeritageVisit::class, 'heritage_site_id', 'heritage_site_id');
     }
 
     public static function generateToken(): string

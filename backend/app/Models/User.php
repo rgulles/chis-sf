@@ -43,4 +43,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Event::class, 'created_by');
     }
+
+    public function heritageContributions(): HasMany
+    {
+        return $this->hasMany(HeritageContribution::class);
+    }
 }

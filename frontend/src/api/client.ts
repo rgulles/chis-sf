@@ -12,8 +12,64 @@ import type {
 } from '../types';
 
 import { heritageImageUrl, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
+import type { VisitorContribution, MyContribution, AdminContribution, ContributionStatus } from '../types';
 
 const API_BASE = '/api';
+
+export async function apiFetchContributions(id: string): Promise<VisitorContribution[]> {
+  const response = await apiFetch(`${API_BASE}/heritage-sites/${encodeURIComponent(id)}/contributions`);
+  const data = await response.json();
+  if (!Array.isArray(data) || !data.every(item => item && typeof item.id === 'number' && typeof item.visitor_name === 'string'
+    && (item.caption === null || typeof item.caption === 'string') && typeof item.created_at === 'string'
+    && Array.isArray(item.images) && item.images.every((url: unknown) => typeof url === 'string'))) {
+    throw new ApiError('Unable to load visitor experiences. Please try again.');
+  }
+  return data;
+}
+
+export async function apiFetchMyContribution(id: string): Promise<MyContribution> {
+  const data = await adminRequest(`/heritage-sites/${encodeURIComponent(id)}/contributions/mine`) as MyContribution;
+  if (!data || typeof data.verified !== 'boolean' || typeof data.active !== 'boolean' || typeof data.can_submit !== 'boolean'
+    || (data.contribution !== null && (!data.contribution || typeof data.contribution.id !== 'number' || !['pending', 'approved', 'rejected'].includes(data.contribution.status)))) {
+    throw new ApiError('Unable to load your contribution status. Please try again.');
+  }
+  return data;
+}
+
+export async function apiSubmitContribution(id: string, images: File[], caption: string): Promise<{ id: number; status: ContributionStatus }> {
+  const form = new FormData();
+  images.forEach(image => form.append('images[]', image));
+  form.append('caption', caption);
+  try {
+    const data = await adminRequest(`/heritage-sites/${encodeURIComponent(id)}/contributions`, 'POST', form) as { id: number; status: ContributionStatus };
+    if (!data || typeof data.id !== 'number' || data.status !== 'pending') throw new ApiError('Unable to confirm your submission. Reload your contribution status before trying again.');
+    return data;
+  } catch (error) {
+    if (error instanceof AdminApiError) {
+      if (error.status === 403) error.message = 'Verify your visit before sharing an experience.';
+      if (error.status === 409) error.message = 'A contribution already exists or this site is archived. Reload your contribution status.';
+      if (error.status === 413) error.message = 'The upload is too large. Choose up to 3 images, no larger than 5 MB each.';
+    }
+    throw error;
+  }
+}
+
+export async function apiFetchAdminContributions(status: ContributionStatus): Promise<AdminContribution[]> {
+  const data = await adminList(`/admin/contributions?status=${status}`) as AdminContribution[];
+  if (!data.every(item => item && typeof item.id === 'number' && ['pending', 'approved', 'rejected'].includes(item.status)
+    && typeof item.visitor_name === 'string' && (item.caption === null || typeof item.caption === 'string') && typeof item.created_at === 'string'
+    && item.heritage_site && typeof item.heritage_site.name === 'string' && typeof item.heritage_site.status === 'string'
+    && Array.isArray(item.images) && item.images.every(url => typeof url === 'string'))) {
+    throw new AdminApiError('Unable to load contributions. Please retry.');
+  }
+  return data;
+}
+export async function apiModerateContribution(id: number, status: 'approved' | 'rejected'): Promise<void> {
+  await adminRequest(`/admin/contributions/${id}`, 'PATCH', { status });
+}
+export async function apiRemoveContribution(id: number): Promise<void> {
+  await adminRequest(`/admin/contributions/${id}`, 'DELETE');
+}
 let authGeneration = 0;
 
 export class ApiError extends Error {
@@ -50,9 +106,24 @@ function expireSession(requestToken: string | null): void {
   if (typeof window !== 'undefined') window.dispatchEvent?.(new Event('chis:session-expired'));
 }
 
+// Share only concurrent reads, including React's development effect replay. No response cache or auth data persists.
+const pendingReads = new Map<string, Promise<Response>>();
+async function fetchTransport(input: string, options?: RequestInit): Promise<Response> {
+  const execute = () => fetch(input, { ...options, signal: options?.signal ?? AbortSignal.timeout(options?.body instanceof FormData ? 120000 : 30000) });
+  if ((options?.method ?? 'GET') !== 'GET' || options?.signal) return execute();
+  const key = JSON.stringify([input, options?.headers ?? {}]);
+  let pending = pendingReads.get(key);
+  if (!pending) {
+    const request = execute().finally(() => { if (pendingReads.get(key) === request) pendingReads.delete(key); });
+    pending = request;
+    pendingReads.set(key, request);
+  }
+  return (await pending).clone();
+}
+
 async function apiFetch(input: string, options?: RequestInit): Promise<Response> {
   let response: Response;
-  try { response = await fetch(input, { ...options, headers: { Accept: 'application/json', ...options?.headers } }); }
+  try { response = await fetchTransport(input, { ...options, headers: { Accept: 'application/json', ...options?.headers } }); }
   catch { throw new ApiError('Unable to connect to CHIS. Check your internet connection and try again.', null, 'network'); }
   if (response.status === 401 && options?.headers && 'Authorization' in options.headers && !input.includes('/auth/logout')) {
     const requestToken = (options.headers as Record<string, string>).Authorization;
@@ -285,7 +356,8 @@ export async function apiUpdateProfile(userUpdates: Partial<UserProfile>): Promi
 // Backend to Frontend Data Mapper for Heritage Sites
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapBackendSite(raw: any): HeritageSite {
-  const images = (Array.isArray(raw.images) ? raw.images : []).map((image: any) => ({
+  const isSummary = Object.prototype.hasOwnProperty.call(raw, 'short_description');
+  const images = (Array.isArray(raw.images) ? raw.images : raw.cover_image ? [raw.cover_image] : []).map((image: any) => ({
     id: String(image.id),
     imageUrl: heritageImageUrl(typeof image.image_path === 'string' ? image.image_path : ''),
     caption: typeof image.caption === 'string' ? image.caption.trim() || null : null,
@@ -301,6 +373,8 @@ function mapBackendSite(raw: any): HeritageSite {
 
   return {
     id: String(raw.id),
+    isSummary,
+    visitVerificationEnabled: typeof raw.visit_verification_enabled === 'boolean' ? raw.visit_verification_enabled : undefined,
     ...(raw.status === 'active' || raw.status === 'archived' ? { status: raw.status } : {}),
     name: raw.name || 'Unnamed Site',
     category: raw.category || '',
@@ -310,7 +384,7 @@ function mapBackendSite(raw: any): HeritageSite {
       lat,
       lng
     } : null,
-    shortDescription: raw.description || '',
+    shortDescription: raw.short_description ?? raw.description ?? '',
     fullDescription: raw.description || '',
     story: raw.history || '',
     heroImage: heroImg,
@@ -319,6 +393,7 @@ function mapBackendSite(raw: any): HeritageSite {
     modernImage: '',
     thenNowCaption: '',
     timeline: Array.isArray(raw.timelines) ? raw.timelines.map((t: any) => ({
+      id: t.id,
       year: t.year,
       title: t.title,
       description: t.description
@@ -337,9 +412,9 @@ function mapBackendSite(raw: any): HeritageSite {
 }
 
 // Heritage Sites API
-export async function apiFetchSites(): Promise<HeritageSite[]> {
+export async function apiFetchSites(search?: string): Promise<HeritageSite[]> {
   try {
-    const res = await apiFetch(`${API_BASE}/heritage-sites`);
+    const res = await apiFetch(`${API_BASE}/heritage-sites${search ? '?search=' + encodeURIComponent(search) : ''}`);
     if (!res.ok) throw new Error('Failed to fetch sites');
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('Invalid heritage catalogue response');
@@ -411,7 +486,7 @@ async function adminRequest(path: string, method = 'GET', data?: unknown): Promi
   }
 
   try {
-    res = await fetch(`${API_BASE}${path}`, {
+    res = await fetchTransport(`${API_BASE}${path}`, {
       method: actualMethod,
       headers,
       ...(body === undefined ? {} : { body }),
@@ -506,7 +581,33 @@ function mapItinerary(value: unknown): Itinerary {
   };
 }
 
-export async function apiFetchItineraries(): Promise<Itinerary[]> {
+let itineraryListRequest: Promise<Itinerary[]> | undefined;
+const itineraryDetailRequests = new Map<string, Promise<Itinerary | null>>();
+
+export function clearItineraryCache(): void {
+  itineraryListRequest = undefined;
+  itineraryDetailRequests.clear();
+}
+
+export function apiFetchItineraries(refresh = false): Promise<Itinerary[]> {
+  if (refresh) clearItineraryCache();
+  if (!itineraryListRequest) {
+    const request = fetchItineraries().then(routes => {
+      // Public list/detail share the same ordered summaries; opening a card needs no second download.
+      if (itineraryListRequest === request) for (const route of routes) {
+        if (!itineraryDetailRequests.has(route.id)) itineraryDetailRequests.set(route.id, Promise.resolve(route));
+      }
+      return routes;
+    }).catch(error => {
+      if (itineraryListRequest === request) itineraryListRequest = undefined;
+      throw error;
+    });
+    itineraryListRequest = request;
+  }
+  return itineraryListRequest;
+}
+
+async function fetchItineraries(): Promise<Itinerary[]> {
   try {
     const response = await apiFetch(`${API_BASE}/itineraries`, { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error();
@@ -516,7 +617,21 @@ export async function apiFetchItineraries(): Promise<Itinerary[]> {
   } catch (failure) { if (failure instanceof ApiError) throw failure; throw new ApiError('Unable to load recommended itineraries. Please try again.'); }
 }
 
-export async function apiFetchItineraryById(id: string): Promise<Itinerary | null> {
+export function apiFetchItineraryById(id: string, refresh = false): Promise<Itinerary | null> {
+  if (refresh) itineraryDetailRequests.delete(id);
+  let request = itineraryDetailRequests.get(id);
+  if (!request) {
+    const pending = fetchItineraryById(id).catch(error => {
+      if (itineraryDetailRequests.get(id) === pending) itineraryDetailRequests.delete(id);
+      throw error;
+    });
+    request = pending;
+    itineraryDetailRequests.set(id, request);
+  }
+  return request;
+}
+
+async function fetchItineraryById(id: string): Promise<Itinerary | null> {
   try {
     const response = await apiFetch(`${API_BASE}/itineraries/${encodeURIComponent(id)}`, { headers: { Accept: 'application/json' } });
     if (response.status === 404) return null;
@@ -532,15 +647,19 @@ export async function apiFetchAdminItineraries(): Promise<Itinerary[]> {
 }
 
 export async function apiSaveItinerary(data: ItineraryInput, id?: string): Promise<Itinerary> {
-  return mapItinerary(await adminRequest(id ? `/itineraries/${encodeURIComponent(id)}` : '/itineraries', id ? 'PUT' : 'POST', data));
+  const result = await adminRequest(id ? `/itineraries/${encodeURIComponent(id)}` : '/itineraries', id ? 'PUT' : 'POST', data);
+  clearItineraryCache();
+  return mapItinerary(result);
 }
 
 export async function apiArchiveItinerary(id: string): Promise<void> {
   await adminRequest(`/itineraries/${encodeURIComponent(id)}`, 'DELETE');
+  clearItineraryCache();
 }
 
 export async function apiRestoreItinerary(id: string): Promise<void> {
   await adminRequest(`/itineraries/${encodeURIComponent(id)}`, 'PATCH', { status: 'active' });
+  clearItineraryCache();
 }
 
 export async function apiFetchSiteImages(): Promise<unknown[]> {
@@ -646,15 +765,7 @@ export function mapBackendEvent(raw: any): EventItem {
     timeFormatted = 'TBA';
   }
 
-  let bannerImage = '/images/events/giant-lantern-fest.jpg';
-  if (raw.image_path) {
-    if (/^(https?:)?\/\//i.test(raw.image_path) || raw.image_path.startsWith('/images/')) {
-      bannerImage = raw.image_path;
-    } else {
-      const relative = raw.image_path.replace(/^\/+/, '').replace(/^storage\//, '');
-      bannerImage = `/storage/${relative}`;
-    }
-  }
+  const bannerImage = heritageImageUrl(typeof raw.image_path === 'string' ? raw.image_path : '');
 
   const rawSchedules = Array.isArray(raw.schedules) ? raw.schedules : [];
   const schedule = rawSchedules.map((item: any) => ({

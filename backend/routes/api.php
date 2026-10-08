@@ -9,6 +9,18 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HeritageTimelineController;
 use App\Http\Controllers\ItineraryController;
 use App\Http\Controllers\HeritageCheckinController;
+use App\Http\Controllers\HeritageContributionController;
+
+Route::get('/heritage-sites/{heritageSite}/contributions', [HeritageContributionController::class, 'index']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/heritage-sites/{heritageSite}/contributions/mine', [HeritageContributionController::class, 'mine']);
+    Route::post('/heritage-sites/{heritageSite}/contributions', [HeritageContributionController::class, 'store'])->middleware('throttle:5,1');
+});
+Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+    Route::get('/admin/contributions', [HeritageContributionController::class, 'adminIndex']);
+    Route::patch('/admin/contributions/{contribution}', [HeritageContributionController::class, 'moderate']);
+    Route::delete('/admin/contributions/{contribution}', [HeritageContributionController::class, 'destroy']);
+});
 
 Route::get('/user', function (Request $request) {
     return $request->user();

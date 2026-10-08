@@ -79,7 +79,7 @@ class HeritageVisitorInformationTest extends TestCase
         $admin = $this->getJson('/api/admin/heritage-sites/'.$id, $headers)->assertOk();
         foreach (self::VALUES as $field => $value) {
             $public->assertJsonPath($field, $value);
-            $list->assertJsonPath('0.'.$field, $value);
+            $list->assertJsonMissingPath('0.'.$field);
             $admin->assertJsonPath($field, $value);
         }
         $this->patchJson('/api/heritage-sites/'.$id, ['name' => 'Renamed'], $headers)->assertOk();

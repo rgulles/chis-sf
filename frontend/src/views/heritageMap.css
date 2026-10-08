@@ -56,3 +56,4 @@
   outline-offset: 4px;
   border-radius: 50%;
 }
+.itinerary-map-number { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border:2px solid #c6931d; border-radius:50%; background:#7e1925; color:#fffdf9; font-weight:700; }

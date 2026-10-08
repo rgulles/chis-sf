@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class HeritageSite extends Model
 {
@@ -38,8 +39,23 @@ class HeritageSite extends Model
         return $this->hasMany(SiteImage::class, 'heritage_site_id')->orderBy('sort_order')->orderBy('id');
     }
 
+    public function coverImage(): HasOne
+    {
+        return $this->hasOne(SiteImage::class)->ofMany(['is_cover' => 'max', 'sort_order' => 'min', 'id' => 'min']);
+    }
+
     public function timelines(): HasMany
     {
         return $this->hasMany(HeritageTimeline::class, 'heritage_site_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function contributions(): HasMany
+    {
+        return $this->hasMany(HeritageContribution::class);
+    }
+
+    public function checkinConfig(): HasOne
+    {
+        return $this->hasOne(HeritageCheckinConfig::class);
     }
 }

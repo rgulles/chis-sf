@@ -36,6 +36,10 @@ function componentHarness(path, exportName, props = {}, overrides = {}) {
   let cursor = 0;
   let pending = [];
   const hooks = {
+    lazy(loader) {
+      return Object.assign(() => null, { displayName: /module\.(\w+)/.exec(String(loader))?.[1] || 'LazyView' });
+    },
+    Suspense: Object.assign(() => null, { displayName: 'Suspense' }),
     useState(initial) {
       const index = cursor++;
       if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial;

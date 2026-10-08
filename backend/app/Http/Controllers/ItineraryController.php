@@ -13,19 +13,28 @@ class ItineraryController extends Controller
     private function publicRelations(): array
     {
         return ['stops' => fn ($query) => $query->whereHas('heritageSite', fn ($site) => $site->where('status', 'active')),
-            'stops.heritageSite.images', 'stops.heritageSite.timelines'];
+            'stops.heritageSite' => fn ($query) => $query->select(['id', 'name', 'category', 'address', 'latitude', 'longitude', 'status'])->with('coverImage')];
+    }
+
+    private function publicData(Itinerary $itinerary): array
+    {
+        return [...$itinerary->only(['id', 'name', 'description', 'status']),
+            'stops' => $itinerary->stops->map(fn ($stop) => [...$stop->only(['id', 'heritage_site_id', 'sort_order']),
+                'heritage_site' => [...$stop->heritageSite->only(['id', 'name', 'category', 'address', 'latitude', 'longitude', 'status']),
+                    'short_description' => '',
+                    'cover_image' => $stop->heritageSite->coverImage?->only(['id', 'image_path', 'caption', 'is_cover', 'sort_order'])]])->values()];
     }
 
     public function index()
     {
-        return Itinerary::where('status', 'active')->with($this->publicRelations())->orderBy('id')->get();
+        return Itinerary::where('status', 'active')->with($this->publicRelations())->orderBy('id')->get()->map(fn ($route) => $this->publicData($route));
     }
 
     public function show(Itinerary $itinerary)
     {
         abort_unless($itinerary->status === 'active', 404);
 
-        return $itinerary->load($this->publicRelations());
+        return $this->publicData($itinerary->load($this->publicRelations()));
     }
 
     public function adminIndex()

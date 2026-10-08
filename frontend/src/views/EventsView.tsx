@@ -85,9 +85,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             alt={selectedEvent.title}
             className="h-full w-full object-cover"
             referrerPolicy="no-referrer"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/images/events/giant-lantern-fest.jpg';
-            }}
+            onError={handleHeritageImageError}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
@@ -305,9 +303,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     loading="lazy"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/events/giant-lantern-fest.jpg';
-                    }}
+                    onError={handleHeritageImageError}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { HeritageSite } from '../types';
 import { type ChatMessage, INITIAL_CHATBOT_MESSAGES, getLocalHeritageResponse } from '../data/heritageChatEngine';
+import { apiFetchSiteById } from '../api/client';
 
 interface HeritageChatbotProps {
   sites: HeritageSite[];
@@ -86,7 +87,13 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
     setIsLoading(true);
 
     try {
-      const local = getLocalHeritageResponse(messageText, sites);
+      let local = getLocalHeritageResponse(messageText, sites);
+      // Full recorded facts are fetched only when a question selects a summary site.
+      if (local.matchedSiteId && sites.find(site => site.id === local.matchedSiteId)?.isSummary) {
+        const detail = await apiFetchSiteById(local.matchedSiteId);
+        if (!detail) throw new Error('Site unavailable');
+        local = getLocalHeritageResponse(messageText, [detail]);
+      }
       const replyText = local.text;
       const matchedSiteId = local.matchedSiteId;
 

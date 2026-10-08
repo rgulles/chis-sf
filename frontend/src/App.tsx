@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import type {
   ViewType,
   HeritageSite,
@@ -9,7 +9,7 @@ import type {
 } from './types';
 
 
-import { apiFetchSites, apiFetchSiteById, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken } from './api/client';
+import { apiFetchSites, apiFetchSiteById, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken, apiFetchItineraries } from './api/client';
 import { parseHeritageRoute } from './utils/heritageNavigation';
 
 // Components
@@ -22,22 +22,26 @@ import { HeritageChatbot } from './components/HeritageChatbot';
 
 // Views
 import { HomeView } from './views/HomeView';
-import { ExploreView } from './views/ExploreView';
-import { MapView } from './views/MapView';
-import { SiteDetailView } from './views/SiteDetailView';
-import { EventsView } from './views/EventsView';
-import { PlanView } from './views/PlanView';
 import { SavedView } from './views/SavedView';
 import { AboutView } from './views/AboutView';
 import { TourismOfficeView } from './views/TourismOfficeView';
-import { AdminView } from './views/AdminView';
 import { ErrorState } from './components/ErrorState';
-import { PassportView } from './views/PassportView';
 import { apiFetchPassport } from './api/client';
+import { PassportModal } from './components/PassportModal';
+
+const ExploreView = lazy(() => import('./views/ExploreView').then(module => ({ default: module.ExploreView })));
+const MapView = lazy(() => import('./views/MapView').then(module => ({ default: module.MapView })));
+const SiteDetailView = lazy(() => import('./views/SiteDetailView').then(module => ({ default: module.SiteDetailView })));
+const EventsView = lazy(() => import('./views/EventsView').then(module => ({ default: module.EventsView })));
+const PlanView = lazy(() => import('./views/PlanView').then(module => ({ default: module.PlanView })));
+const AdminView = lazy(() => import('./views/AdminView').then(module => ({ default: module.AdminView })));
+const PassportView = lazy(() => import('./views/PassportView').then(module => ({ default: module.PassportView })));
 
 export default function App() {
   // Navigation & View State
-  const [currentView, setCurrentView] = useState<ViewType>(() => parseHeritageRoute(window.location?.hash || '').view);
+  const [currentView, setCurrentView] = useState<ViewType>(() => parseHeritageRoute(window.location?.hash || '').view === 'passport' ? 'home' : parseHeritageRoute(window.location?.hash || '').view);
+  const [passportOpen, setPassportOpen] = useState(false);
+  const passportVersion = useRef('');
   const [passportState, setPassportState] = useState<{ userId: string; data: HeritagePassport | null; error: string } | null>(null);
   const [passportRevision, setPassportRevision] = useState(0);
   const [routeSiteId, setRouteSiteId] = useState<string | null>(() => parseHeritageRoute(window.location?.hash || '').siteId);
@@ -52,6 +56,8 @@ export default function App() {
   const [sites, setSites] = useState<HeritageSite[]>([]);
   const [sitesError, setSitesError] = useState<string | null>(null);
   const [dataRetry, setDataRetry] = useState(0);
+  const [eventsRetry, setEventsRetry] = useState(0);
+  const [sessionRevision, setSessionRevision] = useState(0);
   const [eventsError, setEventsError] = useState('');
   const [eventsLoading, setEventsLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -85,18 +91,20 @@ export default function App() {
   const passportError = user && passportState?.userId === String(user.id) ? passportState.error : '';
   const passportUserId = user ? String(user.id) : null;
   useEffect(() => {
-    if (!passportUserId) return;
+    if (!passportUserId || !passportOpen || passportVersion.current === `${passportUserId}:${passportRevision}`) return;
     let cancelled = false;
     const userId = passportUserId;
-    apiFetchPassport().then(data => { if (!cancelled) setPassportState({ userId, data, error: '' }); }).catch(failure => {
+    apiFetchPassport().then(data => { if (!cancelled) { passportVersion.current = `${userId}:${passportRevision}`; setPassportState({ userId, data, error: '' }); } }).catch(failure => {
       if (!cancelled) setPassportState({ userId, data: null, error: failure instanceof Error ? failure.message : 'Unable to load your passport. Please try again.' });
     });
     return () => { cancelled = true; };
-  }, [passportUserId, passportRevision]);
+  }, [passportUserId, passportRevision, passportOpen]);
   const authRevision = useRef(0);
 
   const handleAuthenticatedLogin = (authenticatedUser: UserProfile) => {
     if (!getJwtToken()) return;
+    passportVersion.current = '';
+    setPassportState(null);
     authRevision.current += 1;
     setUser(authenticatedUser);
     setSessionExpired(false);
@@ -109,55 +117,63 @@ export default function App() {
   const [sitesLoading, setSitesLoading] = useState(true);
 
   useEffect(() => {
-    const expire = () => { authRevision.current++; setUser(null); setPassportState(null); setSessionExpired(true); };
+    const expire = () => { authRevision.current++; passportVersion.current = ''; setPassportOpen(false); setUser(null); setPassportState(null); setSessionExpired(true); };
+    const syncSession = (event: StorageEvent) => {
+      if (event.key !== 'chis_jwt_token' && event.key !== null) return;
+      authRevision.current++; passportVersion.current = ''; setPassportOpen(false); setUser(null); setPassportState(null); setSessionRevision(value => value + 1);
+    };
     window.addEventListener?.('chis:session-expired', expire);
-    return () => window.removeEventListener?.('chis:session-expired', expire);
+    window.addEventListener?.('storage', syncSession);
+    return () => { window.removeEventListener?.('chis:session-expired', expire); window.removeEventListener?.('storage', syncSession); };
   }, []);
 
-  // Load live data from Laravel API on mount
+  // Independent startup requests; navigation reuses App state. Only explicit refreshes rerun them.
+  useEffect(() => {
+    // Start only the requested page's routes before its lazy chunk arrives. Plan shares this promise.
+    if (currentView === 'plan') void apiFetchItineraries().catch(() => { /* Plan owns the visible error and Retry. */ });
+  }, [currentView]);
+
   useEffect(() => {
     let cancelled = false;
-    async function loadBackendData() {
-      setSitesLoading(true);
-      setSitesError(null);
-      setEventsLoading(true);
-      setEventsError('');
-      try {
-        const fetchedSites = await apiFetchSites();
+    setSitesLoading(true);
+    setSitesError(null);
+    apiFetchSites().then(fetchedSites => {
         if (!cancelled) {
           setSites(fetchedSites);
           setSitesError(null);
-          if (currentView !== 'site-detail') setSelectedSite((previous) => previous ? fetchedSites.find((site) => site.id === previous.id) || null : null);
           setDirectionsTargetSite((previous) => previous ? fetchedSites.find((site) => site.id === previous.id) || null : null);
         }
-      } catch (err) {
+      }).catch(err => {
         if (!cancelled) {
           setSites([]);
-          if (currentView !== 'site-detail') setSelectedSite(null);
           setDirectionsTargetSite(null);
           setSitesError(err instanceof Error ? err.message : 'Unable to load heritage sites. Please try again.');
         }
-      } finally {
+      }).finally(() => {
         if (!cancelled) setSitesLoading(false);
-      }
-      try {
-        const fetchedEvents = await apiFetchEvents();
-        if (!cancelled) { setEvents(fetchedEvents); setEventsError(''); }
-      } catch (err) {
-        if (!cancelled) { setEvents([]); setEventsError(err instanceof Error ? err.message : 'Unable to load events. Please try again.'); }
-      } finally {
-        if (!cancelled) setEventsLoading(false);
-      }
-    }
-    loadBackendData();
+      });
     return () => { cancelled = true; };
-  }, [currentView, dataRetry]);
+  }, [dataRetry]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEventsLoading(true); setEventsError('');
+    apiFetchEvents().then(fetchedEvents => {
+        if (!cancelled) { setEvents(fetchedEvents); setEventsError(''); }
+      }).catch(err => {
+        if (!cancelled) { setEvents([]); setEventsError(err instanceof Error ? err.message : 'Unable to load events. Please try again.'); }
+      }).finally(() => {
+        if (!cancelled) setEventsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [eventsRetry]);
 
   useEffect(() => {
     const syncRoute = () => {
       if (routeHash.current === window.location.hash) return;
       routeHash.current = window.location.hash;
       const route = parseHeritageRoute(window.location.hash);
+      if (route.view === 'passport') { setIsAuthOpen(true); return; }
       setSelectedSite(null);
       setDetailStatus('loading');
       setRouteSiteId(route.siteId);
@@ -199,12 +215,9 @@ export default function App() {
       if (!cancelled && revision === authRevision.current) setUser(currentUser);
     });
     return () => { cancelled = true; };
-  }, [currentView]);
+  }, [sessionRevision]);
 
-  // Sync to localStorage
-  useEffect(() => {
-    localStorage.setItem('sf_heritage_sites', JSON.stringify(sites));
-  }, [sites]);
+  // Keep only intentional small preferences; the live catalogue stays in memory.
 
   useEffect(() => {
     localStorage.setItem('sf_saved_sites', JSON.stringify(savedSiteIds));
@@ -224,6 +237,7 @@ export default function App() {
 
   // Scroll to top on view changes
   const navigateTo = (view: ViewType) => {
+    if (view === 'passport') { setIsAuthOpen(true); return; }
     const id = view === 'site-detail' ? selectedSite?.id : null;
     const hash = id ? `#/heritage/${encodeURIComponent(id)}` : `#/${view}`;
     if (window.location && window.location.hash !== hash) window.history.pushState({ chisNavigation: true }, '', hash);
@@ -236,6 +250,8 @@ export default function App() {
 
   const handleLogout = () => {
     authRevision.current += 1;
+    passportVersion.current = '';
+    setPassportOpen(false);
     void apiLogout();
     setUser(null);
     setPassportState(null);
@@ -302,15 +318,16 @@ export default function App() {
     }
 
     return (
-      <AdminView 
+      <Suspense fallback={<p role="status" className="p-6">Loading Admin…</p>}><AdminView
         user={user}
         onLogout={handleLogout}
-      />
+        onPublicDataChanged={kind => kind === 'events' ? setEventsRetry(value => value + 1) : setDataRetry(value => value + 1)}
+      /></Suspense>
     );
   }
 
   return (
-    <div id="san-fernando-app-root" className="min-h-screen flex flex-col bg-[#FDFCFB] text-[#23201F] font-sans antialiased selection:bg-[#dc2626] selection:text-white">
+    <><div id="san-fernando-app-root" inert={passportOpen && !!user ? true : undefined} className="min-h-screen flex flex-col bg-[#FDFCFB] text-[#23201F] font-sans antialiased selection:bg-[#dc2626] selection:text-white">
       {/* DESKTOP & MOBILE MAIN HEADER */}
       <Header
         currentView={currentView}
@@ -325,7 +342,7 @@ export default function App() {
 
       {/* MAIN VIEW CONTENT CONTAINER */}
       <main id="main-content-viewport" className="flex-1">
-        {currentView === 'passport' && <PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => setPassportRevision(value => value + 1)} onSite={handleSelectSite} />}
+        <Suspense fallback={<p role="status" className="p-6">Loading page…</p>}>
         {sessionExpired && <ErrorState kind="authentication" onRetry={() => setIsAuthOpen(true)} retryLabel="Sign in" />}
         {currentView === 'not-found' && <ErrorState kind="not-found" title="Page not found" onHome={() => navigateTo('home')} />}
         {sitesError && currentView !== 'site-detail' && <ErrorState message={sitesError} onRetry={() => setDataRetry(value => value + 1)} />}
@@ -388,9 +405,9 @@ export default function App() {
             site={selectedSite}
             user={user}
             onLogin={() => setIsAuthOpen(true)}
-            onPassport={() => navigateTo('passport')}
+            onPassport={() => setIsAuthOpen(true)}
             onExplore={() => navigateTo('explore')}
-            onVerified={() => setPassportRevision(value => value + 1)}
+            onVerified={() => { setPassportState(null); setPassportRevision(value => value + 1); }}
             onBack={() => window.history?.state?.chisNavigation ? window.history.back() : navigateTo('explore')}
             onOpenDirections={(site) => setDirectionsTargetSite(site)}
             isSaved={savedSiteIds.includes(selectedSite.id)}
@@ -404,7 +421,7 @@ export default function App() {
 
         {/* PAGE 7 & 8: EVENTS & EVENT DETAILS */}
         {currentView === 'events' && eventsLoading && <p role="status" className="p-6">Loading events…</p>}
-        {currentView === 'events' && eventsError && <ErrorState message={eventsError} onRetry={() => setDataRetry(value => value + 1)} />}
+        {eventsError && ['home', 'events', 'saved'].includes(currentView) && <ErrorState message={eventsError} onRetry={() => setEventsRetry(value => value + 1)} />}
         {currentView === 'events' && !eventsLoading && !eventsError && !events.length && <p role="status" className="p-6">No events are currently available.</p>}
         {currentView === 'events' && !eventsLoading && !eventsError && (
           <EventsView
@@ -422,7 +439,6 @@ export default function App() {
         {currentView === 'plan' && (
           <PlanView
             visitedSiteIds={passport ? passport.visits.map(visit => String(visit.heritage_site_id)) : undefined}
-            onPassport={() => navigateTo('passport')}
             sites={sites}
             savedSiteIds={savedSiteIds}
             catalogueReady={!sitesLoading && !sitesError}
@@ -460,7 +476,7 @@ export default function App() {
 
         {/* PAGE 12: TOURISM OFFICE & CONTACT */}
         {currentView === 'tourism-office' && <TourismOfficeView />}
-
+        </Suspense>
       </main>
 
       {/* FOOTER - Harmonized with Deep Maroon Low-Poly & Decorative Parols */}
@@ -599,7 +615,7 @@ export default function App() {
         passport={passport}
         passportError={passportError}
         onSite={handleSelectSite}
-        onOpenPassport={() => navigateTo('passport')}
+        onOpenPassport={() => { if (user) { setIsAuthOpen(false); setPassportOpen(true); } }}
       />
 
       {/* DIRECTIONS & TRANSIT MODAL */}
@@ -615,6 +631,6 @@ export default function App() {
         onSelectSite={handleSelectSite}
         onPlanRoute={() => navigateTo('plan')}
       />
-    </div>
+    </div>{passportOpen && user && <PassportModal onClose={() => setPassportOpen(false)}><Suspense fallback={<p role="status" className="p-6">Loading passport…</p>}><PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => { setPassportState(null); setPassportRevision(value => value + 1); }} onSite={site => { setPassportOpen(false); handleSelectSite(site); }} /></Suspense></PassportModal>}</>
   );
 }

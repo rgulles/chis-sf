@@ -34,6 +34,8 @@ return [
             'driver' => 'local',
             'root' => storage_path('app/private'),
             'serve' => true,
+            // Keep private signed URLs separate from unsigned public uploads.
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/private-storage',
             'throw' => false,
             'report' => false,
         ],
@@ -43,6 +45,8 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            // Fallback for development hosts without symlink support; static files still use storage:link.
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],

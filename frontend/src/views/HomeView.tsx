@@ -488,9 +488,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] select-none"
                     loading="lazy"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/events/giant-lantern-fest.jpg';
-                    }}
+                    onError={handleHeritageImageError}
                   />
                   {/* Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10 group-hover:from-black/85 transition-colors duration-300" />

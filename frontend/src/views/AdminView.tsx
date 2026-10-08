@@ -26,6 +26,7 @@ import { HERITAGE_IMAGE_PLACEHOLDER, handleHeritageImageError } from '../utils/h
 import { AdminItineraries } from '../components/AdminItineraries';
 import { AdminCheckins } from '../components/AdminCheckins';
 import { AdminTravelers } from '../components/AdminTravelers';
+import { AdminContributions } from '../components/AdminContributions';
 
 const TIME_OPTIONS = [
   '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
@@ -38,12 +39,13 @@ const TIME_OPTIONS = [
 interface AdminViewProps {
   user: UserProfile;
   onLogout: () => void;
+  onPublicDataChanged?: (kind: 'heritage' | 'events') => void;
 }
 
-type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines' | 'itineraries' | 'checkins' | 'travelers';
+type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines' | 'itineraries' | 'checkins' | 'travelers' | 'contributions';
 type FormType = 'site' | 'event' | 'image' | 'timeline';
 
-export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
+export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDataChanged }) => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -100,10 +102,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
     if (form) setFormErrors((previous) => ({ ...previous, [form]: undefined }));
     try {
       await request();
+      onPublicDataChanged?.(key.includes('event') ? 'events' : 'heritage');
       close?.();
       setNotice({ type: 'success', message });
       await fetchData();
     } catch (error) {
+      // Multi-step site edits may have committed some requests before a later request failed.
+      onPublicDataChanged?.(key.includes('event') ? 'events' : 'heritage');
       const failure = error instanceof AdminApiError ? error : new AdminApiError('The request failed. Please try again.');
       if (form) setFormErrors((previous) => ({ ...previous, [form]: failure }));
       else setNotice({ type: 'error', message: failure.message });
@@ -602,6 +607,7 @@ function parseYearNumber(yearStr: string): number {
           {renderSidebarItem('itineraries', 'Recommended Itineraries', Map)}
           {renderSidebarItem('checkins', 'Visit Verification', Map)}
           {renderSidebarItem('travelers', 'Travelers', Users)}
+          {renderSidebarItem('contributions', 'Visitor Contributions', ImageIcon)}
         </div>
       </aside>
 
@@ -651,8 +657,9 @@ function parseYearNumber(yearStr: string): number {
               
               {/* DASHBOARD TAB */}
               {activeTab === 'itineraries' && <AdminItineraries sites={sites} />}
-              {activeTab === 'checkins' && <AdminCheckins sites={sites} />}
+              {activeTab === 'checkins' && <AdminCheckins onManageHeritage={() => setActiveTab('sites')} />}
               {activeTab === 'travelers' && <AdminTravelers />}
+              {activeTab === 'contributions' && <AdminContributions />}
               {activeTab === 'dashboard' && (
                 <div className="space-y-6">
                   <h1 className="page-title text-gray-900">Admin Dashboard</h1>

@@ -101,7 +101,8 @@ class HeritageImagesTest extends TestCase
             $this->assertSame($expected, array_column($response->json('images'), 'id'));
             $response->assertJsonPath('images.2.caption', 'Later');
         }
-        foreach (['heritage-sites', 'admin/heritage-sites'] as $path) {
+        $this->getJson('/api/heritage-sites')->assertOk()->assertJsonPath('0.cover_image.id', $tieFirst->id)->assertJsonMissingPath('0.images');
+        foreach (['admin/heritage-sites'] as $path) {
             $response = $this->getJson('/api/'.$path, $headers)->assertOk();
             $this->assertSame($expected, array_column($response->json('0.images'), 'id'));
         }
