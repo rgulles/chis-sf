@@ -24,7 +24,6 @@ const chatEngine = await load('../src/data/heritageChatEngine.ts');
 const categories = ['All', 'Historical Buildings', 'Churches', 'Museums', 'Monuments', 'Cultural Sites'];
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status });
 const tick = () => new Promise(resolve => setImmediate(resolve));
-const qrHelpers = await import(`data:text/javascript;base64,${Buffer.from(compile(read('../src/utils/checkinQr.ts'), ts.ModuleKind.ESNext).replace("'qrcode'", JSON.stringify(new URL('../node_modules/qrcode/lib/index.js', import.meta.url).href))).toString('base64')}`);
 
 function visibleText(tree) {
   if (Array.isArray(tree)) return tree.map(visibleText).join('');
@@ -32,68 +31,114 @@ function visibleText(tree) {
   return typeof tree === 'string' || typeof tree === 'number' ? String(tree) : '';
 }
 
-test('check-in navigation preserves an opaque token route and passport is a normal visitor view', () => {
-  assert.equal(navigation.parseHeritageRoute(`#/check-in/${'a'.repeat(64)}`).view, 'check-in');
-  assert.equal(navigation.parseHeritageRoute('#/passport').view, 'passport');
-  assert.ok(read('../src/App.tsx').includes('setCheckinToken'));
+test('API safely distinguishes HTTP statuses, offline and malformed responses', async () => {
+  for (const [status, pattern] of [[401, /session has expired/], [403, /permission/], [404, /not found/], [409, /unavailable/], [422, /check the information/], [429, /Too many/], [500, /temporarily unavailable/], [503, /temporarily unavailable/]]) {
+    fetch = async () => reply({ message: 'SQLSTATE Exception C:\\secret.php' }, status);
+    await assert.rejects(api.apiFetchEvents(), error => error.status === status && pattern.test(error.message) && !/SQLSTATE|Exception|secret/.test(error.message));
+  }
+  fetch = async () => { throw new Error('private connection details'); };
+  await assert.rejects(api.apiFetchEvents(), error => error.code === 'network' && /Unable to connect to CHIS/.test(error.message));
+  fetch = async () => new Response('<html>private stack trace</html>');
+  await assert.rejects(api.apiFetchEvents(), error => error.code === 'malformed' && !error.message.includes('private'));
+  fetch = async () => reply([]); assert.deepEqual(await api.apiFetchEvents(), []);
 });
 
-test('official QR uses deployed origin/subpath and generates printable escaped SVG with real QR geometry', async () => {
-  const token = 'a'.repeat(64), url = qrHelpers.checkinUrl(token, 'https://chis.example/visitor/?old=value#/admin');
-  assert.equal(url, `https://chis.example/visitor/#/check-in/${token}`);
-  assert.throws(() => qrHelpers.checkinUrl('12', 'https://chis.example'));
-  assert.throws(() => qrHelpers.checkinUrl(token, 'javascript:alert(1)'));
-  const svg = await qrHelpers.printableCheckinSvg('Site <script> & "name"', url);
-  assert.ok(svg.includes('CHIS Heritage Check-In') && svg.includes('Scan to verify your visit'));
-  assert.ok(svg.includes('&lt;script&gt;') && svg.includes('&amp;') && !svg.includes('<script>'));
-  assert.ok(svg.includes('<path') && svg.includes('viewBox="0 0') && svg.includes('x="50" y="50"'));
-  assert.equal(svg.includes('latitude'), false);
+test('authenticated 401 clears matching session; stale 401 preserves newer login', async () => {
+  const browser = new EventTarget(), previous = globalThis.window;
+  globalThis.window = browser;
+  let expired = 0; browser.addEventListener('chis:session-expired', () => expired++);
+  try {
+    localStorage.setItem('chis_jwt_token', 'old-token'); localStorage.setItem('sf_user_profile', '{}');
+    fetch = async () => reply({}, 401);
+    await assert.rejects(api.apiFetchPassport(), /session has expired/);
+    assert.equal(api.getJwtToken(), null); assert.equal(localStorage.getItem('sf_user_profile'), null); assert.equal(expired, 1);
+    localStorage.setItem('chis_jwt_token', 'old-token');
+    fetch = async () => { localStorage.setItem('chis_jwt_token', 'new-token'); return reply({}, 401); };
+    await assert.rejects(api.apiFetchPassport()); assert.equal(api.getJwtToken(), 'new-token'); assert.equal(expired, 1);
+  } finally { globalThis.window = previous; }
+});
+
+test('reusable error states offer accessible messages and retries', () => {
+  for (const kind of ['network', 'server', 'load', 'authentication', 'permission', 'not-found', 'validation']) {
+    let retried = 0;
+    const view = harness('../src/components/ErrorState.tsx', 'ErrorState', { kind, onRetry: () => retried++ });
+    const tree = view.render(); view.flush();
+    assert.equal(tree.props.role, 'alert'); assert.equal(tree.props.tabIndex, -1);
+    find(tree, node => node.type === 'button').props.onClick(); assert.equal(retried, 1);
+    assert.ok(visibleText(tree).length > 30);
+  }
+});
+
+test('ErrorBoundary renders safe fallback and both recovery actions', () => {
+  const exports = {}, browser = { location: { hash: '', reload() { browser.reloaded = true; } } };
+  vm.runInNewContext(compile(read('../src/components/ErrorBoundary.tsx').replace('import.meta.env.DEV', 'false')), {
+    exports, window: browser, console,
+    require(name) {
+      if (name === 'react') return require('react');
+      if (name === 'react/jsx-runtime') return require(name);
+      if (name === './ErrorState') return { ErrorState: props => harness('../src/components/ErrorState.tsx', 'ErrorState', props).render() };
+      throw new Error(name);
+    },
+  });
+  const boundary = new exports.ErrorBoundary({ children: 'Healthy CHIS' });
+  assert.equal(visibleText(boundary.render()), 'Healthy CHIS');
+  boundary.state = { ...boundary.state, ...exports.ErrorBoundary.getDerivedStateFromError(new Error('SQLSTATE private stack')) };
+  boundary.componentDidCatch(new Error('private'), { componentStack: 'private' });
+  const fallback = boundary.render().props.children;
+  const tree = fallback.type(fallback.props), text = visibleText(tree);
+  assert.ok(text.includes('Something went wrong') && text.includes("We couldn't load this part of CHIS."));
+  assert.equal(/SQLSTATE|private|stack/.test(text), false);
+  boundary.setState = update => { boundary.state = { ...boundary.state, ...(typeof update === 'function' ? update(boundary.state) : update) }; };
+  find(tree, node => node.type === 'button' && visibleText(node) === 'Try Again').props.onClick();
+  assert.equal(boundary.state.failed, false); assert.equal(boundary.state.revision, 1);
+  find(tree, node => node.type === 'button' && visibleText(node) === 'Return Home').props.onClick();
+  assert.equal(browser.location.hash, '#/home'); assert.equal(browser.reloaded, true);
+});
+
+test('old token and invalid routes show not found; Passport remains a visitor view', () => {
+  assert.equal(navigation.parseHeritageRoute('#/check-in/' + 'a'.repeat(64)).view, 'not-found');
+  assert.equal(navigation.parseHeritageRoute('#/bogus').view, 'not-found');
+  assert.equal(navigation.parseHeritageRoute('#/passport').view, 'passport');
+  assert.equal(read('../src/App.tsx').includes('setCheckinToken'), false);
 });
 
 test('check-in and passport API use authenticated verification with only transient fix fields', async () => {
   localStorage.setItem('chis_jwt_token', 'visitor-token');
-  const requests = [], token = 'b'.repeat(64);
+  const requests = [], token = '1';
   fetch = async (url, options) => {
     requests.push({ url, ...options });
-    if (url.endsWith('/verify')) return reply({ status: 'verified', points_earned: 100, visit: { id: 3, heritage_site_id: 1, verified_at: '2026-10-08T12:00:00Z', points_awarded: 100 } }, 201);
+    if (url.endsWith('/verify-visit')) return reply({ status: 'verified', points_earned: 100, visit: { id: 3, heritage_site_id: 1, verified_at: '2026-10-08T12:00:00Z', points_awarded: 100 } }, 201);
     return reply({ enabled: true, coordinates_configured: true, site: rawSite });
   };
-  assert.equal((await api.apiResolveCheckin(token)).site.id, '1');
-  assert.equal(requests[0].headers.Authorization, undefined);
-  assert.equal((await api.apiVerifyCheckin(token, { latitude: 15, longitude: 120, accuracy: 10 })).points_earned, 100);
-  assert.equal(requests[1].headers.Authorization, 'Bearer visitor-token');
-  assert.deepEqual(JSON.parse(requests[1].body), { latitude: 15, longitude: 120, accuracy: 10 });
+  assert.equal((await api.apiVerifyVisit(token, { latitude: 15, longitude: 120, accuracy: 10 })).points_earned, 100);
+  assert.equal(requests[0].headers.Authorization, 'Bearer visitor-token');
+  assert.deepEqual(JSON.parse(requests[0].body), { latitude: 15, longitude: 120, accuracy: 10 });
   fetch = async () => reply({ code: 'outside', message: "You're outside the verification area for this heritage site." }, 422);
-  await assert.rejects(api.apiVerifyCheckin(token, { latitude: 0, longitude: 0, accuracy: 5 }), /outside/);
+  await assert.rejects(api.apiVerifyVisit(token, { latitude: 0, longitude: 0, accuracy: 5 }), /outside/);
   fetch = async () => reply({}, 401); await assert.rejects(api.apiFetchPassport(), /sign in/);
   fetch = async () => reply({}); await assert.rejects(api.apiFetchPassport(), /Invalid passport/);
 });
 
 const visitor = { id: '2', name: 'Real visitor', email: 'visitor@example.test', role: 'traveler' };
-const checkinProps = { token: 'a'.repeat(64), user: visitor, onLogin() {}, onPassport() {}, onSite() {}, onExplore() {}, onVerified() {} };
+const checkinProps = { site: { id: '1', name: 'Heritage site' }, user: visitor, onLogin() {}, onPassport() {}, onSite() {}, onExplore() {}, onVerified() {} };
 const checkinContext = async () => ({ enabled: true, coordinates_configured: true, site: await mappedSite() });
 
-test('check-in distinguishes invalid QR, guest, disabled and coordinate-unavailable states', async () => {
-  const context = await checkinContext();
-  for (const state of ['invalid', 'guest', 'disabled', 'unavailable']) {
-    let signIn = false;
-    const view = harness('../src/views/CheckinView.tsx', 'CheckinView', { ...checkinProps, user: state === 'guest' ? null : visitor, onLogin: () => { signIn = true; } }, {
-      '../api/client': { apiResolveCheckin: async () => { if (state === 'invalid') throw new Error('This QR is invalid, revoked, or the site is unavailable.'); return { ...context, enabled: state !== 'disabled', coordinates_configured: state !== 'unavailable' }; } },
-    });
-    assert.ok(allText(view.render()).includes('Loading')); view.flush(); await tick();
-    const tree = view.render(), text = allText(tree);
-    assert.equal(find(tree, node => node.props?.id === 'verify-location'), undefined);
-    if (state === 'invalid') assert.ok(text.includes('invalid'));
-    if (state === 'disabled') assert.ok(text.includes('disabled'));
-    if (state === 'unavailable') assert.ok(text.includes('not ready'));
-    if (state === 'guest') { find(tree, node => node.type === 'button' && allText(node).includes('Sign in')).props.onClick(); assert.equal(signIn, true); }
-  }
+test('Site Detail offers enabled verification, hides disabled action, and guests sign in before locating', async () => {
+  let login = 0, fixes = 0;
+  const modules = { '../api/client': { apiCheckinAvailability: async () => true }, __navigator: { geolocation: { getCurrentPosition() { fixes++; } } } };
+  const view = harness('../src/components/VisitVerification.tsx', 'VisitVerification', { ...checkinProps, user: null, onLogin: () => login++ }, modules);
+  view.render(); view.flush(); await tick();
+  const action = find(view.render(), node => node.props?.id === 'verify-location');
+  assert.equal(allText(action), 'Verify My Visit'); assert.equal(fixes, 0);
+  action.props.onClick(); assert.equal(login, 1); assert.equal(fixes, 0);
+  const disabled = harness('../src/components/VisitVerification.tsx', 'VisitVerification', checkinProps, { '../api/client': { apiCheckinAvailability: async () => false } });
+  disabled.render(); disabled.flush(); await tick(); assert.equal(disabled.render(), null);
 });
 
 test('check-in requests one high accuracy fix, locks duplicate clicks and handles permission denial', async () => {
   const context = await checkinContext(); let callback, options, calls = 0;
-  const view = harness('../src/views/CheckinView.tsx', 'CheckinView', checkinProps, {
-    '../api/client': { apiResolveCheckin: async () => context }, __window: { isSecureContext: true },
+  const view = harness('../src/components/VisitVerification.tsx', 'VisitVerification', checkinProps, {
+    '../api/client': { apiCheckinAvailability: async () => true }, __window: { isSecureContext: true },
     __navigator: { geolocation: { getCurrentPosition(_success, failure, settings) { calls++; callback = failure; options = settings; } } },
   });
   view.render(); view.flush(); await tick();
@@ -104,13 +149,14 @@ test('check-in requests one high accuracy fix, locks duplicate clicks and handle
   callback({ code: 1 }); assert.ok(allText(view.render()).includes('permission denied'));
   assert.equal(find(view.render(), node => node.props?.id === 'verify-location').props.disabled, false);
   verify.props.onClick(); callback({ code: 2 }); assert.ok(allText(view.render()).includes('Location unavailable'));
+  verify.props.onClick(); callback({ code: 3 }); assert.ok(allText(view.render()).includes('timed out'));
 });
 
 for (const state of ['outside', 'weak_accuracy', 'verified', 'already_visited']) {
   test(`check-in handles ${state} without showing precise location or fabricated rewards`, async () => {
     const context = await checkinContext(); let success, captured, refreshed = 0;
-    const view = harness('../src/views/CheckinView.tsx', 'CheckinView', { ...checkinProps, onVerified: () => refreshed++ }, {
-      '../api/client': { apiResolveCheckin: async () => context, apiVerifyCheckin: async (_token, fix) => {
+    const view = harness('../src/components/VisitVerification.tsx', 'VisitVerification', { ...checkinProps, onVerified: () => refreshed++ }, {
+      '../api/client': { apiCheckinAvailability: async () => true, apiVerifyVisit: async (_token, fix) => {
         captured = fix;
         if (state === 'outside') throw new Error("You're outside the verification area for this heritage site.");
         if (state === 'weak_accuracy') throw new Error('GPS accuracy is weak or unavailable.');
@@ -123,29 +169,29 @@ for (const state of ['outside', 'weak_accuracy', 'verified', 'already_visited'])
     const text = visibleText(view.render()); assert.equal(text.includes('15.028391234'), false); assert.equal(text.includes('120.693141234'), false);
     assert.equal(localStorage.getItem('visitor_location'), null);
     if (state === 'verified') { assert.ok(text.includes('Visit Verified') && text.includes('+100 Points') && text.includes('stamp unlocked')); assert.equal(refreshed, 1); }
-    else if (state === 'already_visited') { assert.ok(text.includes('Already visited') && text.includes('No additional points')); assert.equal(text.includes('+100 Points'), false); }
+    else if (state === 'already_visited') { assert.ok(text.includes('Already Visited') && text.includes('No additional points')); assert.equal(text.includes('+100 Points'), false); }
     else { assert.equal(refreshed, 0); assert.ok(text.includes(state === 'outside' ? 'outside' : 'accuracy is weak')); }
   });
 }
 
 test('late geolocation after leaving check-in is ignored and insecure contexts cannot verify', async () => {
   const context = await checkinContext(); let callback, verifies = 0;
-  const modules = { '../api/client': { apiResolveCheckin: async () => context, apiVerifyCheckin: async () => verifies++ }, __window: { isSecureContext: true }, __navigator: { geolocation: { getCurrentPosition(success) { callback = success; } } } };
-  const view = harness('../src/views/CheckinView.tsx', 'CheckinView', checkinProps, modules);
+  const modules = { '../api/client': { apiCheckinAvailability: async () => true, apiVerifyVisit: async () => verifies++ }, __window: { isSecureContext: true }, __navigator: { geolocation: { getCurrentPosition(success) { callback = success; } } } };
+  const view = harness('../src/components/VisitVerification.tsx', 'VisitVerification', checkinProps, modules);
   view.render(); view.flush(); await tick(); find(view.render(), node => node.props?.id === 'verify-location').props.onClick(); view.unmount();
   await callback({ coords: { latitude: 15, longitude: 120, accuracy: 5 } }); assert.equal(verifies, 0);
-  const insecure = harness('../src/views/CheckinView.tsx', 'CheckinView', checkinProps, { ...modules, __window: { isSecureContext: false } });
+  const insecure = harness('../src/components/VisitVerification.tsx', 'VisitVerification', checkinProps, { ...modules, __window: { isSecureContext: false } });
   insecure.render(); insecure.flush(); await tick(); find(insecure.render(), node => node.props?.id === 'verify-location').props.onClick(); assert.ok(allText(insecure.render()).includes('requires HTTPS'));
 });
 
-test('expired check-in authentication opens sign-in while keeping the official QR flow', async () => {
-  const context = await checkinContext(); let callback, expired = 0;
-  const view = harness('../src/views/CheckinView.tsx', 'CheckinView', { ...checkinProps, onSessionExpired: () => expired++ }, {
-    '../api/client': { ...api, apiResolveCheckin: async () => context, apiVerifyCheckin: async () => { throw new api.CheckinApiError('Please sign in again to continue.', 401, 'error'); } },
+test('verification displays session expiration safely', async () => {
+  let callback;
+  const view = harness('../src/components/VisitVerification.tsx', 'VisitVerification', checkinProps, {
+    '../api/client': { apiCheckinAvailability: async () => true, apiVerifyVisit: async () => { throw new api.ApiError('Your session has expired. Please sign in again.', 401); } },
     __window: { isSecureContext: true }, __navigator: { geolocation: { getCurrentPosition(success) { callback = success; } } },
   });
   view.render(); view.flush(); await tick(); find(view.render(), node => node.props?.id === 'verify-location').props.onClick(); await callback({ coords: { latitude: 15, longitude: 120, accuracy: 10 } });
-  assert.equal(expired, 1); assert.ok(allText(view.render()).includes('sign in again'));
+  assert.ok(allText(view.render()).includes('sign in again'));
 });
 
 test('Passport uses real totals and separates historical stamps from currently eligible progress', async () => {
@@ -161,14 +207,6 @@ test('Passport uses real totals and separates historical stamps from currently e
   assert.ok(allText(view.render({ ...props, passport: null, error: 'API unavailable' })).includes('Retry Passport'));
 });
 
-test('Site Detail availability is independent and never exposes a QR or direct check-in action', async () => {
-  const view = harness('../src/components/SiteCheckinNotice.tsx', 'SiteCheckinNotice', { siteId: '1' }, { '../api/client': { apiCheckinAvailability: async () => true } });
-  view.render(); view.flush(); await tick(); const tree = view.render();
-  assert.ok(allText(tree).includes('scan its official QR')); assert.equal(find(tree, node => node.type === 'button'), undefined);
-  const failed = harness('../src/components/SiteCheckinNotice.tsx', 'SiteCheckinNotice', { siteId: '1' }, { '../api/client': { apiCheckinAvailability: async () => { throw new Error('unavailable'); } } });
-  failed.render(); failed.flush(); await tick(); assert.equal(failed.render(), null);
-});
-
 test('itinerary passport labels are optional and do not change custom IDs or order', async () => {
   const site = await mappedSite(); localStorage.setItem('sf_custom_itinerary', '["1"]');
   const props = { sites: [site], savedSiteIds: [], onSelectSite() {}, onExploreClick() {} };
@@ -180,23 +218,18 @@ test('itinerary passport labels are optional and do not change custom IDs or ord
   assert.equal(localStorage.getItem('sf_custom_itinerary'), '["1"]');
 });
 
-test('Admin check-in enables with radius, previews/downloads QR and confirms token rotation without altering visits', async () => {
-  const config = { id: 1, heritage_site_id: 1, public_token: 'a'.repeat(64), enabled: true, radius_meters: 100, verified_visitors: 2 };
-  let saved, rotations = 0;
-  const modules = { '../api/client': { apiFetchCheckinConfigs: async () => [config], apiSaveCheckinConfig: async (id, enabled, radius) => { saved = [id, enabled, radius]; return { ...config, enabled, radius_meters: radius }; }, apiRotateCheckinToken: async () => { rotations++; return { ...config, public_token: 'b'.repeat(64) }; } }, '../utils/checkinQr': { ...qrHelpers, publicCheckinBase: () => 'https://chis.example/' } };
+test('Admin visit verification saves enable/radius and has no token controls', async () => {
+  const config = { id: 1, heritage_site_id: 1, enabled: true, radius_meters: 100, verified_visitors: 2 };
+  let saved;
+  const modules = { '../api/client': { apiFetchCheckinConfigs: async () => [config], apiSaveCheckinConfig: async (id, enabled, radius) => { saved = [id, enabled, radius]; return { ...config, enabled, radius_meters: radius }; } } };
   const view = harness('../src/components/AdminCheckins.tsx', 'AdminCheckins', { sites: [rawSite] }, modules);
   view.render(); view.flush(); await tick();
   find(view.render(), node => node.props?.id === 'checkin-admin-site').props.onChange({ target: { value: '1' } });
   find(view.render(), node => node.props?.id === 'checkin-radius').props.onChange({ target: { value: '75' } });
   find(view.render(), node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await tick();
   assert.deepEqual(saved, ['1', true, 75]);
-  find(view.render(), node => node.props?.id === 'checkin-qr-1').props.onClick(); await tick(); await tick();
-  const download = find(view.render(), node => node.props?.id === 'checkin-qr-download');
-  assert.equal(download.props.download, 'chis-heritage-checkin-1.svg'); assert.ok(download.props.href.startsWith('data:image/svg+xml'));
-  find(view.render(), node => node.type === 'button' && allText(node) === 'Rotate QR').props.onClick(); assert.equal(rotations, 0);
-  assert.ok(find(view.render(), node => node.props?.role === 'dialog'));
-  find(view.render(), node => node.type === 'button' && allText(node) === 'Confirm rotation').props.onClick(); await tick();
-  assert.equal(rotations, 1); assert.ok(allText(view.render()).includes('history is preserved')); assert.equal(find(view.render(), node => node.props?.id === 'official-checkin-qr'), undefined);
+  const text = allText(view.render()); assert.ok(text.includes('Visit Verification') && text.includes('2 verified visitors'));
+  assert.equal(/QR|public_token|Rotate/.test(text), false);
 });
 
 beforeEach(() => {
@@ -238,7 +271,7 @@ test('API distinguishes valid empty catalogue from HTTP, network and malformed f
     async () => new Response('<html>error</html>'),
   ]) {
     fetch = request;
-    await assert.rejects(api.apiFetchSites(), /Unable to load heritage sites/);
+    await assert.rejects(api.apiFetchSites(), /Unable to load|Unable to connect|temporarily unavailable|unexpected response/);
   }
 });
 
@@ -300,7 +333,11 @@ function harness(path, exportName, initialProps = {}, modules = {}) {
       if (name.endsWith('/data/heritageChatEngine')) return chatEngine;
       if (name.endsWith('/utils/heritageNavigation')) return navigation;
       if (name === 'react') return hooks;
-      if (name === 'react/jsx-runtime') return require(name);
+      if (name.endsWith('/ErrorState')) return { ErrorState: props => harness('../src/components/ErrorState.tsx', 'ErrorState', props).render() };
+      if (name === 'react/jsx-runtime') {
+        const runtime = require(name);
+        return { ...runtime, jsx: (type, props, key) => type?.name === 'ErrorState' ? type(props) : runtime.jsx(type, props, key), jsxs: (type, props, key) => type?.name === 'ErrorState' ? type(props) : runtime.jsxs(type, props, key) };
+      }
       if (modules[name]) return modules[name];
       if (name.endsWith('/utils/heritageMap')) return mapHelpers;
       if (name.endsWith('/utils/customItinerary')) return customHelpers;
@@ -356,7 +393,7 @@ for (const failure of [false, true]) {
     view.flush(); await tick();
     tree = view.render();
     assert.equal(find(tree, node => node.type?.displayName === 'SiteDetailView'), undefined);
-    assert.equal(Boolean(find(tree, node => node.props?.role === 'alert')), failure);
+    assert.ok(find(tree, node => node.props?.role === 'alert'));
     const header = find(tree, node => node.type?.displayName === 'Header');
     header.props.onNavigate('home');
     tree = view.render();
@@ -584,7 +621,7 @@ test('invalid, nonexistent and archived direct URLs are unavailable; request fai
   view.render(); view.flush(); await tick();
   assert.ok(allText(view.render()).includes('Unable to load this heritage site'));
   failed = false;
-  find(view.render(), node => node.type === 'button' && node.props.children === 'Try again').props.onClick();
+  find(view.render(), node => node.type === 'button' && node.props.children === 'Try Again').props.onClick();
   view.render(); view.flush(); await tick();
   assert.equal(detailNode(view.render()).props.site.id, '1');
 });
@@ -593,7 +630,7 @@ test('direct API keeps archived/404 unavailable and distinguishes network, serve
   fetch = async () => reply({}, 404); assert.equal(await api.apiFetchSiteById('1'), null);
   for (const request of [async () => reply({}, 500), async () => { throw new Error('offline'); },
     async () => reply({ id: 2, status: 'active' }), async () => reply({ id: 1, status: 'archived' })]) {
-    fetch = request; await assert.rejects(api.apiFetchSiteById('1'), /Unable to load this heritage site/);
+    fetch = request; await assert.rejects(api.apiFetchSiteById('1'), /Unable to load|Unable to connect|temporarily unavailable|unexpected response/);
   }
   fetch = async url => { assert.equal(url, '/api/heritage-sites/1'); return reply({ ...rawSite, timelines: [{ year: 'circa 1800', title: 'Early', description: 'History', sort_order: 0 }], opening_hours: 'Saved hours', images: [{ id: 1, image_path: 'heritage-sites/live.jpg', caption: 'Saved caption' }] }); };
   const site = await api.apiFetchSiteById('1');
@@ -1113,7 +1150,7 @@ test('itinerary API maps ordered current site relationships and hides archived p
   assert.equal((await api.apiFetchItineraryById('7')).stops.length, 2);
   fetch = async () => reply({}, 404); assert.equal(await api.apiFetchItineraryById('7'), null);
   for (const response of [() => reply({}, 500), () => reply({}), () => reply([{ ...route, stops: [{ ...route.stops[0], heritage_site_id: 99 }] }]), () => { throw new Error('offline'); }]) {
-    fetch = async () => response(); await assert.rejects(api.apiFetchItineraries(), /Unable to load recommended/);
+    fetch = async () => response(); await assert.rejects(api.apiFetchItineraries(), /Unable to load|Unable to connect|temporarily unavailable|unexpected response/);
   }
 });
 

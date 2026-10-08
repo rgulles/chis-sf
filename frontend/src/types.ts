@@ -54,6 +54,7 @@ export interface SiteEtiquette {
   preservationNotes: string[];
 }
 
+/** Deprecated local prototype metadata; never used by the live read-aloud feature. */
 export interface AudioStoryData {
   title: string;
   duration: string;
@@ -106,7 +107,6 @@ export interface HeritageSite {
   etiquetteRules?: SiteEtiquette;
   nhcpPlaqueCode?: string; // 4-digit code e.g. "1870"
   panoramaHotspots?: Hotspot[];
-  qrCodeId?: string;
   scanCount?: number;
   badgeName?: string;
   isFeatured?: boolean;
@@ -191,14 +191,13 @@ export interface UserProfile {
 }
 
 export type ViewType = 
-  | 'check-in'
+  | 'not-found'
   | 'passport'
   | 'home'
   | 'explore'
   | 'map'
   | 'site-detail'
   | 'interactive-history'
-  | 'qr-experience'
   | 'events'
   | 'event-detail'
   | 'plan'
@@ -225,12 +224,6 @@ export interface HeritagePassport {
   eligible_sites: HeritageSite[];
 }
 
-export interface CheckinContext {
-  enabled: boolean;
-  coordinates_configured: boolean;
-  site: HeritageSite;
-}
-
 export interface CheckinResult {
   status: 'verified' | 'already_visited';
   points_earned: number;
@@ -240,7 +233,6 @@ export interface CheckinResult {
 export interface CheckinConfig {
   id: number;
   heritage_site_id: number;
-  public_token: string;
   enabled: boolean;
   radius_meters: number;
   verified_visitors?: number;

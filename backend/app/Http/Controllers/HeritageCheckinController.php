@@ -13,27 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class HeritageCheckinController extends Controller
 {
-    // Public responses deliberately exclude QR tokens, creators and precise site coordinates.
+    // Public responses deliberately exclude legacy tokens, creators and precise site coordinates.
     public static function siteData(HeritageSite $site): array
     {
         return [...$site->only(['id', 'name', 'address', 'category', 'year_built', 'status']), 'images' => $site->images];
-    }
-
-    private function config(string $token, bool $lock = false): HeritageCheckinConfig
-    {
-        abort_unless(preg_match('/^[a-f0-9]{64}$/D', $token), 404);
-        $query = HeritageCheckinConfig::where('public_token', $token);
-
-        return ($lock ? $query->lockForUpdate() : $query)->firstOrFail();
-    }
-
-    public function resolve(string $token)
-    {
-        $config = $this->config($token);
-        $site = $config->heritageSite;
-        abort_unless($site && $site->status === 'active', 404);
-
-        return ['enabled' => $config->enabled, 'coordinates_configured' => HeritageGeofence::hasCoordinates($site), 'site' => self::siteData($site)];
     }
 
     public function availability(HeritageSite $heritageSite)
@@ -44,7 +27,7 @@ class HeritageCheckinController extends Controller
             && HeritageCheckinConfig::where('heritage_site_id', $heritageSite->id)->where('enabled', true)->exists()];
     }
 
-    public function verify(Request $request, string $token)
+    public function verify(Request $request, HeritageSite $heritageSite)
     {
         $data = $request->validate([
             'latitude' => 'required|numeric|between:-90,90',
@@ -52,12 +35,12 @@ class HeritageCheckinController extends Controller
             'accuracy' => 'nullable|numeric|between:0,10000',
         ]);
         // Serialize awards for each authenticated user; unique(user, site) is the DB backstop.
-        return DB::transaction(function () use ($request, $token, $data) {
+        return DB::transaction(function () use ($request, $heritageSite, $data) {
             User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-            $config = $this->config($token, true);
-            $site = HeritageSite::whereKey($config->heritage_site_id)->lockForUpdate()->firstOrFail();
+            $site = HeritageSite::whereKey($heritageSite->id)->lockForUpdate()->firstOrFail();
+            $config = HeritageCheckinConfig::where('heritage_site_id', $site->id)->lockForUpdate()->first();
             abort_unless($site->status === 'active', 404);
-            if (! $config->enabled) return response()->json(['code' => 'disabled', 'message' => 'Check-in is currently disabled for this site.'], 409);
+            if (! $config || ! $config->enabled) return response()->json(['code' => 'disabled', 'message' => 'Visit verification is currently disabled for this site.'], 409);
             if (! HeritageGeofence::hasCoordinates($site)) return response()->json(['code' => 'unavailable', 'message' => 'This site is not ready for location verification.'], 409);
             $existing = HeritageVisit::where('user_id', $request->user()->id)->where('heritage_site_id', $site->id)->first();
             if ($existing) return ['status' => 'already_visited', 'visit' => $existing->only(['id', 'heritage_site_id', 'verified_at', 'points_awarded']), 'points_earned' => 0];
@@ -68,7 +51,7 @@ class HeritageCheckinController extends Controller
             }
             $distance = HeritageGeofence::distance((float) $data['latitude'], (float) $data['longitude'], (float) $site->latitude, (float) $site->longitude);
             if ($distance > $config->radius_meters) return response()->json(['code' => 'outside', 'message' => "You're outside the verification area for this heritage site.", 'approximate_distance_meters' => (int) round($distance)], 422);
-            $visit = HeritageVisit::create(['user_id' => $request->user()->id, 'heritage_site_id' => $site->id, 'verification_method' => 'qr_geofence', 'distance_meters' => $distance, 'accuracy_meters' => $accuracy, 'points_awarded' => 100, 'verified_at' => now()]);
+            $visit = HeritageVisit::create(['user_id' => $request->user()->id, 'heritage_site_id' => $site->id, 'verification_method' => 'geofence', 'distance_meters' => $distance, 'accuracy_meters' => $accuracy, 'points_awarded' => 100, 'verified_at' => now()]);
 
             return response()->json(['status' => 'verified', 'visit' => $visit->only(['id', 'heritage_site_id', 'verified_at', 'points_awarded']), 'points_earned' => 100], 201);
         }, 3);
@@ -97,7 +80,7 @@ class HeritageCheckinController extends Controller
         return DB::transaction(function () use ($request, $heritageSite, $data) {
             $site = HeritageSite::whereKey($heritageSite->id)->lockForUpdate()->firstOrFail();
             if ($data['enabled'] && ($site->status !== 'active' || ! HeritageGeofence::hasCoordinates($site))) {
-                throw ValidationException::withMessages(['enabled' => 'Only active sites with valid coordinates can enable check-in.']);
+                throw ValidationException::withMessages(['enabled' => 'Only active sites with valid coordinates can enable visit verification.']);
             }
             $config = HeritageCheckinConfig::firstOrCreate(['heritage_site_id' => $site->id], ['public_token' => HeritageCheckinConfig::generateToken(), 'created_by' => $request->user()->id]);
             $config->update($data);
@@ -106,13 +89,4 @@ class HeritageCheckinController extends Controller
         }, 3);
     }
 
-    public function rotate(HeritageSite $heritageSite)
-    {
-        return DB::transaction(function () use ($heritageSite) {
-            $config = HeritageCheckinConfig::where('heritage_site_id', $heritageSite->id)->lockForUpdate()->firstOrFail();
-            $config->update(['public_token' => HeritageCheckinConfig::generateToken(), 'token_rotated_at' => now()]);
-
-            return $config;
-        }, 3);
-    }
 }

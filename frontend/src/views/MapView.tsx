@@ -323,7 +323,7 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   return (
-    <div id="explore-map-combined-page" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-28 font-outfit">
+    <div id="explore-map-combined-page" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-28 font-sans">
       {/* Header Banner - Editorial & Modern */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -333,15 +333,15 @@ export const MapView: React.FC<MapViewProps> = ({
       >
         <div className="space-y-2.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-outfit text-xs font-bold uppercase tracking-[0.18em] text-[#7e1925]">
+            <span className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-[#7e1925]">
               Heritage Directory & Interactive Map
             </span>
-            <span className="font-outfit text-xs text-[#8a7171]">• City of San Fernando, Pampanga</span>
+            <span className="font-sans text-xs text-[#8a7171]">• City of San Fernando, Pampanga</span>
           </div>
-          <h1 id="explore-map-header-title" className="font-outfit text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e1b19] tracking-tight leading-tight">
+          <h1 id="explore-map-header-title" className="page-title text-[#1e1b19]">
             Explore San Fernando Heritage
           </h1>
-          <p className="font-outfit text-base text-[#574141] max-w-3xl leading-relaxed font-normal">
+          <p className="font-sans text-base text-[#574141] max-w-3xl leading-relaxed font-normal">
             Discover heritage sites across the City of San Fernando, Pampanga.
           </p>
         </div>
@@ -391,7 +391,7 @@ export const MapView: React.FC<MapViewProps> = ({
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-start gap-3 rounded-2xl bg-[#faf2ee] border border-[#e8dfd5] p-4 text-sm font-outfit text-[#1e1b19] shadow-xs"
+            className="flex items-start gap-3 rounded-2xl bg-[#faf2ee] border border-[#e8dfd5] p-4 text-sm font-sans text-[#1e1b19] shadow-xs"
           >
             <Info className="w-5 h-5 flex-shrink-0 text-[#7e1925] mt-0.5" />
             <p className="leading-relaxed">
@@ -416,7 +416,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     aria-pressed={activeCategory === cat}
                     id={`filter-cat-${cat.replace(/\s+/g, '-').toLowerCase()}`}
                     onClick={() => handleCategorySelect(cat as CategoryType | 'All')}
-                    className={`flex-shrink-0 rounded-full px-4 py-2 font-outfit text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    className={`flex-shrink-0 rounded-full px-4 py-2 font-sans text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-[#7e1925] text-white border border-[#7e1925] shadow-xs'
                         : 'border border-[#e8dfd5] bg-[#fbf6f1] text-[#1e1b19] hover:border-[#7e1925] hover:bg-white'
@@ -429,7 +429,7 @@ export const MapView: React.FC<MapViewProps> = ({
             </div>
 
             {/* Map View Switch */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-[#e8dfd5] font-outfit text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-[#e8dfd5] font-sans text-sm">
               <div className="flex items-center gap-5">
 
 
@@ -448,7 +448,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </motion.div>
 
           {/* Results Count Bar */}
-          <div className="flex items-center justify-between font-outfit text-xs font-semibold text-[#574141] px-1 uppercase tracking-wider">
+          <div className="flex items-center justify-between font-sans text-xs font-semibold text-[#574141] px-1 uppercase tracking-wider">
             <span>Showing <strong>{filteredAndSortedSites.length}</strong> heritage destinations</span>
             {activeCategory !== 'All' && (
               <span className="text-[#7e1925]">Category: {activeCategory}</span>
@@ -484,7 +484,7 @@ export const MapView: React.FC<MapViewProps> = ({
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
                         {/* Category Badge with Singular Label */}
-                        <span className="absolute top-3.5 left-3.5 rounded-full bg-white/95 backdrop-blur-md px-3 py-1 font-outfit text-[11px] font-bold text-[#7e1925] border border-white/40 shadow-xs uppercase tracking-wider">
+                        <span className="absolute top-3.5 left-3.5 rounded-full bg-white/95 backdrop-blur-md px-3 py-1 font-sans text-[11px] font-bold text-[#7e1925] border border-white/40 shadow-xs uppercase tracking-wider">
                           {formatCategoryLabel(site.category)}
                         </span>
 
@@ -504,7 +504,7 @@ export const MapView: React.FC<MapViewProps> = ({
                         </button>
 
                         {/* Known Date */}
-                        <div className="absolute bottom-3 left-3.5 flex items-center gap-2 font-outfit text-xs font-semibold text-white">
+                        <div className="absolute bottom-3 left-3.5 flex items-center gap-2 font-sans text-xs font-semibold text-white">
                           {site.yearBuilt && <span className="rounded-md bg-black/65 backdrop-blur-xs px-2.5 py-0.5 border border-white/20">
                             {site.yearBuilt}
                           </span>}
@@ -517,18 +517,18 @@ export const MapView: React.FC<MapViewProps> = ({
                       {/* Body Content */}
                       <div className="p-5 sm:p-6">
                         {site.nativeName && site.nativeName !== site.name && (
-                          <span className="font-outfit text-xs font-medium text-[#b45309] block mb-1">
+                          <span className="font-sans text-xs font-medium text-[#b45309] block mb-1">
                             {site.nativeName}
                           </span>
                         )}
-                        <h3 className="font-outfit text-lg sm:text-xl font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug tracking-tight">
+                        <h3 className="font-sans text-lg sm:text-xl font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug tracking-tight">
                           {site.name}
                         </h3>
-                        <div className="mt-1.5 flex items-center gap-1.5 font-outfit text-xs text-[#574141]">
+                        <div className="mt-1.5 flex items-center gap-1.5 font-sans text-xs text-[#574141]">
                           <MapPin className="h-3.5 w-3.5 text-[#7e1925] flex-shrink-0" />
                           <span className="truncate">{site.address}</span>
                         </div>
-                        <p className="mt-3 font-outfit text-sm text-[#574141] line-clamp-3 leading-relaxed">
+                        <p className="mt-3 font-sans text-sm text-[#574141] line-clamp-3 leading-relaxed">
                           {site.shortDescription}
                         </p>
                       </div>
@@ -541,7 +541,7 @@ export const MapView: React.FC<MapViewProps> = ({
                         <button
                           id={`view-details-${site.id}`}
                           onClick={() => onSelectSite(site)}
-                          className="font-outfit inline-flex items-center gap-1.5 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs hover:scale-[1.02] cursor-pointer"
+                          className="font-sans inline-flex items-center gap-1.5 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs hover:scale-[1.02] cursor-pointer"
                         >
                           <span>Explore</span>
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -556,7 +556,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed border-[#e8dfd5] p-12 text-center bg-white space-y-3 font-outfit"
+              className="rounded-2xl border border-dashed border-[#e8dfd5] p-12 text-center bg-white space-y-3 font-sans"
             >
               <p className="text-lg font-bold text-[#1e1b19]">No heritage sites matched your criteria</p>
               <p className="text-sm text-[#574141] max-w-sm mx-auto">
@@ -664,7 +664,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.95 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute left-0 sm:left-auto sm:right-0 top-28 sm:top-12 w-52 rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs shadow-2xl space-y-2.5 z-[1010]"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-28 sm:top-12 w-52 rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-sans text-xs shadow-2xl space-y-2.5 z-[1010]"
                   >
                     <div className="flex items-center justify-between font-bold text-[#1e1b19] pb-1 border-b border-[#e8dfd5]">
                       <span className="text-[10px] uppercase tracking-wider text-[#8a7171]">Map Style</span>
@@ -752,7 +752,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.95 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute left-0 sm:left-auto sm:right-0 top-28 sm:top-12 w-52 max-h-60 sm:max-h-none overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs space-y-1 shadow-2xl z-[1010]"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-28 sm:top-12 w-52 max-h-60 sm:max-h-none overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-sans text-xs space-y-1 shadow-2xl z-[1010]"
                   >
                     <div className="flex items-center justify-between font-bold text-[#1e1b19] pb-1.5 border-b border-[#e8dfd5]">
                       <span className="text-[10px] uppercase tracking-wider text-[#8a7171]">Legend</span>
@@ -820,7 +820,7 @@ export const MapView: React.FC<MapViewProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.95 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute left-0 sm:left-auto sm:right-0 top-12 w-60 max-h-60 sm:max-h-none overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-outfit text-xs shadow-2xl space-y-2 z-[1010]"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-12 w-60 max-h-60 sm:max-h-none overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md p-3 font-sans text-xs shadow-2xl space-y-2 z-[1010]"
                   >
                     <div className="flex items-center justify-between font-bold text-[#1e1b19] pb-1.5 border-b border-[#e8dfd5]">
                       <span className="text-[10px] uppercase tracking-wider text-[#8a7171]">Filter Locations</span>
@@ -882,7 +882,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute bottom-7 left-3 sm:bottom-8 sm:left-5 z-[1000] w-[calc(100%-1.5rem)] sm:w-[310px] max-h-[270px] sm:max-h-[300px] overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md shadow-lg font-outfit"
+                className="absolute bottom-7 left-3 sm:bottom-8 sm:left-5 z-[1000] w-[calc(100%-1.5rem)] sm:w-[310px] max-h-[270px] sm:max-h-[300px] overflow-y-auto rounded-2xl border border-[#e8dfd5] bg-white/98 backdrop-blur-md shadow-lg font-sans"
               >
                 {/* Image Header with Close Button, Singular Category Badge, Bookmark */}
                 <div className="relative h-24 sm:h-28 w-full overflow-hidden bg-[#faf2ee]">
@@ -896,7 +896,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
                   {/* Category Badge (e.g., Church, Monument, Museum, etc.) */}
-                  <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-outfit text-[10px] font-bold text-[#7e1925] border border-white/40 shadow-xs uppercase tracking-wider">
+                  <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-sans text-[10px] font-bold text-[#7e1925] border border-white/40 shadow-xs uppercase tracking-wider">
                     {formatCategoryLabel(activeSite.category)}
                   </span>
 
@@ -929,7 +929,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   </div>
 
                   {/* Recorded Year */}
-                  <div className="absolute bottom-2.5 left-3 flex items-center gap-2 font-outfit text-[11px] font-semibold text-white">
+                  <div className="absolute bottom-2.5 left-3 flex items-center gap-2 font-sans text-[11px] font-semibold text-white">
                     {activeSite.yearBuilt && <span className="rounded-md bg-black/65 backdrop-blur-xs px-2 py-0.5 border border-white/20">
                       {activeSite.yearBuilt}
                     </span>}
@@ -939,9 +939,9 @@ export const MapView: React.FC<MapViewProps> = ({
                 </div>
 
                 {/* Card Lower Part: Name, Description, Direction Button, and Explore Button */}
-                <div className="p-3 sm:p-4 space-y-2 font-outfit">
+                <div className="p-3 sm:p-4 space-y-2 font-sans">
                   <div>
-                    <h3 className="font-outfit text-lg font-bold text-[#1e1b19] leading-snug mt-0.5 tracking-tight">
+                    <h3 className="font-sans text-lg font-bold text-[#1e1b19] leading-snug mt-0.5 tracking-tight">
                       {activeSite.name}
                     </h3>
                     <div className="mt-1 flex items-center gap-1.5 text-xs text-[#574141]">
@@ -987,7 +987,7 @@ export const MapView: React.FC<MapViewProps> = ({
         {filteredAndSortedSites.length > 0 && !filteredAndSortedSites.some(site => hasUsableCoordinates(site.coordinates)) && <p role="status" className="text-sm text-[#574141]">No mapped locations in this category. Recorded sites are available in the directory.</p>}
         {/* Quick Landmark Jump Bar Below Map */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 text-xs no-scrollbar">
-          <span className="font-outfit font-bold text-[#574141] whitespace-nowrap flex items-center gap-1 uppercase tracking-wider">
+          <span className="font-sans font-bold text-[#574141] whitespace-nowrap flex items-center gap-1 uppercase tracking-wider">
             <Compass className="w-3.5 h-3.5 text-[#7e1925]" />
             Jump to:
           </span>
@@ -999,7 +999,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 id={`quick-jump-${site.id}`}
                 aria-pressed={isActive}
                 onClick={() => handleSelectSiteFromCardOrChip(site)}
-                className={`whitespace-nowrap rounded-xl px-3.5 py-1.5 font-outfit text-xs font-bold transition-all border cursor-pointer ${
+                className={`whitespace-nowrap rounded-xl px-3.5 py-1.5 font-sans text-xs font-bold transition-all border cursor-pointer ${
                   isActive
                     ? 'bg-[#7e1925] text-white border-[#7e1925] shadow-xs'
                     : 'bg-white text-[#1e1b19] border-[#e8dfd5] hover:border-[#7e1925]'

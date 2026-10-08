@@ -7,7 +7,6 @@ import type {
   Itinerary,
   ItineraryInput,
   HeritagePassport,
-  CheckinContext,
   CheckinResult,
   CheckinConfig,
 } from '../types';
@@ -17,51 +16,88 @@ import { heritageImageUrl, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageI
 const API_BASE = '/api';
 let authGeneration = 0;
 
-export class CheckinApiError extends Error {
-  status: number;
+export class ApiError extends Error {
+  status: number | null;
   code: string;
-  constructor(message: string, status: number, code: string) { super(message); this.status = status; this.code = code; }
+  constructor(message: string, status: number | null = null, code = 'error') { super(message); this.status = status; this.code = code; }
+}
+
+const errorMessages: Record<number, string> = {
+  401: 'Your session has expired. Please sign in again to continue.',
+  403: 'You do not have permission to perform this action.',
+  404: 'This record was not found. Return to Explore or try again.',
+  409: 'This action is currently unavailable. Please try again.',
+  422: 'Please check the information you entered and try again.',
+  429: 'Too many attempts. Please wait a minute and try again.',
+};
+const verificationMessages: Record<string, string> = {
+  outside: "You're outside the verification area for this heritage site.",
+  weak_accuracy: 'GPS accuracy is weak or unavailable. Move into an open area and try again.',
+  disabled: 'Visit verification is currently disabled for this site.',
+  unavailable: 'This site is not ready for location verification.',
+};
+
+// All API transport errors are safe to display; never forward backend exception text.
+function clearCachedProfile(): void {
+  try { localStorage.removeItem('sf_user_profile'); } catch { /* Storage may be unavailable. */ }
+}
+
+function expireSession(requestToken: string | null): void {
+  if (!requestToken || requestToken !== getJwtToken()) return;
+  authGeneration++;
+  setJwtToken(null);
+  clearCachedProfile();
+  if (typeof window !== 'undefined') window.dispatchEvent?.(new Event('chis:session-expired'));
+}
+
+async function apiFetch(input: string, options?: RequestInit): Promise<Response> {
+  let response: Response;
+  try { response = await fetch(input, { ...options, headers: { Accept: 'application/json', ...options?.headers } }); }
+  catch { throw new ApiError('Unable to connect to CHIS. Check your internet connection and try again.', null, 'network'); }
+  if (response.status === 401 && options?.headers && 'Authorization' in options.headers && !input.includes('/auth/logout')) {
+    const requestToken = (options.headers as Record<string, string>).Authorization;
+    expireSession(requestToken?.replace(/^Bearer /, '') || null);
+  }
+  if (!response.ok) {
+    const body = await response.clone().json().catch(() => null);
+    const code = typeof body?.code === 'string' && verificationMessages[body.code] ? body.code : 'error';
+    const message = response.status >= 500 ? 'CHIS is temporarily unavailable. Please try again later.'
+      : errorMessages[response.status] || 'Unable to complete this request. Please try again.';
+    throw new ApiError((response.status === 409 || response.status === 422) && code !== 'error' ? verificationMessages[code] : message, response.status, code);
+  }
+  if (response.status === 204) return response;
+  try { await response.clone().json(); }
+  catch { throw new ApiError('CHIS returned an unexpected response. Please try again.', response.status, 'malformed'); }
+  return response;
 }
 
 async function passportRequest(path: string, method = 'GET', data?: unknown, authenticated = true): Promise<unknown> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await apiFetch(API_BASE + path, {
     method, headers: authenticated ? getAuthHeaders() : { Accept: 'application/json' },
     ...(data === undefined ? {} : { body: JSON.stringify(data) }),
   });
-  const result = await response.json().catch(() => null);
-  if (!response.ok) {
-    const code = typeof result?.code === 'string' ? result.code : 'error';
-    const message = response.status === 401 ? 'Please sign in again to continue.' : response.status === 404 ? 'This QR is invalid, revoked, or the site is unavailable.'
-      : response.status === 429 ? 'Too many attempts. Please wait a minute and try again.'
-      : ['outside', 'weak_accuracy', 'disabled', 'unavailable'].includes(code) && typeof result?.message === 'string' ? result.message : 'Unable to complete this request. Please try again.';
-    throw new CheckinApiError(message, response.status, code);
-  }
-  if (!result || typeof result !== 'object') throw new Error('The server returned an invalid response.');
-  return result;
+  return response.json();
 }
 
-export async function apiResolveCheckin(token: string): Promise<CheckinContext> {
-  const data = await passportRequest(`/check-in/${encodeURIComponent(token)}`, 'GET', undefined, false) as Omit<CheckinContext, 'site'> & { site: unknown };
-  if (typeof data.enabled !== 'boolean' || typeof data.coordinates_configured !== 'boolean' || !data.site) throw new Error('Invalid check-in response.');
-  return { ...data, site: mapBackendSite(data.site) };
-}
-
-export async function apiVerifyCheckin(token: string, location: { latitude: number; longitude: number; accuracy: number | null }): Promise<CheckinResult> {
-  const data = await passportRequest(`/check-in/${encodeURIComponent(token)}/verify`, 'POST', location) as CheckinResult;
-  if (!['verified', 'already_visited'].includes(data.status) || !data.visit || !Number.isFinite(data.points_earned)) throw new Error('Invalid verification response.');
+export async function apiVerifyVisit(id: string, location: { latitude: number; longitude: number; accuracy: number | null }): Promise<CheckinResult> {
+  const data = await passportRequest('/heritage-sites/' + encodeURIComponent(id) + '/verify-visit', 'POST', location) as CheckinResult;
+  if (!data || !['verified', 'already_visited'].includes(data.status) || !data.visit || !Number.isFinite(data.points_earned)) throw new ApiError('CHIS returned an unexpected verification response. Please try again.');
   return data;
 }
 
 export async function apiFetchPassport(): Promise<HeritagePassport> {
   const data = await passportRequest('/passport') as HeritagePassport;
-  if (![data.total_points, data.visited_count, data.eligible_site_count, data.visited_eligible_count].every(value => Number.isInteger(value) && value >= 0)
+  if (!data || ![data.total_points, data.visited_count, data.eligible_site_count, data.visited_eligible_count].every(value => Number.isInteger(value) && value >= 0)
     || !Array.isArray(data.visits) || !Array.isArray(data.eligible_sites)) throw new Error('Invalid passport response.');
-  return { ...data, visits: data.visits.map(visit => ({ ...visit, site: mapBackendSite(visit.site) })), eligible_sites: data.eligible_sites.map(mapBackendSite) };
+  try {
+    return { ...data, visits: data.visits.map(visit => ({ ...visit, site: mapBackendSite(visit.site) })), eligible_sites: data.eligible_sites.map(mapBackendSite) };
+  } catch { throw new ApiError('Unable to load your passport. Please try again.'); }
 }
 
 export async function apiCheckinAvailability(id: string): Promise<boolean> {
   const data = await passportRequest(`/heritage-sites/${encodeURIComponent(id)}/check-in`, 'GET', undefined, false) as { enabled: boolean };
-  return data.enabled === true;
+  if (!data || typeof data.enabled !== 'boolean') throw new ApiError('Unable to load visit verification. Please try again.');
+  return data.enabled;
 }
 
 export async function apiFetchCheckinConfigs(): Promise<CheckinConfig[]> {
@@ -72,20 +108,16 @@ export async function apiSaveCheckinConfig(id: string, enabled: boolean, radius_
   return await adminRequest(`/admin/heritage-sites/${encodeURIComponent(id)}/check-in`, 'PUT', { enabled, radius_meters }) as CheckinConfig;
 }
 
-export async function apiRotateCheckinToken(id: string): Promise<CheckinConfig> {
-  return await adminRequest(`/admin/heritage-sites/${encodeURIComponent(id)}/check-in/rotate`, 'POST') as CheckinConfig;
-}
 
 export function getJwtToken(): string | null {
-  return localStorage.getItem('chis_jwt_token');
+  try { return localStorage.getItem('chis_jwt_token'); } catch { return null; }
 }
 
 export function setJwtToken(token: string | null): void {
-  if (token) {
-    localStorage.setItem('chis_jwt_token', token);
-  } else {
-    localStorage.removeItem('chis_jwt_token');
-  }
+  try {
+    if (token) localStorage.setItem('chis_jwt_token', token);
+    else localStorage.removeItem('chis_jwt_token');
+  } catch { /* Browsers may disable persistent storage. */ }
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -103,7 +135,7 @@ function getAuthHeaders(): Record<string, string> {
 // Health Check
 export async function checkApiHealth() {
   try {
-    const res = await fetch(`${API_BASE}/health`);
+    const res = await apiFetch(`${API_BASE}/health`);
     return await res.json();
   } catch {
     return { status: 'offline', error: 'Network error' };
@@ -132,13 +164,15 @@ async function authenticate(path: string, credentials: Record<string, unknown>):
   const generation = authGeneration;
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
+    res = await apiFetch(`${API_BASE}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify(credentials),
     });
-  } catch {
-    throw new Error('Unable to reach the sign-in server. Check your connection and try again.');
+  } catch (failure) {
+    if (failure instanceof ApiError && failure.status === 401) throw new ApiError('Incorrect email or password.', 401);
+    if (failure instanceof ApiError) throw failure;
+    throw new ApiError('Unable to connect to CHIS. Check your internet connection and try again.');
   }
   if (!res.ok) {
     if (res.status === 401) throw new Error('Incorrect email or password.');
@@ -199,7 +233,7 @@ export async function apiLogout(): Promise<void> {
   authGeneration += 1;
   // Clear immediately so refresh and pending authentication cannot restore this session.
   setJwtToken(null);
-  localStorage.removeItem('sf_user_profile');
+  clearCachedProfile();
   if (!token) return;
 
   try {
@@ -222,7 +256,7 @@ export async function apiFetchCurrentUser(): Promise<UserProfile | null> {
   if (!token) return null;
 
   try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
+    const res = await apiFetch(`${API_BASE}/auth/me`, {
       headers: getAuthHeaders()
     });
     if (generation !== authGeneration || getJwtToken() !== token) return null;
@@ -239,7 +273,7 @@ export async function apiFetchCurrentUser(): Promise<UserProfile | null> {
 }
 
 export async function apiUpdateProfile(userUpdates: Partial<UserProfile>): Promise<UserProfile> {
-  const res = await fetch(`${API_BASE}/auth/profile`, {
+  const res = await apiFetch(`${API_BASE}/auth/profile`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(userUpdates)
@@ -305,13 +339,14 @@ function mapBackendSite(raw: any): HeritageSite {
 // Heritage Sites API
 export async function apiFetchSites(): Promise<HeritageSite[]> {
   try {
-    const res = await fetch(`${API_BASE}/heritage-sites`);
+    const res = await apiFetch(`${API_BASE}/heritage-sites`);
     if (!res.ok) throw new Error('Failed to fetch sites');
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('Invalid heritage catalogue response');
     return data.map(mapBackendSite);
-  } catch {
-    throw new Error('Unable to load heritage sites. Please try again.');
+  } catch (failure) {
+    if (failure instanceof ApiError) throw failure;
+    throw new ApiError('Unable to load heritage sites. Please try again.');
   }
 }
 
@@ -322,24 +357,19 @@ export async function apiFetchRawSites(): Promise<any[]> {
 
 export async function apiFetchSiteById(id: string): Promise<HeritageSite | null> {
   try {
-    const res = await fetch(`${API_BASE}/heritage-sites/${encodeURIComponent(id)}`);
+    const res = await apiFetch(`${API_BASE}/heritage-sites/${encodeURIComponent(id)}`);
     if (res.status === 404) return null;
     if (!res.ok) throw new Error('Failed to fetch heritage site');
     const data = await res.json();
     if (!data || String(data.id) !== id || data.status !== 'active') throw new Error('Invalid heritage site response');
     return mapBackendSite(data);
-  } catch {
-    throw new Error('Unable to load this heritage site. Please try again.');
+  } catch (failure) {
+    if (failure instanceof ApiError && failure.status === 404) return null;
+    if (failure instanceof ApiError) throw failure;
+    throw new ApiError('Unable to load this heritage site. Please try again.');
   }
 }
 
-export async function apiRecordQrScan(id: string): Promise<unknown> {
-  const res = await fetch(`${API_BASE}/heritage-sites/${id}/scan`, {
-    method: 'POST',
-    headers: getAuthHeaders()
-  });
-  return await res.json();
-}
 
 // Admin: Heritage Sites
 export class AdminApiError extends Error {
@@ -387,9 +417,10 @@ async function adminRequest(path: string, method = 'GET', data?: unknown): Promi
       ...(body === undefined ? {} : { body }),
     });
   } catch {
-    throw new AdminApiError('Unable to reach the server. Check your connection and try again.');
+    throw new AdminApiError('Unable to connect to CHIS. Check your internet connection and try again.');
   }
   if (!res.ok) {
+    if (res.status === 401) expireSession(token);
     const errors: Record<string, string[]> = {};
     if (res.status === 422) {
       const body = await res.json().catch(() => null);
@@ -397,7 +428,7 @@ async function adminRequest(path: string, method = 'GET', data?: unknown): Promi
         for (const [field, messages] of Object.entries(body.errors)) {
           if (Array.isArray(messages)) {
             errors[field] = messages.filter((message): message is string =>
-              typeof message === 'string' && message.length <= 300 && !/[<>]/.test(message));
+              typeof message === 'string' && message.length <= 300 && !/[<>]|SQLSTATE|Exception|Stack trace|[A-Z]:\\|\/var\//i.test(message));
           }
         }
       }
@@ -406,7 +437,8 @@ async function adminRequest(path: string, method = 'GET', data?: unknown): Promi
       : res.status === 401 ? 'Your session is no longer valid. Please sign in again.'
       : res.status === 403 ? 'You do not have permission to perform this action.'
       : res.status === 404 ? 'This record was not found. Reload the data and try again.'
-      : 'The request failed. Please try again later.';
+      : res.status >= 500 ? 'CHIS is temporarily unavailable. Please try again later.'
+      : errorMessages[res.status] || 'The request failed. Please try again later.';
     throw new AdminApiError(message, res.status, errors);
   }
   if (method === 'DELETE' || res.status === 204) return undefined;
@@ -476,23 +508,23 @@ function mapItinerary(value: unknown): Itinerary {
 
 export async function apiFetchItineraries(): Promise<Itinerary[]> {
   try {
-    const response = await fetch(`${API_BASE}/itineraries`, { headers: { Accept: 'application/json' } });
+    const response = await apiFetch(`${API_BASE}/itineraries`, { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error();
     const data: unknown = await response.json();
     if (!Array.isArray(data)) throw new Error();
     return data.map(mapItinerary).filter(route => route.status === 'active').map(route => ({ ...route, stops: route.stops.filter(stop => stop.site?.status === 'active') }));
-  } catch { throw new Error('Unable to load recommended itineraries. Please try again.'); }
+  } catch (failure) { if (failure instanceof ApiError) throw failure; throw new ApiError('Unable to load recommended itineraries. Please try again.'); }
 }
 
 export async function apiFetchItineraryById(id: string): Promise<Itinerary | null> {
   try {
-    const response = await fetch(`${API_BASE}/itineraries/${encodeURIComponent(id)}`, { headers: { Accept: 'application/json' } });
+    const response = await apiFetch(`${API_BASE}/itineraries/${encodeURIComponent(id)}`, { headers: { Accept: 'application/json' } });
     if (response.status === 404) return null;
     if (!response.ok) throw new Error();
     const route = mapItinerary(await response.json());
     if (route.id !== id) throw new Error();
     return route.status === 'active' ? { ...route, stops: route.stops.filter(stop => stop.site?.status === 'active') } : null;
-  } catch { throw new Error('Unable to load this itinerary. Please try again.'); }
+  } catch (failure) { if (failure instanceof ApiError && failure.status === 404) return null; if (failure instanceof ApiError) throw failure; throw new ApiError('Unable to load this itinerary. Please try again.'); }
 }
 
 export async function apiFetchAdminItineraries(): Promise<Itinerary[]> {
@@ -667,12 +699,14 @@ export function mapBackendEvent(raw: any): EventItem {
 
 export async function apiFetchEvents(): Promise<EventItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/events`);
+    const res = await apiFetch(`${API_BASE}/events`);
     if (!res.ok) throw new Error('Failed to fetch events');
     const data = await res.json();
+    if (!Array.isArray(data)) throw new ApiError('Unable to load events. Please try again.');
     return data.map(mapBackendEvent);
-  } catch {
-    return [];
+  } catch (failure) {
+    if (failure instanceof ApiError) throw failure;
+    throw new ApiError('Unable to load events. Please try again.');
   }
 }
 
@@ -716,7 +750,7 @@ export async function apiDeleteEvent(id: string): Promise<void> {
 // Community Photo Wall API
 export async function apiFetchPhotos(): Promise<CommunityPhoto[]> {
   try {
-    const res = await fetch(`${API_BASE}/photos`);
+    const res = await apiFetch(`${API_BASE}/photos`);
     if (!res.ok) throw new Error('Failed to fetch photos');
     return await res.json();
   } catch {
@@ -725,7 +759,7 @@ export async function apiFetchPhotos(): Promise<CommunityPhoto[]> {
 }
 
 export async function apiLikePhoto(photoId: string): Promise<number> {
-  const res = await fetch(`${API_BASE}/photos/${photoId}/like`, {
+  const res = await apiFetch(`${API_BASE}/photos/${photoId}/like`, {
     method: 'POST',
     headers: getAuthHeaders()
   });
@@ -734,7 +768,7 @@ export async function apiLikePhoto(photoId: string): Promise<number> {
 }
 
 export async function apiUploadPhoto(photo: Omit<CommunityPhoto, 'id' | 'likes'>): Promise<CommunityPhoto> {
-  const res = await fetch(`${API_BASE}/photos`, {
+  const res = await apiFetch(`${API_BASE}/photos`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(photo)
@@ -745,7 +779,7 @@ export async function apiUploadPhoto(photo: Omit<CommunityPhoto, 'id' | 'likes'>
 // User Plans API
 export async function apiFetchUserPlans(): Promise<UserPlan[]> {
   try {
-    const res = await fetch(`${API_BASE}/user/plans`, {
+    const res = await apiFetch(`${API_BASE}/user/plans`, {
       headers: getAuthHeaders()
     });
     if (!res.ok) return [];
@@ -756,7 +790,7 @@ export async function apiFetchUserPlans(): Promise<UserPlan[]> {
 }
 
 export async function apiSaveUserPlan(title: string, siteIds: string[]): Promise<UserPlan> {
-  const res = await fetch(`${API_BASE}/user/plans`, {
+  const res = await apiFetch(`${API_BASE}/user/plans`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ title, site_ids: siteIds })
@@ -766,7 +800,7 @@ export async function apiSaveUserPlan(title: string, siteIds: string[]): Promise
 
 // Gemini AI Katulung Chatbot via Laravel Endpoint
 export async function apiSendChatMessage(messages: Array<{ role: string; content: string }>): Promise<{ reply: string; source?: string; useFallback?: boolean }> {
-  const res = await fetch(`${API_BASE}/chat`, {
+  const res = await apiFetch(`${API_BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages })

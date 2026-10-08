@@ -562,11 +562,12 @@ function parseYearNumber(yearStr: string): number {
 
   const renderSidebarItem = (tab: TabType, label: string, Icon: any) => (
     <button 
+      aria-current={activeTab === tab ? 'page' : undefined}
       onClick={() => { setActiveTab(tab); setSidebarOpen(false); }}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
         activeTab === tab 
-          ? 'bg-[#7A1C30] text-white' 
-          : 'text-gray-600 hover:bg-gray-100 hover:text-[#7A1C30]'
+          ? 'bg-[#7e1925] text-white font-semibold'
+          : 'text-[#574141] hover:bg-[#faf2ee] hover:text-[#7e1925]'
       }`}
     >
       <Icon className="w-5 h-5" />
@@ -575,7 +576,7 @@ function parseYearNumber(yearStr: string): number {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex font-sans">
+    <div className="admin-shell min-h-screen bg-[#faf2ee] flex font-sans">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
@@ -585,8 +586,8 @@ function parseYearNumber(yearStr: string): number {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-200 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
+      <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-[#e8dfd5] z-50 transform transition-transform duration-200 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="h-16 flex items-center px-6 border-b border-[#e8dfd5] flex-shrink-0">
           <span className="text-[#7A1C30] font-bold text-xl tracking-tight">CHIS Admin</span>
           <button aria-label="Close admin navigation" className="ml-auto min-h-11 min-w-11 lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5 text-gray-500" />
@@ -599,14 +600,14 @@ function parseYearNumber(yearStr: string): number {
           {renderSidebarItem('timelines', 'Timelines', Clock)}
           {renderSidebarItem('events', 'Events', CalendarIcon)}
           {renderSidebarItem('itineraries', 'Recommended Itineraries', Map)}
-          {renderSidebarItem('checkins', 'Heritage Check-In', Map)}
+          {renderSidebarItem('checkins', 'Visit Verification', Map)}
           {renderSidebarItem('travelers', 'Travelers', Users)}
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6">
+        <header className="h-16 bg-white border-b border-[#e8dfd5] flex items-center justify-between px-4 sm:px-6">
           <div className="flex items-center">
             <button aria-label="Open admin navigation" onClick={() => setSidebarOpen(true)} className="min-h-11 min-w-11 text-gray-500 hover:text-gray-700 lg:hidden">
               <Menu className="w-6 h-6" />
@@ -621,7 +622,7 @@ function parseYearNumber(yearStr: string): number {
               </div>
               <img src={user.avatar || '/images/default-avatar.png'} alt="Admin" className="w-8 h-8 rounded-full bg-gray-200 object-cover" />
             </div>
-            <button onClick={onLogout} className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg">
+            <button aria-label="Sign out of Admin" onClick={onLogout} className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg">
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>
             </button>
@@ -630,7 +631,7 @@ function parseYearNumber(yearStr: string): number {
         
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           {notice && (
-            <div role={notice.type === 'error' ? 'alert' : 'status'} className={`mb-4 rounded-lg border p-3 text-sm ${notice.type === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+            <div role={notice.type === 'error' ? 'alert' : 'status'} className={`mb-4 ${notice.type === 'error' ? 'status-error' : 'status-success'}`}>
               {notice.message}
             </div>
           )}
@@ -654,10 +655,10 @@ function parseYearNumber(yearStr: string): number {
               {activeTab === 'travelers' && <AdminTravelers />}
               {activeTab === 'dashboard' && (
                 <div className="space-y-6">
-                  <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+                  <h1 className="page-title text-gray-900">Admin Dashboard</h1>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="ui-card p-6">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-red-50 rounded-lg"><Map className="w-6 h-6 text-[#7A1C30]" /></div>
                         <div>
@@ -666,7 +667,7 @@ function parseYearNumber(yearStr: string): number {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="bg-white rounded-xl border border-[#e8dfd5] p-6">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-50 rounded-lg"><ImageIcon className="w-6 h-6 text-blue-600" /></div>
                         <div>
@@ -675,7 +676,7 @@ function parseYearNumber(yearStr: string): number {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="bg-white rounded-xl border border-[#e8dfd5] p-6">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-emerald-50 rounded-lg"><CalendarIcon className="w-6 h-6 text-emerald-600" /></div>
                         <div>
@@ -687,31 +688,31 @@ function parseYearNumber(yearStr: string): number {
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+                    <div className="bg-white rounded-xl border border-[#e8dfd5] p-6">
+                      <h3 className="section-title text-gray-900 mb-4">Quick Actions</h3>
                       <div className="space-y-3">
-                        <button onClick={openCreateSiteModal} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={openCreateSiteModal} className="w-full text-left px-4 py-3 rounded-lg border border-[#e8dfd5] hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Heritage Site</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button onClick={openEventCreateModal} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={openEventCreateModal} className="w-full text-left px-4 py-3 rounded-lg border border-[#e8dfd5] hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Event</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
-                        <button onClick={() => openForm('image', () => { setSiteImageFile(null); setImageForm({}); setImageModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={() => openForm('image', () => { setSiteImageFile(null); setImageForm({}); setImageModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-[#e8dfd5] hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Image Reference</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
                       </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Heritage Sites</h3>
+                    <div className="bg-white rounded-xl border border-[#e8dfd5] p-6">
+                      <h3 className="section-title text-gray-900 mb-4">Recent Heritage Sites</h3>
                       <div className="space-y-4">
                         {sites.slice(-5).reverse().map(s => {
                           const mainImg = (s.images?.find((image: any) => image.is_cover) || s.images?.[0])?.image_path;
                           return (
                           <div key={s.id} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                            <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
+                            <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-[#e8dfd5]">
                               <img src={mainImg ? storageImageUrl(mainImg) : HERITAGE_IMAGE_PLACEHOLDER} onError={handleHeritageImageError} alt="" className="w-full h-full object-cover" />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -731,16 +732,16 @@ function parseYearNumber(yearStr: string): number {
               {activeTab === 'sites' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h1 className="text-2xl font-bold text-gray-900">Heritage Sites</h1>
-                    <button onClick={openCreateSiteModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <h1 className="page-title text-gray-900">Heritage Sites</h1>
+                    <button onClick={openCreateSiteModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
                       <Plus className="w-4 h-4" /> Add Site
                     </button>
                   </div>
                   
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-white rounded-xl border border-[#e8dfd5] overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                        <thead className="bg-gray-50 border-b border-[#e8dfd5] text-gray-600">
                           <tr>
                             <th className="px-6 py-3 font-medium">Name</th>
                             <th className="px-6 py-3 font-medium">Address</th>
@@ -776,8 +777,8 @@ function parseYearNumber(yearStr: string): number {
               {activeTab === 'images' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h1 className="text-2xl font-bold text-gray-900">Site Images</h1>
-                    <button onClick={() => openForm('image', () => { setSiteImageFile(null); setImageForm({}); setImageModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <h1 className="page-title text-gray-900">Site Images</h1>
+                    <button onClick={() => openForm('image', () => { setSiteImageFile(null); setImageForm({}); setImageModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
                       <Plus className="w-4 h-4" /> Add Image Reference
                     </button>
                   </div>
@@ -786,7 +787,7 @@ function parseYearNumber(yearStr: string): number {
                     {siteImages.map(img => {
                       const site = sites.find(s => s.id === img.heritage_site_id);
                       return (
-                        <div key={img.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col hover:shadow-md transition-shadow">
+                        <div key={img.id} className="bg-white border border-[#e8dfd5] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                           <img src={storageImageUrl(img.image_path)} onError={handleHeritageImageError} alt={img.caption || 'Site image'} className="w-full h-44 object-cover" />
                           <div className="p-4 flex-1 flex flex-col">
                             <p className="text-sm font-bold text-gray-900 truncate mb-1">{img.caption || 'No Caption'}</p>
@@ -801,7 +802,7 @@ function parseYearNumber(yearStr: string): number {
                       )
                     })}
                     {siteImages.length === 0 && (
-                      <div className="col-span-full py-12 text-center text-gray-500 bg-white border border-gray-200 rounded-xl border-dashed">
+                      <div className="col-span-full py-12 text-center text-gray-500 bg-white border border-[#e8dfd5] rounded-xl border-dashed">
                         No image references added yet.
                       </div>
                     )}
@@ -813,16 +814,16 @@ function parseYearNumber(yearStr: string): number {
               {activeTab === 'events' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h1 className="text-2xl font-bold text-gray-900">Events</h1>
-                    <button onClick={openEventCreateModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors cursor-pointer">
+                    <h1 className="page-title text-gray-900">Events</h1>
+                    <button onClick={openEventCreateModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors cursor-pointer">
                       <Plus className="w-4 h-4" /> Add Event
                     </button>
                   </div>
                   
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-white rounded-xl border border-[#e8dfd5] overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                        <thead className="bg-gray-50 border-b border-[#e8dfd5] text-gray-600">
                           <tr>
                             <th className="px-6 py-3 font-medium">Event Title</th>
                             <th className="px-6 py-3 font-medium">Category</th>
@@ -845,7 +846,7 @@ function parseYearNumber(yearStr: string): number {
                                   <div className="text-xs font-normal text-gray-500">{e.status || 'upcoming'}</div>
                                 </td>
                                 <td className="px-6 py-4 text-gray-600">
-                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200">
+                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-[#e8dfd5]">
                                     {e.category || 'Festival'}
                                   </span>
                                 </td>
@@ -855,7 +856,7 @@ function parseYearNumber(yearStr: string): number {
                                 </td>
                                 <td className="px-6 py-4 text-gray-500">{e.location}</td>
                                 <td className="px-6 py-4 text-gray-500">
-                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-50 border border-[#e8dfd5] px-2 py-0.5 rounded-md">
                                     <Clock className="w-3 h-3 text-gray-400" /> {schedCount} item{schedCount !== 1 ? 's' : ''}
                                   </span>
                                 </td>
@@ -880,16 +881,16 @@ function parseYearNumber(yearStr: string): number {
               {activeTab === 'timelines' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h1 className="text-2xl font-bold text-gray-900">Historical Timelines</h1>
-                    <button onClick={() => openForm('timeline', () => { setTimelineForm({}); setTimelineModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <h1 className="page-title text-gray-900">Historical Timelines</h1>
+                    <button onClick={() => openForm('timeline', () => { setTimelineForm({}); setTimelineModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
                       <Plus className="w-4 h-4" /> Add Timeline
                     </button>
                   </div>
                   
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-white rounded-xl border border-[#e8dfd5] overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                        <thead className="bg-gray-50 border-b border-[#e8dfd5] text-gray-600">
                           <tr>
                             <th className="px-6 py-3 font-medium">Site</th>
                             <th className="px-6 py-3 font-medium">Year</th>
@@ -928,11 +929,11 @@ function parseYearNumber(yearStr: string): number {
       
       {/* Site Modal */}
       {siteModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div role="dialog" aria-modal="true" aria-label="Heritage site editor" className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50 rounded-t-2xl">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
+                <h2 className="section-title text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
                 <h3 className="text-sm font-semibold text-[#7A1C30] mt-0.5">
                   {currentStep === 1 ? 'Basic Information' : currentStep === 2 ? 'Historical Timeline' : currentStep === 3 ? 'Visitor Information' : 'Images'}
                 </h3>
@@ -951,20 +952,15 @@ function parseYearNumber(yearStr: string): number {
                       key={step}
                       type="button"
                       onClick={() => goToStep(step)}
-                      className={`h-2.5 rounded-full transition-all cursor-pointer ${
-                        currentStep === step
-                          ? 'w-9 bg-[#7A1C30]'
-                          : currentStep > step
-                          ? 'w-7 bg-[#7A1C30]/70 hover:bg-[#7A1C30]'
-                          : 'w-7 bg-gray-200 hover:bg-gray-300'
-                      }`}
+                      className="min-h-11 min-w-11 flex items-center justify-center"
                       title={`${step}. ${label}`}
                       aria-label={`Step ${step}: ${label}`}
-                    />
+                      aria-current={currentStep === step ? 'step' : undefined}
+                    ><span aria-hidden="true" className={`h-2.5 rounded-full ${currentStep === step ? 'w-9 bg-[#7e1925]' : currentStep > step ? 'w-7 bg-[#7e1925]/70' : 'w-7 bg-gray-200'}`} /></button>
                   ))}
                 </div>
 
-                <button type="button" disabled={pending.has('save:site')} onClick={() => setSiteModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-xs border border-gray-200 transition-colors ml-1" title="Close"><X className="w-4 h-4"/></button>
+                <button type="button" disabled={pending.has('save:site')} onClick={() => setSiteModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-xs border border-[#e8dfd5] transition-colors ml-1" aria-label="Close editor" title="Close"><X className="w-4 h-4"/></button>
               </div>
             </div>
 
@@ -981,12 +977,12 @@ function parseYearNumber(yearStr: string): number {
               <div className={currentStep === 1 ? 'space-y-5' : 'hidden'}>
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-1.5 col-span-2">
-                    <label className="font-semibold text-gray-700">Name</label>
-                    <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.name || ''} onChange={e => setSiteForm((prev: any) => ({...prev, name: e.target.value}))} placeholder="Site Name" />
+                    <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-1">Name</label>
+                    <input id="admin-field-1" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.name || ''} onChange={e => setSiteForm((prev: any) => ({...prev, name: e.target.value}))} placeholder="Site Name" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-gray-700">Category</label>
-                    <select className="w-full border border-gray-300 rounded-xl p-2.5 outline-none bg-white" value={siteForm.category || ''} onChange={e => setSiteForm((prev: any) => ({...prev, category: e.target.value}))}>
+                    <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-2">Category</label>
+                    <select id="admin-field-2" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 outline-none bg-white" value={siteForm.category || ''} onChange={e => setSiteForm((prev: any) => ({...prev, category: e.target.value}))}>
                       <option value="">Unspecified</option>
                       {siteForm.category && !HERITAGE_CATEGORIES.some(category => category !== 'All' && category === siteForm.category) && (
                         <option value={siteForm.category}>{siteForm.category} (choose a supported category)</option>
@@ -995,38 +991,38 @@ function parseYearNumber(yearStr: string): number {
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-gray-700">Year Built</label>
-                    <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.year_built || ''} onChange={e => setSiteForm((prev: any) => ({...prev, year_built: e.target.value}))} placeholder="e.g. 1755" />
+                    <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-3">Year Built</label>
+                    <input id="admin-field-3" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.year_built || ''} onChange={e => setSiteForm((prev: any) => ({...prev, year_built: e.target.value}))} placeholder="e.g. 1755" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-gray-700">Address</label>
-                    <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.address || ''} onChange={e => setSiteForm((prev: any) => ({...prev, address: e.target.value}))} placeholder="Full address" />
+                    <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-4">Address</label>
+                    <input id="admin-field-4" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.address || ''} onChange={e => setSiteForm((prev: any) => ({...prev, address: e.target.value}))} placeholder="Full address" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-gray-700">Status</label>
-                    <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={siteForm.status || 'active'} onChange={e => setSiteForm((prev: any) => ({...prev, status: e.target.value}))}>
+                    <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-5">Status</label>
+                    <select id="admin-field-5" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={siteForm.status || 'active'} onChange={e => setSiteForm((prev: any) => ({...prev, status: e.target.value}))}>
                       <option value="active">Active</option>
                       <option value="archived">Archived</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-gray-700">Latitude</label>
-                    <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, latitude: e.target.value}))} placeholder="e.g. 15.031" />
+                    <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-6">Latitude</label>
+                    <input id="admin-field-6" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, latitude: e.target.value}))} placeholder="e.g. 15.031" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-gray-700">Longitude</label>
-                    <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, longitude: e.target.value}))} placeholder="e.g. 120.689" />
+                    <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-7">Longitude</label>
+                    <input id="admin-field-7" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, longitude: e.target.value}))} placeholder="e.g. 120.689" />
                   </div>
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Description</label>
-                  <textarea required rows={3} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.description || ''} onChange={e => setSiteForm((prev: any) => ({...prev, description: e.target.value}))} placeholder="Brief description..." />
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-8">Description</label>
+                  <textarea id="admin-field-8" required rows={3} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.description || ''} onChange={e => setSiteForm((prev: any) => ({...prev, description: e.target.value}))} placeholder="Brief description..." />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">History</label>
-                  <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm((prev: any) => ({...prev, history: e.target.value}))} placeholder="Full historical context..." />
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-9">History</label>
+                  <textarea id="admin-field-9" required rows={4} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm((prev: any) => ({...prev, history: e.target.value}))} placeholder="Full historical context..." />
                 </div>
               </div>
 
@@ -1051,7 +1047,7 @@ function parseYearNumber(yearStr: string): number {
                     {[...draftTimelines]
                       .sort((a, b) => parseYearNumber(a.year) - parseYearNumber(b.year))
                       .map((item) => (
-                        <div key={item.key} className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl flex items-start justify-between gap-3">
+                        <div key={item.key} className="p-3.5 bg-gray-50 border border-[#e8dfd5] rounded-xl flex items-start justify-between gap-3">
                           <div className="space-y-1 min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="px-2 py-0.5 bg-[#7A1C30]/10 text-[#7A1C30] text-xs font-bold rounded-md border border-[#7A1C30]/20">
@@ -1081,7 +1077,7 @@ function parseYearNumber(yearStr: string): number {
                       ))}
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-400 italic text-center py-8 bg-gray-50 border border-gray-200 border-dashed rounded-xl">
+                  <div className="text-xs text-gray-400 italic text-center py-8 bg-gray-50 border border-[#e8dfd5] border-dashed rounded-xl">
                     No timeline items added. Click "+ Add Timeline Item" above to add historical events.
                   </div>
                 )}
@@ -1103,7 +1099,7 @@ function parseYearNumber(yearStr: string): number {
                   <div key={field} className="space-y-1.5">
                     <label htmlFor={`admin-site-${field}`} className="font-semibold text-gray-700">{label}</label>
                     <textarea id={`admin-site-${field}`} name={field} rows={rows} maxLength={maxLength}
-                      className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none"
+                      className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none"
                       value={siteForm[field] ?? ''} onChange={e => setSiteForm({ ...siteForm, [field]: e.target.value })} />
                   </div>
                 ))}
@@ -1136,8 +1132,8 @@ function parseYearNumber(yearStr: string): number {
                 {draftImages.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-1">
                     {draftImages.map((img) => (
-                      <div key={img.key} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col space-y-2.5">
-                        <div className="relative h-36 rounded-lg overflow-hidden border border-gray-200 bg-white">
+                      <div key={img.key} className="bg-gray-50 border border-[#e8dfd5] rounded-xl p-3 flex flex-col space-y-2.5">
+                        <div className="relative h-36 rounded-lg overflow-hidden border border-[#e8dfd5] bg-white">
                           <img src={img.previewUrl} onError={handleHeritageImageError} alt="Preview" className="w-full h-full object-cover" />
                           {img.is_cover && (
                             <span className="absolute top-2 left-2 bg-[#7A1C30] text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shadow-sm">
@@ -1147,11 +1143,11 @@ function parseYearNumber(yearStr: string): number {
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-gray-700">Caption</label>
-                          <input
+                          <label className="ui-label text-xs font-semibold text-gray-700" htmlFor="admin-field-10">Caption</label>
+                          <input id="admin-field-10"
                             type="text"
                             placeholder="Image caption (e.g. Front view)"
-                            className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                            className="w-full border border-[#e8dfd5] rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
                             value={img.caption}
                             onChange={(e) => {
                               const val = e.target.value;
@@ -1166,7 +1162,7 @@ function parseYearNumber(yearStr: string): number {
                               type="checkbox"
                               checked={img.is_cover}
                               onChange={() => handleToggleCover(img.key)}
-                              className="rounded border-gray-300 text-[#7A1C30] focus:ring-[#7A1C30]"
+                              className="rounded border-[#e8dfd5] text-[#7A1C30] focus:ring-[#7A1C30]"
                             />
                             Cover Image
                           </label>
@@ -1182,7 +1178,7 @@ function parseYearNumber(yearStr: string): number {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-400 italic text-center py-8 bg-gray-50 border border-gray-200 border-dashed rounded-xl">
+                  <div className="text-xs text-gray-400 italic text-center py-8 bg-gray-50 border border-[#e8dfd5] border-dashed rounded-xl">
                     No images added yet. Click "+ Add Image" above to select images.
                   </div>
                 )}
@@ -1199,7 +1195,7 @@ function parseYearNumber(yearStr: string): number {
                     type="button"
                     disabled={pending.has('save:site')}
                     onClick={() => setCurrentStep(prev => prev - 1)}
-                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 border border-[#e8dfd5] rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
                   >
                     ← Back
                   </button>
@@ -1257,11 +1253,11 @@ function parseYearNumber(yearStr: string): number {
                 </div>
               )}
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Year</label>
-                <input
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-11">Year</label>
+                <input id="admin-field-11"
                   required
                   type="text"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
                   placeholder="e.g. 1755"
                   value={timelineItemForm.year}
                   onChange={(e) => setTimelineItemForm({ ...timelineItemForm, year: e.target.value })}
@@ -1269,11 +1265,11 @@ function parseYearNumber(yearStr: string): number {
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Title</label>
-                <input
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-12">Title</label>
+                <input id="admin-field-12"
                   required
                   type="text"
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
                   placeholder="e.g. Augustinian Foundation"
                   value={timelineItemForm.title}
                   onChange={(e) => setTimelineItemForm({ ...timelineItemForm, title: e.target.value })}
@@ -1281,11 +1277,11 @@ function parseYearNumber(yearStr: string): number {
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Description</label>
-                <textarea
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-13">Description</label>
+                <textarea id="admin-field-13"
                   required
                   rows={3}
-                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none resize-none"
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none resize-none"
                   placeholder="Describe the historical event..."
                   value={timelineItemForm.description}
                   onChange={(e) => setTimelineItemForm({ ...timelineItemForm, description: e.target.value })}
@@ -1296,7 +1292,7 @@ function parseYearNumber(yearStr: string): number {
                 <button
                   type="button"
                   onClick={() => setTimelineSubModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
+                  className="px-4 py-2 border border-[#e8dfd5] rounded-xl text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
                 >
                   Cancel
                 </button>
@@ -1314,11 +1310,11 @@ function parseYearNumber(yearStr: string): number {
 
       {/* Event Modal */}
       {eventModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" aria-label="Event editor" className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-gray-900">{eventForm.id ? 'Edit Event' : 'Add Event'}</h2>
-              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors cursor-pointer"><X className="w-4 h-4"/></button>
+              <h2 className="section-title text-gray-900">{eventForm.id ? 'Edit Event' : 'Add Event'}</h2>
+              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 border border-[#e8dfd5] transition-colors cursor-pointer"><X className="w-4 h-4"/></button>
             </div>
             <form id="admin-event-form" onSubmit={handleSaveEvent} className="p-6 space-y-5 text-sm overflow-y-auto flex-1">
               {renderFormError('event')}
@@ -1327,12 +1323,12 @@ function parseYearNumber(yearStr: string): number {
               {/* Title & Category */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="font-semibold text-gray-700">Title</label>
-                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-14">Title</label>
+                  <input id="admin-field-14" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Category</label>
-                  <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.category || 'Festival'} onChange={e => setEventForm({...eventForm, category: e.target.value})}>
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-15">Category</label>
+                  <select id="admin-field-15" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.category || 'Festival'} onChange={e => setEventForm({...eventForm, category: e.target.value})}>
                     <option value="Festival">Festival</option>
                     <option value="Heritage Tour">Heritage Tour</option>
                     <option value="Exhibition">Exhibition</option>
@@ -1342,10 +1338,10 @@ function parseYearNumber(yearStr: string): number {
               </div>
 
               {/* Date Setup: Single Date vs Date Range */}
-              <div className="space-y-2 p-3.5 bg-gray-50/70 rounded-xl border border-gray-200">
+              <div className="space-y-2 p-3.5 bg-gray-50/70 rounded-xl border border-[#e8dfd5]">
                 <div className="flex items-center justify-between">
                   <label className="font-semibold text-gray-700">Date Setup</label>
-                  <div className="inline-flex rounded-lg p-0.5 bg-gray-200/80 border border-gray-200">
+                  <div className="inline-flex rounded-lg p-0.5 bg-gray-200/80 border border-[#e8dfd5]">
                     <button
                       type="button"
                       onClick={() => {
@@ -1373,21 +1369,21 @@ function parseYearNumber(yearStr: string): number {
                 {isDateRange ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-600">Start Date</label>
-                      <input
+                      <label className="ui-label text-xs font-semibold text-gray-600" htmlFor="admin-field-16">Start Date</label>
+                      <input id="admin-field-16"
                         required
                         type="date"
-                        className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                        className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
                         value={eventDateForInput(eventForm.event_date)}
                         onChange={(e) => setEventForm({ ...eventForm, event_date: replaceEventDate(events.find(event => String(event.id) === String(eventForm.id))?.event_date || eventForm.event_date, e.target.value) })}
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-600">End Date</label>
-                      <input
+                      <label className="ui-label text-xs font-semibold text-gray-600" htmlFor="admin-field-17">End Date</label>
+                      <input id="admin-field-17"
                         required
                         type="date"
-                        className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                        className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
                         value={eventDateForInput(eventForm.end_date)}
                         onChange={(e) => setEventForm({ ...eventForm, end_date: replaceEventDate(eventForm.end_date, e.target.value) })}
                       />
@@ -1395,11 +1391,11 @@ function parseYearNumber(yearStr: string): number {
                   </div>
                 ) : (
                   <div className="space-y-1 pt-1">
-                    <label className="text-xs font-semibold text-gray-600">Event Date</label>
-                    <input
+                    <label className="ui-label text-xs font-semibold text-gray-600" htmlFor="admin-field-18">Event Date</label>
+                    <input id="admin-field-18"
                       required
                       type="date"
-                      className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                      className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
                       value={eventDateForInput(eventForm.event_date)}
                       onChange={(e) => setEventForm({ ...eventForm, event_date: replaceEventDate(events.find(event => String(event.id) === String(eventForm.id))?.event_date || eventForm.event_date, e.target.value) })}
                     />
@@ -1410,9 +1406,9 @@ function parseYearNumber(yearStr: string): number {
               {/* Start Time & End Time Selection Dropdowns */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Start Time</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-19">Start Time</label>
+                  <select id="admin-field-19"
+                    className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
                     value={eventForm.start_time || ''}
                     onChange={(e) => setEventForm({ ...eventForm, start_time: e.target.value })}
                   >
@@ -1424,9 +1420,9 @@ function parseYearNumber(yearStr: string): number {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">End Time</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-20">End Time</label>
+                  <select id="admin-field-20"
+                    className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
                     value={eventForm.end_time || ''}
                     onChange={(e) => setEventForm({ ...eventForm, end_time: e.target.value })}
                   >
@@ -1441,12 +1437,12 @@ function parseYearNumber(yearStr: string): number {
               {/* Location & Status */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="font-semibold text-gray-700">Location</label>
-                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.location || ''} onChange={e => setEventForm({...eventForm, location: e.target.value})} placeholder="Event Location" />
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-21">Location</label>
+                  <input id="admin-field-21" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.location || ''} onChange={e => setEventForm({...eventForm, location: e.target.value})} placeholder="Event Location" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Status</label>
-                  <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.status || 'upcoming'} onChange={e => setEventForm({...eventForm, status: e.target.value})}>
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-22">Status</label>
+                  <select id="admin-field-22" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.status || 'upcoming'} onChange={e => setEventForm({...eventForm, status: e.target.value})}>
                     <option value="upcoming">Upcoming</option>
                     <option value="ongoing">Ongoing</option>
                     <option value="completed">Completed</option>
@@ -1460,7 +1456,7 @@ function parseYearNumber(yearStr: string): number {
                 <label className="font-semibold text-gray-700">Event Image</label>
 
                 {imagePreview ? (
-                  <div className="relative group rounded-xl overflow-hidden border border-gray-200 bg-gray-50 max-h-48">
+                  <div className="relative group rounded-xl overflow-hidden border border-[#e8dfd5] bg-gray-50 max-h-48">
                     <img src={imagePreview} alt="Event Preview" className="w-full h-44 object-cover" />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                       <label className="px-3.5 py-2 bg-white hover:bg-gray-100 text-gray-900 font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-md">
@@ -1492,7 +1488,7 @@ function parseYearNumber(yearStr: string): number {
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-gray-300 hover:border-[#7A1C30] rounded-xl bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer text-center p-4">
+                  <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-[#e8dfd5] hover:border-[#7A1C30] rounded-xl bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer text-center p-4">
                     <ImageIcon className="w-8 h-8 text-gray-400 mb-1" />
                     <span className="text-xs font-semibold text-gray-700">Click to select and upload event image</span>
                     <span className="text-[11px] text-gray-400 mt-0.5">PNG, JPG, WEBP, GIF up to 5MB</span>
@@ -1514,14 +1510,14 @@ function parseYearNumber(yearStr: string): number {
 
               {/* Description */}
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Description</label>
-                <textarea required rows={3} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-23">Description</label>
+                <textarea id="admin-field-23" required rows={3} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
               </div>
 
               {/* Input-Chip Field for Tags */}
               <div className="space-y-2">
                 <label className="font-semibold text-gray-700">Tags</label>
-                <div className="flex flex-wrap gap-2 min-h-[38px] p-2 border border-gray-200 rounded-xl bg-gray-50/50 items-center">
+                <div className="flex flex-wrap gap-2 min-h-[38px] p-2 border border-[#e8dfd5] rounded-xl bg-gray-50/50 items-center">
                   {(eventForm.tags || []).map((tag: string, index: number) => (
                     <span key={index} className="inline-flex items-center gap-1.5 bg-[#7A1C30]/10 text-[#7A1C30] border border-[#7A1C30]/20 text-xs font-semibold px-2.5 py-1 rounded-full">
                       #{tag}
@@ -1545,7 +1541,7 @@ function parseYearNumber(yearStr: string): number {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    className="flex-1 border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                    className="flex-1 border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
                     placeholder="Type tag and press Enter (e.g. Family Friendly)..."
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
@@ -1583,7 +1579,7 @@ function parseYearNumber(yearStr: string): number {
               </div>
 
               {/* Multi-Item Event Schedule Editor */}
-              <div className="space-y-3 pt-3 border-t border-gray-200">
+              <div className="space-y-3 pt-3 border-t border-[#e8dfd5]">
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="font-semibold text-gray-700 block">Event Schedule Program</label>
@@ -1606,7 +1602,7 @@ function parseYearNumber(yearStr: string): number {
 
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                   {(eventForm.schedules || []).map((sch: any, index: number) => (
-                    <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                    <div key={index} className="p-3 bg-gray-50 border border-[#e8dfd5] rounded-xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#7A1C30]">Schedule #{index + 1}</span>
                         <button
@@ -1625,7 +1621,7 @@ function parseYearNumber(yearStr: string): number {
                         <input
                           type="text"
                           placeholder="Time (e.g. 5:00 PM)"
-                          className="border border-gray-300 rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
+                          className="border border-[#e8dfd5] rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
                           value={sch.schedule_time || sch.time || ''}
                           onChange={(e) => {
                             const updated = [...(eventForm.schedules || [])];
@@ -1636,7 +1632,7 @@ function parseYearNumber(yearStr: string): number {
                         <input
                           type="text"
                           placeholder="Activity / Title (e.g. Gates Open)"
-                          className="sm:col-span-2 border border-gray-300 rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
+                          className="sm:col-span-2 border border-[#e8dfd5] rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
                           value={sch.title || sch.activity || ''}
                           onChange={(e) => {
                             const updated = [...(eventForm.schedules || [])];
@@ -1648,7 +1644,7 @@ function parseYearNumber(yearStr: string): number {
                       <input
                         type="text"
                         placeholder="Optional details or description..."
-                        className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
+                        className="w-full border border-[#e8dfd5] rounded-lg p-2 text-xs focus:border-[#7A1C30] outline-none"
                         value={sch.description || ''}
                         onChange={(e) => {
                           const updated = [...(eventForm.schedules || [])];
@@ -1659,7 +1655,7 @@ function parseYearNumber(yearStr: string): number {
                     </div>
                   ))}
                   {(!eventForm.schedules || eventForm.schedules.length === 0) && (
-                    <div className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 border border-gray-200 border-dashed rounded-xl">
+                    <div className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 border border-[#e8dfd5] border-dashed rounded-xl">
                       No schedule items added yet. Click "+ Add Schedule Item" above to add program timeline activities.
                     </div>
                   )}
@@ -1669,7 +1665,7 @@ function parseYearNumber(yearStr: string): number {
               </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm cursor-pointer">Cancel</button>
+              <button type="button" disabled={pending.has('save:event')} onClick={() => setEventModalOpen(false)} className="px-5 py-2.5 border border-[#e8dfd5] rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors cursor-pointer">Cancel</button>
               <button type="submit" form="admin-event-form" disabled={pending.has('save:event')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors cursor-pointer">{pending.has('save:event') ? 'Saving...' : 'Save Event'}</button>
             </div>
           </div>
@@ -1678,25 +1674,25 @@ function parseYearNumber(yearStr: string): number {
 
       {/* Image Modal */}
       {imageModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" aria-label="Site image editor" className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-gray-900">{imageForm.id ? 'Edit Image Reference' : 'Add Image Reference'}</h2>
-              <button type="button" disabled={pending.has('save:image')} onClick={() => { setImageModalOpen(false); setSiteImageFile(null); }} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <h2 className="section-title text-gray-900">{imageForm.id ? 'Edit Image Reference' : 'Add Image Reference'}</h2>
+              <button type="button" disabled={pending.has('save:image')} onClick={() => { setImageModalOpen(false); setSiteImageFile(null); }} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 border border-[#e8dfd5] transition-colors"><X className="w-4 h-4"/></button>
             </div>
             <form id="admin-image-form" onSubmit={handleSaveImage} className="p-6 space-y-5 text-sm">
               {renderFormError('image')}
               <fieldset disabled={pending.has('save:image')} className="contents">
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Heritage Site</label>
-                <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={imageForm.heritage_site_id || ''} onChange={e => setImageForm({...imageForm, heritage_site_id: parseInt(e.target.value)})}>
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-24">Heritage Site</label>
+                <select id="admin-field-24" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={imageForm.heritage_site_id || ''} onChange={e => setImageForm({...imageForm, heritage_site_id: parseInt(e.target.value)})}>
                   <option value="">Select a Heritage Site...</option>
                   {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Image Path or URL</label>
-                <input required={!siteImageFile} type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-25">Image Path or URL</label>
+                <input id="admin-field-25" required={!siteImageFile} type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
                 <p className="text-xs text-gray-500 mt-1">Use an existing URL/path or upload a file. A selected upload takes precedence.</p>
               </div>
               <div className="space-y-1.5">
@@ -1707,11 +1703,11 @@ function parseYearNumber(yearStr: string): number {
                 {siteImageFile && <p className="text-xs text-gray-700">Selected: {siteImageFile.name}</p>}
                 {((siteImageFile && siteImagePreview) || imageForm.image_path) && <img id="admin-site-image-preview"
                   src={(siteImageFile && siteImagePreview) || storageImageUrl(imageForm.image_path)} onError={handleHeritageImageError}
-                  alt="Image preview" className="w-full h-40 object-contain rounded border border-gray-200" />}
+                  alt="Image preview" className="w-full h-40 object-contain rounded border border-[#e8dfd5]" />}
               </div>
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Caption</label>
-                <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={imageForm.caption || ''} onChange={e => setImageForm({...imageForm, caption: e.target.value})} placeholder="Image caption..." />
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-26">Caption</label>
+                <input id="admin-field-26" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={imageForm.caption || ''} onChange={e => setImageForm({...imageForm, caption: e.target.value})} placeholder="Image caption..." />
               </div>
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 font-semibold text-gray-700">
@@ -1723,13 +1719,13 @@ function parseYearNumber(yearStr: string): number {
               <div className="space-y-1.5">
                 <label htmlFor="admin-image-sort-order" className="font-semibold text-gray-700">Sort Order</label>
                 <input id="admin-image-sort-order" name="sort_order" type="number" min={0} max={2147483647} step={1} required
-                  className="w-full border border-gray-300 rounded-xl p-2.5 outline-none" value={imageForm.sort_order ?? 0}
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 outline-none" value={imageForm.sort_order ?? 0}
                   onChange={e => setImageForm({ ...imageForm, sort_order: e.target.value })} />
               </div>
               </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" disabled={pending.has('save:image')} onClick={() => { setImageModalOpen(false); setSiteImageFile(null); }} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button type="button" disabled={pending.has('save:image')} onClick={() => { setImageModalOpen(false); setSiteImageFile(null); }} className="px-5 py-2.5 border border-[#e8dfd5] rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
               <button type="submit" form="admin-image-form" disabled={pending.has('save:image')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:image') ? 'Saving...' : 'Save Image'}</button>
             </div>
           </div>
@@ -1738,46 +1734,46 @@ function parseYearNumber(yearStr: string): number {
 
       {/* Timeline Modal */}
       {timelineModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" aria-label="Timeline editor" className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-gray-900">{timelineForm.id ? 'Edit Timeline' : 'Add Timeline'}</h2>
-              <button type="button" disabled={pending.has('save:timeline')} onClick={() => setTimelineModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
+              <h2 className="section-title text-gray-900">{timelineForm.id ? 'Edit Timeline' : 'Add Timeline'}</h2>
+              <button type="button" disabled={pending.has('save:timeline')} onClick={() => setTimelineModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 border border-[#e8dfd5] transition-colors"><X className="w-4 h-4"/></button>
             </div>
             <form id="admin-timeline-form" onSubmit={handleSaveTimeline} className="p-6 space-y-5 text-sm">
               {renderFormError('timeline')}
               <fieldset disabled={pending.has('save:timeline')} className="contents">
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Heritage Site</label>
-                <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={timelineForm.heritage_site_id || ''} onChange={e => setTimelineForm({...timelineForm, heritage_site_id: parseInt(e.target.value)})}>
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-27">Heritage Site</label>
+                <select id="admin-field-27" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={timelineForm.heritage_site_id || ''} onChange={e => setTimelineForm({...timelineForm, heritage_site_id: parseInt(e.target.value)})}>
                   <option value="">Select a Heritage Site...</option>
                   {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5 col-span-2">
-                  <label className="font-semibold text-gray-700">Title</label>
-                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="Timeline Event Title" value={timelineForm.title || ''} onChange={e => setTimelineForm({...timelineForm, title: e.target.value})} />
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-28">Title</label>
+                  <input id="admin-field-28" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="Timeline Event Title" value={timelineForm.title || ''} onChange={e => setTimelineForm({...timelineForm, title: e.target.value})} />
                 </div>
                 <div className="space-y-1.5 col-span-2">
-                  <label className="font-semibold text-gray-700">Year</label>
-                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. 1920 or circa 1920" value={timelineForm.year || ''} onChange={e => setTimelineForm({...timelineForm, year: e.target.value})} />
+                  <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-29">Year</label>
+                  <input id="admin-field-29" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. 1920 or circa 1920" value={timelineForm.year || ''} onChange={e => setTimelineForm({...timelineForm, year: e.target.value})} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Description</label>
-                <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={timelineForm.description || ''} onChange={e => setTimelineForm({...timelineForm, description: e.target.value})} placeholder="Event description..." />
+                <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-30">Description</label>
+                <textarea id="admin-field-30" required rows={4} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={timelineForm.description || ''} onChange={e => setTimelineForm({...timelineForm, description: e.target.value})} placeholder="Event description..." />
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="admin-timeline-order" className="font-semibold text-gray-700">Sort Order</label>
                 <input id="admin-timeline-order" type="number" min={0} max={2147483647} step={1} required
                   value={timelineForm.sort_order ?? 0} onChange={e => setTimelineForm({ ...timelineForm, sort_order: e.target.value })}
-                  className="w-full border border-gray-300 rounded-xl p-2.5 outline-none" />
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 outline-none" />
               </div>
               </fieldset>
             </form>
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" disabled={pending.has('save:timeline')} onClick={() => setTimelineModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
+              <button type="button" disabled={pending.has('save:timeline')} onClick={() => setTimelineModalOpen(false)} className="px-5 py-2.5 border border-[#e8dfd5] rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
               <button type="submit" form="admin-timeline-form" disabled={pending.has('save:timeline')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:timeline') ? 'Saving...' : 'Save Timeline'}</button>
             </div>
           </div>

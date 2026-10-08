@@ -70,7 +70,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className="font-outfit text-3xl sm:text-5xl md:text-[56px] lg:text-[64px] font-extrabold text-white leading-[1.12] drop-shadow-md tracking-tight max-w-4xl mx-auto"
+            className="font-sans text-3xl sm:text-5xl md:text-[56px] lg:text-[64px] font-extrabold text-white leading-[1.12] drop-shadow-md tracking-tight max-w-4xl mx-auto"
           >
             Explore the Heritage of <br />
             <span className="text-[#FCBD15]">
@@ -140,7 +140,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* Main Heading */}
               <h2
                 id="heritage-intro-heading"
-                className="font-outfit text-3xl sm:text-4xl lg:text-[44px] xl:text-[48px] font-extrabold text-[#1e1b19] tracking-tight leading-[1.15] mb-5 sm:mb-6"
+                className="font-sans text-3xl sm:text-4xl lg:text-[44px] xl:text-[48px] font-extrabold text-[#1e1b19] tracking-tight leading-[1.15] mb-5 sm:mb-6"
               >
                 Home of the Giant Lanterns
               </h2>
@@ -188,11 +188,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
 
                 {/* Refined Heritage Caption Frame Footer matching left side typography */}
-                <div className="p-4 sm:p-5 text-left font-outfit bg-white border-t border-[#e8dfd5]">
-                  <h3 className="font-outfit text-lg sm:text-xl font-bold text-[#1e1b19] tracking-tight mb-1.5 group-hover:text-[#7e1925] transition-colors">
+                <div className="p-4 sm:p-5 text-left font-sans bg-white border-t border-[#e8dfd5]">
+                  <h3 className="font-sans text-lg sm:text-xl font-bold text-[#1e1b19] tracking-tight mb-1.5 group-hover:text-[#7e1925] transition-colors">
                     {highlight?.name || 'Heritage catalogue'}
                   </h3>
-                  <p className="font-outfit text-xs sm:text-sm text-[#554d48] leading-relaxed font-normal">
+                  <p className="font-sans text-xs sm:text-sm text-[#554d48] leading-relaxed font-normal">
                     {highlight?.shortDescription || 'No heritage sites are currently available.'}
                   </p>
                 </div>
@@ -217,16 +217,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
             className="flex flex-col sm:flex-row sm:items-end justify-between mb-5 sm:mb-6 gap-2 border-b border-[#e8dfd5] pb-3"
           >
             <div>
-              <span className="font-outfit text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925]">
+              <span className="font-sans text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925]">
                 CITY OF SAN FERNANDO, PAMPANGA
               </span>
-              <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
+              <h2 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
                 Explore San Fernando's Heritage
               </h2>
             </div>
             <button
               onClick={onExploreClick}
-              className="font-outfit text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1 transition-colors pb-0.5 group"
+              className="font-sans text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1 transition-colors pb-0.5 group"
             >
               <span>View All Heritage</span>
               <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
@@ -277,7 +277,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 transition={{ duration: 0.55, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
                 onClick={cat.onClick}
                 id={`category-card-${cat.id}`}
-                className="group relative h-36 sm:h-38 lg:h-40 w-full rounded-xl overflow-hidden border border-[#e8dfd5] hover:border-[#7e1925]/60 shadow-sm hover:shadow-lg transition-all duration-400 cursor-pointer text-left font-outfit"
+                className="group relative h-36 sm:h-38 lg:h-40 w-full rounded-xl overflow-hidden border border-[#e8dfd5] hover:border-[#7e1925]/60 shadow-sm hover:shadow-lg transition-all duration-400 cursor-pointer text-left font-sans"
               >
                 {/* Background Image */}
                 <img
@@ -303,17 +303,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div className="relative z-10 h-full p-3.5 sm:p-4 flex flex-col justify-between pointer-events-none">
                   {/* Header that slides to top on hover */}
                   <div className="transform translate-y-7 sm:translate-y-8 group-hover:translate-y-0 transition-transform duration-350 ease-out pr-8">
-                    <span className="font-outfit text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.18em] text-[#fcbd15] opacity-90 block mb-0.5">
+                    <span className="font-sans text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.18em] text-[#fcbd15] opacity-90 block mb-0.5">
                       Heritage
                     </span>
-                    <h3 className="font-outfit text-lg sm:text-xl font-bold text-white tracking-tight leading-snug drop-shadow-sm">
+                    <h3 className="font-sans text-lg sm:text-xl font-bold text-white tracking-tight leading-snug drop-shadow-sm">
                       {cat.title}
                     </h3>
                   </div>
 
                   {/* Description that appears at bottom on hover without expanding card height */}
                   <div className="transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out delay-75">
-                    <p className="font-outfit text-xs sm:text-[13px] text-[#f5dfc6]/95 leading-snug font-normal line-clamp-2">
+                    <p className="font-sans text-xs sm:text-[13px] text-[#f5dfc6]/95 leading-snug font-normal line-clamp-2">
                       {cat.subtitle}
                     </p>
                   </div>
@@ -333,21 +333,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.25 }}
             transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-outfit"
+            className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-sans"
           >
             <div>
-              <span className="font-outfit text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925] flex items-center gap-1.5">
+              <span className="font-sans text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#7e1925]" />
                 Archival Highlights
               </span>
-              <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
+              <h2 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
                 Featured Heritage Sites
               </h2>
             </div>
             <button
               id="view-all-featured-btn"
               onClick={onExploreClick}
-              className="font-outfit text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
+              className="font-sans text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
             >
               <span>View All Sites</span>
               <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
@@ -367,7 +367,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.15 }}
                   transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  className="group relative flex flex-col rounded-2xl border border-[#e8dfd5] bg-white hover:border-[#7e1925]/60 hover:shadow-[0_16px_36px_-10px_rgba(126,25,37,0.14)] transition-all duration-400 overflow-hidden text-left font-outfit cursor-pointer"
+                  className="group relative flex flex-col rounded-2xl border border-[#e8dfd5] bg-white hover:border-[#7e1925]/60 hover:shadow-[0_16px_36px_-10px_rgba(126,25,37,0.14)] transition-all duration-400 overflow-hidden text-left font-sans cursor-pointer"
                 >
                   {/* 16:10 Photo Container with Subtle Smooth Zoom */}
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#240409]">
@@ -383,7 +383,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10 group-hover:from-black/85 transition-colors duration-300" />
 
                     {/* Category Pill Tag */}
-                    {site.category && <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-outfit text-[10px] font-bold uppercase tracking-wider text-[#7e1925] border border-[#e8dfd5] shadow-xs">
+                    {site.category && <span className="absolute top-3 left-3 rounded-full bg-white/95 backdrop-blur-md px-2.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-wider text-[#7e1925] border border-[#e8dfd5] shadow-xs">
                       {site.category}
                     </span>}
 
@@ -405,25 +405,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
                     {/* Historical Year Badge */}
                     {site.yearBuilt && <div className="absolute bottom-2.5 left-3">
-                      <span className="font-outfit text-[10px] font-semibold text-[#f5dfc6] bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded border border-white/15 tracking-wide">
+                      <span className="font-sans text-[10px] font-semibold text-[#f5dfc6] bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded border border-white/15 tracking-wide">
                         {site.yearBuilt}
                       </span>
                     </div>}
                   </div>
 
                   {/* Content Area */}
-                  <div className="flex flex-1 flex-col justify-between p-4 sm:p-5 font-outfit">
+                  <div className="flex flex-1 flex-col justify-between p-4 sm:p-5 font-sans">
                     <div>
-                      <div className="flex items-center gap-1.5 font-outfit text-[11px] font-bold uppercase tracking-[0.14em] text-[#7e1925] mb-1">
+                      <div className="flex items-center gap-1.5 font-sans text-[11px] font-bold uppercase tracking-[0.14em] text-[#7e1925] mb-1">
                         <MapPin className="h-3 w-3 text-[#7e1925] flex-shrink-0" />
                         <span>{site.address}</span>
                       </div>
 
-                      <h3 className="font-outfit text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
+                      <h3 className="font-sans text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
                         {site.name}
                       </h3>
 
-                      <p className="mt-2 font-outfit text-xs sm:text-[13px] text-[#554d48] leading-relaxed font-normal line-clamp-2">
+                      <p className="mt-2 font-sans text-xs sm:text-[13px] text-[#554d48] leading-relaxed font-normal line-clamp-2">
                         {site.shortDescription}
                       </p>
                     </div>
@@ -449,19 +449,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.25 }}
             transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-outfit"
+            className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-2 border-b border-[#e8dfd5] pb-3.5 font-sans"
           >
             <div>
-              <span className="font-outfit text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925]">
+              <span className="font-sans text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[#7e1925]">
                 Living Culture & Celebrations
               </span>
-              <h2 className="font-outfit text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
+              <h2 className="font-sans text-2xl sm:text-3xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
                 Upcoming Events
               </h2>
             </div>
             <button
               onClick={() => onSelectEvent(upcomingEvents[0])}
-              className="font-outfit text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
+              className="font-sans text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#7e1925] hover:text-[#580b14] flex items-center gap-1.5 transition-colors pb-0.5 group"
             >
               <span>All Cultural Festivals</span>
               <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
@@ -478,7 +478,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.15 }}
                 transition={{ duration: 0.6, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className="group relative flex flex-col rounded-2xl border border-[#e8dfd5] bg-white hover:border-[#7e1925]/60 hover:shadow-[0_16px_36px_-10px_rgba(126,25,37,0.14)] transition-all duration-400 overflow-hidden text-left font-outfit cursor-pointer"
+                className="group relative flex flex-col rounded-2xl border border-[#e8dfd5] bg-white hover:border-[#7e1925]/60 hover:shadow-[0_16px_36px_-10px_rgba(126,25,37,0.14)] transition-all duration-400 overflow-hidden text-left font-sans cursor-pointer"
               >
                 {/* 16:10 Real Photo Container */}
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#240409]">
@@ -496,34 +496,34 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10 group-hover:from-black/85 transition-colors duration-300" />
 
                   {/* Event Date Badge on Top Left */}
-                  <span className="absolute top-3 left-3 rounded-lg bg-[#7e1925] px-2.5 py-1 font-outfit text-[10px] font-bold text-white uppercase tracking-wider shadow-xs">
+                  <span className="absolute top-3 left-3 rounded-lg bg-[#7e1925] px-2.5 py-1 font-sans text-[10px] font-bold text-white uppercase tracking-wider shadow-xs">
                     {event.dateBadge}
                   </span>
 
                   {/* Category Pill on Top Right */}
-                  <span className="absolute top-3 right-3 rounded-full bg-black/60 backdrop-blur-xs px-2.5 py-0.5 font-outfit text-[10px] font-semibold text-[#ffd580] border border-[#fcbd15]/30 uppercase tracking-wider">
+                  <span className="absolute top-3 right-3 rounded-full bg-black/60 backdrop-blur-xs px-2.5 py-0.5 font-sans text-[10px] font-semibold text-[#ffd580] border border-[#fcbd15]/30 uppercase tracking-wider">
                     {event.category}
                   </span>
                 </div>
 
-                <div className="p-4 sm:p-5 flex flex-1 flex-col justify-between font-outfit">
+                <div className="p-4 sm:p-5 flex flex-1 flex-col justify-between font-sans">
                   <div>
-                    <div className="flex items-center gap-1.5 font-outfit text-xs font-semibold text-[#7e1925] mb-1">
+                    <div className="flex items-center gap-1.5 font-sans text-xs font-semibold text-[#7e1925] mb-1">
                       <Calendar className="h-3.5 w-3.5 text-[#7e1925]" />
                       <span>{event.date}</span>
                     </div>
 
-                    <h3 className="font-outfit text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
+                    <h3 className="font-sans text-base sm:text-lg font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug line-clamp-1">
                       {event.title}
                     </h3>
 
-                    <p className="mt-2 font-outfit text-xs sm:text-[13px] text-[#554d48] leading-relaxed font-normal line-clamp-2">
+                    <p className="mt-2 font-sans text-xs sm:text-[13px] text-[#554d48] leading-relaxed font-normal line-clamp-2">
                       {event.shortDescription}
                     </p>
                   </div>
 
                   <div className="mt-4 pt-3.5 border-t border-[#f0e8df] flex items-center justify-between text-xs">
-                    <span className="font-outfit text-[11px] sm:text-xs text-[#8a7171] line-clamp-1 max-w-[60%]">
+                    <span className="font-sans text-[11px] sm:text-xs text-[#8a7171] line-clamp-1 max-w-[60%]">
                       {event.location.split(',')[0]}
                     </span>
                     <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#7e1925] group-hover:text-[#580b14] transition-colors">
@@ -576,17 +576,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div className="inline-flex items-center rounded-full bg-[#200205]/80 border border-white/20 px-3.5 py-1 text-xs font-medium text-white/95 backdrop-blur-md shadow-xs">
                   <span className="tracking-wide">City of <span className="text-[#ffd580] font-semibold">San Fernando</span>, Pampanga</span>
                 </div>
-                <h2 className="font-outfit text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
+                <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
                   Your Journey Through <span className="text-[#ffd580]">San Fernando</span> Starts Here.
                 </h2>
-                <p className="font-outfit text-sm sm:text-base text-[#ffeaec]/90 max-w-xl leading-relaxed font-normal">
+                <p className="font-sans text-sm sm:text-base text-[#ffeaec]/90 max-w-xl leading-relaxed font-normal">
                   Explore the places, stories, and traditions that keep the city's heritage alive.
                 </p>
                 <div className="pt-2">
                   <button
                     id="start-journey-btn"
                     onClick={onExploreClick}
-                    className="font-outfit inline-flex items-center gap-2 rounded-xl bg-[#f5b82a] text-[#3d0309] px-7 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider hover:bg-[#ffc842] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
+                    className="font-sans inline-flex items-center gap-2 rounded-xl bg-[#f5b82a] text-[#3d0309] px-7 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider hover:bg-[#ffc842] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
                   >
                     <span>Explore Heritage</span>
                     <ArrowRight className="w-4 h-4" />
@@ -614,20 +614,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
                   {/* Badge on top right */}
                   <div className="absolute top-3.5 right-3.5">
-                    <span className="inline-flex items-center rounded-full bg-black/60 backdrop-blur-md px-3 py-1 font-outfit text-[11px] font-semibold text-white/95 border border-white/25 uppercase tracking-wider">
+                    <span className="inline-flex items-center rounded-full bg-black/60 backdrop-blur-md px-3 py-1 font-sans text-[11px] font-semibold text-white/95 border border-white/25 uppercase tracking-wider">
                       {highlight?.category || 'Heritage catalogue'}
                     </span>
                   </div>
 
                   {/* Caption at bottom */}
                   <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 text-left">
-                    <span className="font-outfit text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd580] block mb-1">
+                    <span className="font-sans text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffd580] block mb-1">
                       Living Culture & History
                     </span>
-                    <p className="font-outfit text-base sm:text-lg font-bold text-white leading-snug">
+                    <p className="font-sans text-base sm:text-lg font-bold text-white leading-snug">
                       {highlight?.name || 'Heritage catalogue'}
                     </p>
-                    <p className="font-outfit text-xs text-[#ffeaec]/85 mt-1 line-clamp-2">
+                    <p className="font-sans text-xs text-[#ffeaec]/85 mt-1 line-clamp-2">
                       {highlight?.shortDescription || 'No heritage sites are currently available.'}
                     </p>
                   </div>

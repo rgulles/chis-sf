@@ -196,7 +196,7 @@ for (const resource of resources) {
     const { view, calls } = await loaded(resource, () => new Response('<html>SQLSTATE private trace</html>', { status: 500 }));
     await deleteButton(view.render()).props.onClick();
     assert.ok(text(view.render()).includes(resource.item));
-    assert.ok(text(find(view.render(), (node) => node.props?.role === 'alert')).includes('request failed'));
+    assert.ok(text(find(view.render(), (node) => node.props?.role === 'alert')).includes('temporarily unavailable'));
     assert.equal(text(view.render()).includes('SQLSTATE'), false);
     assert.equal(calls.filter(([url, options]) => url === '/api/admin/heritage-sites' && options.method === 'GET').length, 1);
   });
@@ -249,7 +249,7 @@ test('successful mutation followed by failed refresh remains a success with a re
   assert.ok(text(view.render()).includes('Unable to load admin data.'));
 });
 
-test('admin API errors preserve status and validation while public event fallback remains unchanged', async () => {
+test('admin API errors preserve status and validation while public event errors are visible', async () => {
   fetch = async (_, options) => {
     assert.equal(options.headers.Authorization, 'Bearer admin-token');
     return reply({ message: 'Private server details', errors: { name: ['The name field is required.'] } }, 422);
@@ -258,8 +258,8 @@ test('admin API errors preserve status and validation while public event fallbac
     && error.status === 422 && error.validationErrors.name[0] === 'The name field is required.'
     && !error.message.includes('Private'));
   fetch = async () => { throw new Error('Offline'); };
-  await assert.rejects(api.apiFetchRawSites(), /Check your connection/);
-  assert.deepEqual(await api.apiFetchEvents(), []);
+  await assert.rejects(api.apiFetchRawSites(), /Check your internet connection/);
+  await assert.rejects(api.apiFetchEvents(), /Unable to connect|temporarily unavailable/);
 });
 
 test('starting a new form clears the previous save error', async () => {

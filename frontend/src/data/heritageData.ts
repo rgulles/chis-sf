@@ -105,7 +105,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       { title: 'Revolutionary Plaque', description: 'Historical bronze marker from the National Historical Institute.', x: 22, y: 70 },
       { title: 'Central Octagonal Cupola', description: 'Allows natural zenith illumination into the transept.', x: 52, y: 15 }
     ],
-    qrCodeId: 'QR-SF-CATHEDRAL-01',
     scanCount: 1420,
     badgeName: 'San Fernando Cathedral Stamp',
     isFeatured: true
@@ -179,7 +178,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       { title: 'Steam Locomotive No. 17', description: 'Preserved Baldwin steam engine museum centerpiece.', x: 68, y: 44 },
       { title: 'Death March Memorial Wall', description: 'Names and chronicles of the 1942 march survivors.', x: 25, y: 35 }
     ],
-    qrCodeId: 'QR-SF-TRAIN-02',
     scanCount: 1980,
     badgeName: 'Death March Rails Stamp',
     isFeatured: true
@@ -274,7 +272,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       { title: 'Capiz Ventanillas', description: 'Traditional Filipino architectural airflow louvers beneath windows.', x: 18, y: 55 },
       { title: 'Crystal Chandelier', description: 'Directly imported from Bohemian glassworks in 1926.', x: 50, y: 15 }
     ],
-    qrCodeId: 'QR-SF-LAZATIN-03',
     scanCount: 890,
     badgeName: 'Lazatin Mansion Heritage Stamp',
     isFeatured: true
@@ -396,7 +393,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       { title: 'Subterranean Trapdoor Entry', description: 'Original brick floor portal leading to the underground passage.', x: 25, y: 75 },
       { title: 'Carved Calado Transoms', description: 'Hand-pierced timber vents facilitating cross-breezes and acoustic privacy.', x: 60, y: 18 }
     ],
-    qrCodeId: 'QR-SF-HIZON-SINGIAN-09',
     scanCount: 1650,
     badgeName: 'Hizon-Singian Ancestral Stamp',
     isFeatured: true
@@ -470,7 +466,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       { title: 'Miniature Lantern Workshop', description: 'Live artisan demonstration room for crafting Capiz shell stars.', x: 75, y: 40 },
       { title: 'The Hall of Champions', description: 'Historic trophies and photos from a century of Ligligan Parul contests.', x: 25, y: 35 }
     ],
-    qrCodeId: 'QR-SF-LANTERN-04',
     scanCount: 3120,
     badgeName: 'Giant Lantern Explorer Stamp',
     isFeatured: true
@@ -531,7 +526,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       guideAvailable: true,
       bestTime: 'Morning'
     },
-    qrCodeId: 'QR-SF-HENSON-05',
     scanCount: 740,
     badgeName: 'Henson-Hizon Heritage Stamp'
   },
@@ -591,7 +585,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       guideAvailable: false,
       bestTime: 'Sunset along the Capitol Boulevard promenade'
     },
-    qrCodeId: 'QR-SF-CAPITOL-06',
     scanCount: 1105,
     badgeName: 'Provincial Capitol Stamp'
   },
@@ -651,7 +644,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       guideAvailable: false,
       bestTime: 'Morning or late afternoon'
     },
-    qrCodeId: 'QR-SF-MARKER-07',
     scanCount: 650,
     badgeName: 'Bataan Valor Memorial Stamp'
   },
@@ -712,7 +704,6 @@ export const INITIAL_HERITAGE_SITES: HeritageSite[] = [
       guideAvailable: false,
       bestTime: 'Afternoon / Golden Hour photography'
     },
-    qrCodeId: 'QR-SF-PASUDECO-08',
     scanCount: 580,
     badgeName: 'PASUDECO Industrial Stamp'
   }

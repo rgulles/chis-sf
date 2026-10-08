@@ -31,14 +31,13 @@ import { SavedView } from './views/SavedView';
 import { AboutView } from './views/AboutView';
 import { TourismOfficeView } from './views/TourismOfficeView';
 import { AdminView } from './views/AdminView';
-import { CheckinView } from './views/CheckinView';
+import { ErrorState } from './components/ErrorState';
 import { PassportView } from './views/PassportView';
 import { apiFetchPassport } from './api/client';
 
 export default function App() {
   // Navigation & View State
   const [currentView, setCurrentView] = useState<ViewType>(() => parseHeritageRoute(window.location?.hash || '').view);
-  const [checkinToken, setCheckinToken] = useState(() => /^#\/check-in\/([a-f0-9]{64})\/?$/.exec(window.location?.hash || '')?.[1] || 'invalid');
   const [passportState, setPassportState] = useState<{ userId: string; data: HeritagePassport | null; error: string } | null>(null);
   const [passportRevision, setPassportRevision] = useState(0);
   const [routeSiteId, setRouteSiteId] = useState<string | null>(() => parseHeritageRoute(window.location?.hash || '').siteId);
@@ -52,6 +51,11 @@ export default function App() {
   // Dynamic Data State
   const [sites, setSites] = useState<HeritageSite[]>([]);
   const [sitesError, setSitesError] = useState<string | null>(null);
+  const [dataRetry, setDataRetry] = useState(0);
+  const [eventsError, setEventsError] = useState('');
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [detailError, setDetailError] = useState('');
   const [events, setEvents] = useState<EventItem[]>([]);
 
   // Saved / Favorites
@@ -84,8 +88,8 @@ export default function App() {
     if (!passportUserId) return;
     let cancelled = false;
     const userId = passportUserId;
-    apiFetchPassport().then(data => { if (!cancelled) setPassportState({ userId, data, error: '' }); }).catch(() => {
-      if (!cancelled) setPassportState({ userId, data: null, error: 'Unable to load your passport. Please try again.' });
+    apiFetchPassport().then(data => { if (!cancelled) setPassportState({ userId, data, error: '' }); }).catch(failure => {
+      if (!cancelled) setPassportState({ userId, data: null, error: failure instanceof Error ? failure.message : 'Unable to load your passport. Please try again.' });
     });
     return () => { cancelled = true; };
   }, [passportUserId, passportRevision]);
@@ -95,6 +99,7 @@ export default function App() {
     if (!getJwtToken()) return;
     authRevision.current += 1;
     setUser(authenticatedUser);
+    setSessionExpired(false);
   };
 
   // Modals Visibility State
@@ -103,11 +108,20 @@ export default function App() {
   const [directionsTargetSite, setDirectionsTargetSite] = useState<HeritageSite | null>(null);
   const [sitesLoading, setSitesLoading] = useState(true);
 
+  useEffect(() => {
+    const expire = () => { authRevision.current++; setUser(null); setPassportState(null); setSessionExpired(true); };
+    window.addEventListener?.('chis:session-expired', expire);
+    return () => window.removeEventListener?.('chis:session-expired', expire);
+  }, []);
+
   // Load live data from Laravel API on mount
   useEffect(() => {
     let cancelled = false;
     async function loadBackendData() {
       setSitesLoading(true);
+      setSitesError(null);
+      setEventsLoading(true);
+      setEventsError('');
       try {
         const fetchedSites = await apiFetchSites();
         if (!cancelled) {
@@ -128,21 +142,22 @@ export default function App() {
       }
       try {
         const fetchedEvents = await apiFetchEvents();
-        setEvents(fetchedEvents);
+        if (!cancelled) { setEvents(fetchedEvents); setEventsError(''); }
       } catch (err) {
-        console.warn('Backend loading error:', err);
+        if (!cancelled) { setEvents([]); setEventsError(err instanceof Error ? err.message : 'Unable to load events. Please try again.'); }
+      } finally {
+        if (!cancelled) setEventsLoading(false);
       }
     }
     loadBackendData();
     return () => { cancelled = true; };
-  }, [currentView]);
+  }, [currentView, dataRetry]);
 
   useEffect(() => {
     const syncRoute = () => {
       if (routeHash.current === window.location.hash) return;
       routeHash.current = window.location.hash;
       const route = parseHeritageRoute(window.location.hash);
-      setCheckinToken(/^#\/check-in\/([a-f0-9]{64})\/?$/.exec(window.location.hash)?.[1] || 'invalid');
       setSelectedSite(null);
       setDetailStatus('loading');
       setRouteSiteId(route.siteId);
@@ -170,8 +185,8 @@ export default function App() {
       if (cancelled) return;
       setSelectedSite(site);
       setDetailStatus(site ? 'ready' : 'not-found');
-    }).catch(() => {
-      if (!cancelled) setDetailStatus('error');
+    }).catch(failure => {
+      if (!cancelled) { setDetailStatus('error'); setDetailError(failure instanceof Error ? failure.message : 'Unable to load this heritage site.'); }
     });
     return () => { cancelled = true; };
   }, [currentView, routeSiteId, detailRetry]);
@@ -310,13 +325,11 @@ export default function App() {
 
       {/* MAIN VIEW CONTENT CONTAINER */}
       <main id="main-content-viewport" className="flex-1">
-        {currentView === 'check-in' && <CheckinView key={`${checkinToken}-${user?.id || 'guest'}`} token={checkinToken} user={user} onLogin={() => setIsAuthOpen(true)} onSessionExpired={() => { authRevision.current++; void apiLogout(); setUser(null); setPassportState(null); setIsAuthOpen(true); }} onPassport={() => navigateTo('passport')} onSite={handleSelectSite} onExplore={() => navigateTo('explore')} onVerified={() => setPassportRevision(value => value + 1)} />}
         {currentView === 'passport' && <PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => setPassportRevision(value => value + 1)} onSite={handleSelectSite} />}
-        {sitesError && (
-          <div role="alert" className="mx-auto max-w-7xl px-4 py-3 text-sm text-red-800 bg-red-50">
-            {sitesError}
-          </div>
-        )}
+        {sessionExpired && <ErrorState kind="authentication" onRetry={() => setIsAuthOpen(true)} retryLabel="Sign in" />}
+        {currentView === 'not-found' && <ErrorState kind="not-found" title="Page not found" onHome={() => navigateTo('home')} />}
+        {sitesError && currentView !== 'site-detail' && <ErrorState message={sitesError} onRetry={() => setDataRetry(value => value + 1)} />}
+        {sitesLoading && ['explore', 'map'].includes(currentView) && <p role="status" className="p-6">Loading heritage sites…</p>}
         {/* PAGE 1: HOME */}
         {currentView === 'home' && (
           <HomeView
@@ -336,7 +349,7 @@ export default function App() {
         )}
 
         {/* COMBINED EXPLORE HERITAGE & MAP */}
-        {currentView === 'explore' && (
+        {currentView === 'explore' && !sitesLoading && !sitesError && (
           <ExploreView
             sites={sites}
             onSelectSite={handleSelectSite}
@@ -348,7 +361,7 @@ export default function App() {
           />
         )}
 
-        {currentView === 'map' && (
+        {currentView === 'map' && !sitesLoading && !sitesError && (
           <MapView
             sites={sites}
             onSelectSite={handleSelectSite}
@@ -363,16 +376,21 @@ export default function App() {
 
         {/* PAGE 4: HERITAGE SITE DETAILS */}
         {currentView === 'site-detail' && detailStatus !== 'ready' && (
-          <section className="max-w-5xl mx-auto p-8 space-y-4" aria-live="polite">
+          <section className="max-w-5xl mx-auto p-8 space-y-4" role={detailStatus === 'loading' ? 'status' : 'alert'}>
             <h1 className="headline-md">{detailStatus === 'loading' ? 'Loading heritage site…' : detailStatus === 'not-found' ? 'Heritage site not found' : 'Unable to load this heritage site'}</h1>
             {detailStatus === 'not-found' && <p>This site is unavailable or no longer public.</p>}
-            {detailStatus === 'error' && <button onClick={() => setDetailRetry(value => value + 1)}>Try again</button>}
+            {detailStatus === 'error' && <ErrorState message={detailError} onRetry={() => setDetailRetry(value => value + 1)} />}
             {detailStatus !== 'loading' && <button onClick={() => navigateTo('explore')}>Return to Explore</button>}
           </section>
         )}
         {currentView === 'site-detail' && detailStatus === 'ready' && selectedSite && selectedSite.id === routeSiteId && (
           <SiteDetailView
             site={selectedSite}
+            user={user}
+            onLogin={() => setIsAuthOpen(true)}
+            onPassport={() => navigateTo('passport')}
+            onExplore={() => navigateTo('explore')}
+            onVerified={() => setPassportRevision(value => value + 1)}
             onBack={() => window.history?.state?.chisNavigation ? window.history.back() : navigateTo('explore')}
             onOpenDirections={(site) => setDirectionsTargetSite(site)}
             isSaved={savedSiteIds.includes(selectedSite.id)}
@@ -385,7 +403,10 @@ export default function App() {
         )}
 
         {/* PAGE 7 & 8: EVENTS & EVENT DETAILS */}
-        {currentView === 'events' && (
+        {currentView === 'events' && eventsLoading && <p role="status" className="p-6">Loading events…</p>}
+        {currentView === 'events' && eventsError && <ErrorState message={eventsError} onRetry={() => setDataRetry(value => value + 1)} />}
+        {currentView === 'events' && !eventsLoading && !eventsError && !events.length && <p role="status" className="p-6">No events are currently available.</p>}
+        {currentView === 'events' && !eventsLoading && !eventsError && (
           <EventsView
             events={events}
             sites={sites}

@@ -33,8 +33,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             <button
               key={item.id}
               id={`mobile-nav-${item.id}`}
+              aria-current={isActive ? 'page' : undefined}
               onClick={() => onNavigate(item.id)}
-              className={`relative flex flex-col items-center justify-center py-1 transition-colors ${
+              className={`relative min-h-11 min-w-0 flex flex-col items-center justify-center py-1 transition-colors ${
                 isActive ? 'text-[#7e1925]' : 'text-[#574141] hover:text-[#1e1b19]'
               }`}
             >
@@ -46,7 +47,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   </span>
                 )}
               </div>
-              <span className={`text-[10px] mt-1 tracking-wider uppercase font-outfit ${isActive ? 'text-[#7e1925] font-bold' : 'text-[#574141] font-medium'}`}>
+              <span className={`text-[10px] mt-1 tracking-wider uppercase font-sans ${isActive ? 'text-[#7e1925] font-bold' : 'text-[#574141] font-medium'}`}>
                 {item.label}
               </span>
               {isActive && (

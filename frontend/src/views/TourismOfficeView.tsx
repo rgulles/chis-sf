@@ -20,7 +20,7 @@ export const TourismOfficeView: React.FC = () => {
   };
 
   return (
-    <div id="tourism-office-page" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10 pb-28 font-outfit">
+    <div id="tourism-office-page" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10 pb-28 font-sans">
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -34,10 +34,10 @@ export const TourismOfficeView: React.FC = () => {
           </span>
           <span className="text-xs text-[#6B645F]">• City Government of San Fernando, Pampanga</span>
         </div>
-        <h1 id="tourism-header-title" className="font-outfit text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#23201F] tracking-tight">
+        <h1 id="tourism-header-title" className="font-sans text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#23201F] tracking-tight">
           City Tourism Office & Visitor Center
         </h1>
-        <p className="font-outfit text-base text-[#6B645F] max-w-3xl leading-relaxed font-normal">
+        <p className="font-sans text-base text-[#6B645F] max-w-3xl leading-relaxed font-normal">
           Official visitor assistance, accredited heritage tour guide bookings, student educational visit arrangements, and tourist safety support.
         </p>
       </motion.div>
@@ -126,7 +126,7 @@ export const TourismOfficeView: React.FC = () => {
         >
           <div className="rounded-2xl border border-[#E8DFD5] bg-white p-6 sm:p-8 shadow-xs space-y-6">
             <div>
-              <h3 className="text-xl font-bold font-outfit text-[#23201F] tracking-tight">
+              <h3 className="text-xl font-bold font-sans text-[#23201F] tracking-tight">
                 Book a Tour or Inquire
               </h3>
               <p className="text-xs sm:text-sm text-[#6B645F] mt-1 font-normal">
@@ -143,7 +143,7 @@ export const TourismOfficeView: React.FC = () => {
                 <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-emerald-600 text-white shadow-xs">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <h4 className="text-lg font-bold text-emerald-950 font-outfit">
+                <h4 className="text-lg font-bold text-emerald-950 font-sans">
                   Inquiry Received!
                 </h4>
                 <p className="text-sm text-emerald-800 max-w-sm mx-auto leading-relaxed">

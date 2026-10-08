@@ -7,7 +7,6 @@ interface HeaderProps {
   currentView: ViewType;
   onNavigate: (view: ViewType) => void;
   onOpenSearch?: () => void;
-  onOpenQRScanner?: () => void;
   onOpenAuth: () => void;
   user: UserProfile | null;
   totalSites?: number;
@@ -19,7 +18,6 @@ export const Header: React.FC<HeaderProps> = ({
   currentView,
   onNavigate,
   onOpenSearch,
-  onOpenQRScanner,
   onOpenAuth,
   user,
   onToggleAdminMode,
@@ -55,11 +53,12 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 key={item.id}
                 id={`nav-link-${item.id}`}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => onNavigate(item.id)}
-                className={`rounded-md px-4 py-2 text-sm font-semibold tracking-wide transition-colors ${
+                className={`min-h-11 border-0 bg-transparent px-4 py-2 font-sans text-sm font-semibold transition-colors underline-offset-8 decoration-2 ${
                   isActive
-                    ? 'bg-[#7e1925] text-white'
-                    : 'text-[#1e1b19] hover:bg-[#faf2ee] hover:text-[#7e1925]'
+                    ? 'text-[#7e1925] underline'
+                    : 'text-[#1e1b19] hover:text-[#7e1925] hover:underline'
                 }`}
               >
                 {item.label}
@@ -71,16 +70,12 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Actions Area */}
         <div className="flex items-center gap-3">
           {onOpenSearch && (
-            <button onClick={onOpenSearch} className="p-2 text-[#7e1925] hover:bg-[#faf2ee] rounded-full transition-colors" title="Search">
+            <button onClick={onOpenSearch} className="min-h-11 min-w-11 p-2 text-[#7e1925] hover:bg-[#faf2ee] rounded-full transition-colors" aria-label="Search CHIS" title="Search">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </button>
           )}
-          {onOpenQRScanner && (
-            <button onClick={onOpenQRScanner} className="p-2 text-[#7e1925] hover:bg-[#faf2ee] rounded-full transition-colors hidden sm:block" title="Scan QR Code">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
-            </button>
-          )}
-          <button onClick={() => onNavigate('saved')} className="p-2 text-[#7e1925] hover:bg-[#faf2ee] rounded-full transition-colors relative" title="Saved Plans">
+
+          <button onClick={() => onNavigate('saved')} className="p-2 text-[#7e1925] hover:bg-[#faf2ee] rounded-full transition-colors relative" aria-label="Saved places and events" title="Saved Plans">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
             {savedCount > 0 && (
               <span className="absolute top-0 right-0 h-4 w-4 text-[10px] font-bold text-white bg-red-500 rounded-full flex items-center justify-center border-2 border-[#fff8f5]">

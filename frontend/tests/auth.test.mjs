@@ -8,7 +8,7 @@ import ts from 'typescript';
 const require = createRequire(import.meta.url);
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const imageModuleUrl = `data:text/javascript;base64,${Buffer.from(ts.transpileModule(read('../src/utils/heritageImages.ts'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } }).outputText).toString('base64')}`;
-const compile = (source, module = ts.ModuleKind.CommonJS) => ts.transpileModule(source.replace(/(['"'])(?:\.\.\/utils\/heritageImages|\.\/heritageImages)\1/g, JSON.stringify(imageModuleUrl)), {
+const compile = (source, module = ts.ModuleKind.CommonJS) => ts.transpileModule(source.replaceAll('import.meta.env.VITE_GOOGLE_CLIENT_ID', "''").replace(/(['"'])(?:\.\.\/utils\/heritageImages|\.\/heritageImages)\1/g, JSON.stringify(imageModuleUrl)), {
   compilerOptions: { module, target: ts.ScriptTarget.ES2023, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 const navigation = await import(`data:text/javascript;base64,${Buffer.from(compile(read('../src/utils/heritageNavigation.ts'), ts.ModuleKind.ESNext)).toString('base64')}`);
@@ -152,14 +152,14 @@ test('network failures never create a user and show a connection error', async (
   await submitLogin(flow.harness, admin.email, 'password');
   assert.equal(flow.loggedIn.length, 0);
   assert.equal(flow.navigations(), 0);
-  assert.ok(find(flow.harness.render(), (node) => node.props?.children?.includes?.('Check your connection')));
+  assert.ok(find(flow.harness.render(), (node) => node.props?.children?.includes?.('Check your internet connection')));
 });
 
 test('server HTML and malformed success responses are never trusted or displayed', async () => {
   fetch = async () => new Response('<html>private stack trace</html>', { status: 500 });
-  await assert.rejects(api.apiLogin(admin.email, 'password'), /service is unavailable/);
+  await assert.rejects(api.apiLogin(admin.email, 'password'), /temporarily unavailable/);
   fetch = async () => new Response('<html>private stack trace</html>');
-  await assert.rejects(api.apiLogin(admin.email, 'password'), /invalid response/);
+  await assert.rejects(api.apiLogin(admin.email, 'password'), /unexpected response/);
   fetch = async () => response({ token: 'fake-token', user: { ...admin, id: 'admin-local' } });
   await assert.rejects(api.apiLogin(admin.email, 'password'), /Invalid authentication response/);
   assert.equal(api.getJwtToken(), null);

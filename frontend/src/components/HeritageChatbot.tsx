@@ -228,7 +228,7 @@ export const HeritageChatbot: React.FC<HeritageChatbotProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.95 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[390px] md:w-[410px] h-[520px] max-h-[82vh] flex flex-col rounded-2xl border border-[#e8dfd5] bg-white shadow-2xl overflow-hidden font-outfit"
+            className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[390px] md:w-[410px] h-[520px] max-h-[82vh] flex flex-col rounded-2xl border border-[#e8dfd5] bg-white shadow-2xl overflow-hidden font-sans"
           >
             {/* Header */}
             <div className="flex items-center justify-between bg-gradient-to-r from-[#7e1925] to-[#580b14] p-3.5 text-white shadow-xs">

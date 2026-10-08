@@ -114,7 +114,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   return (
     <div 
       id="auth-modal-backdrop" 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a0508]/65 p-4 backdrop-blur-sm transition-opacity font-outfit"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a0508]/65 p-4 backdrop-blur-sm transition-opacity font-sans"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -139,7 +139,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Notice Alert Banner */}
         {notice && (
           <div 
-            className={`px-5 py-2.5 text-xs flex items-center gap-2 border-b transition-all font-outfit ${
+            className={`px-5 py-2.5 text-xs flex items-center gap-2 border-b transition-all font-sans ${
               notice.type === 'success' 
                 ? 'bg-[#edf7ee] border-[#c3e6cb] text-[#1e5622]' 
                 : notice.type === 'error'
@@ -159,14 +159,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="p-6 sm:p-7">
           {/* PROFILE VIEW */}
           {mode === 'profile' && user ? (
-            <div className="space-y-4 font-outfit">
+            <div className="space-y-4 font-sans">
               {/* Modal Header */}
               <div className="flex items-center justify-between pb-3 border-b border-[#e8dfd5]">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e8dfd5] bg-[#faf2ee] text-[#7e1925]">
                     <User className="h-5 w-5 stroke-[2]" />
                   </div>
-                  <h3 className="font-outfit text-xl font-extrabold text-[#1e1b19] tracking-tight">
+                  <h3 className="font-sans text-xl font-extrabold text-[#1e1b19] tracking-tight">
                     Traveler Profile
                   </h3>
                 </div>
@@ -184,7 +184,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                 />
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-outfit text-lg font-bold text-[#1e1b19] truncate leading-tight">{user.name}</h4>
+                  <h4 className="font-sans text-lg font-bold text-[#1e1b19] truncate leading-tight">{user.name}</h4>
                   <p className="text-xs font-semibold uppercase text-[#736b66] tracking-wider truncate mt-0.5">{user.email}</p>
                   <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#faf2ee] border border-[#e8dfd5] text-[10px] font-bold tracking-wider uppercase text-[#7e1925]">
                     <span>{isUserAdmin ? 'CITY ADMINISTRATOR' : 'HERITAGE EXPLORER • MEMBER'}</span>
@@ -195,21 +195,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Stats Summary - 3 items in a row */}
               <div className="grid grid-cols-3 gap-2.5 text-center">
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
-                  <span className="font-outfit text-2xl font-extrabold text-[#1e1b19] block leading-none mb-1">
+                  <span className="font-sans text-2xl font-extrabold text-[#1e1b19] block leading-none mb-1">
                     {passport?.visited_count ?? 0}
                   </span>
-                  <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">QR STAMPS</p>
+                  <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">PASSPORT STAMPS</p>
                 </div>
 
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
-                  <span className="font-outfit text-2xl font-extrabold text-[#b45309] block leading-none mb-1">
+                  <span className="font-sans text-2xl font-extrabold text-[#b45309] block leading-none mb-1">
                     {_sites.filter(site => savedSiteIds.includes(site.id)).length}
                   </span>
                   <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">SAVED SITES</p>
                 </div>
 
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
-                  <span className="font-outfit text-lg font-bold text-[#1e1b19] block leading-none mb-1 mt-0.5">
+                  <span className="font-sans text-lg font-bold text-[#1e1b19] block leading-none mb-1 mt-0.5">
                     Level {Math.max(1, Math.floor((passport?.visited_count || 0) / 2) + 1)}
                   </span>
                   <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">RANK</p>
@@ -224,7 +224,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <Award className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <h5 className="font-outfit text-xs font-bold uppercase tracking-wider text-white truncate">
+                      <h5 className="font-sans text-xs font-bold uppercase tracking-wider text-white truncate">
                         DIGITAL HERITAGE PASSPORT
                       </h5>
                       <p className="text-xs text-white/80 mt-0.5 truncate">
@@ -287,7 +287,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div>
               {/* Header without upper icon */}
               <div className="text-center mb-5">
-                <h3 className="font-outfit text-2xl font-extrabold text-[#1e1b19] tracking-tight">
+                <h3 className="font-sans text-2xl font-extrabold text-[#1e1b19] tracking-tight">
                   Welcome to Sa’n Fernando
                 </h3>
                 <p className="text-xs text-[#736b66] mt-1 max-w-xs mx-auto">
@@ -344,7 +344,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full rounded-xl border border-[#ded5cb] bg-white px-3.5 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-outfit"
+                    className="w-full rounded-xl border border-[#ded5cb] bg-white px-3.5 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-sans"
                   />
                 </div>
 
@@ -374,7 +374,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full rounded-xl border border-[#ded5cb] bg-white pl-3.5 pr-10 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-outfit"
+                      className="w-full rounded-xl border border-[#ded5cb] bg-white pl-3.5 pr-10 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-sans"
                     />
                     <button
                       type="button"
@@ -419,7 +419,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             /* MINIMALIST REGISTER FORM (Hometown/Province Removed) */
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
               <div className="text-center mb-4">
-                <h3 className="font-outfit text-2xl font-extrabold text-[#1e1b19] tracking-tight">
+                <h3 className="font-sans text-2xl font-extrabold text-[#1e1b19] tracking-tight">
                   Create Account
                 </h3>
                 <p className="text-xs text-[#736b66] mt-0.5">
@@ -438,7 +438,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Maria Cristina Santos"
-                  className="w-full rounded-xl border border-[#ded5cb] bg-white px-3.5 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-outfit"
+                  className="w-full rounded-xl border border-[#ded5cb] bg-white px-3.5 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-sans"
                 />
               </div>
 
@@ -453,7 +453,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full rounded-xl border border-[#ded5cb] bg-white px-3.5 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-outfit"
+                  className="w-full rounded-xl border border-[#ded5cb] bg-white px-3.5 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-sans"
                 />
               </div>
 
@@ -471,7 +471,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password (at least 8 characters)"
-                    className="w-full rounded-xl border border-[#ded5cb] bg-white pl-3.5 pr-10 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-outfit"
+                    className="w-full rounded-xl border border-[#ded5cb] bg-white pl-3.5 pr-10 py-2.5 text-sm text-[#1e1b19] placeholder:text-[#a89f97] focus:border-[#7e1925] focus:outline-none focus:ring-1 focus:ring-[#7e1925]/30 transition-all font-sans"
                   />
                   <button
                     type="button"
@@ -488,7 +488,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="submit"
                 id="submit-register-btn"
                 disabled={isSubmitting}
-                className="w-full rounded-xl bg-[#7e1925] hover:bg-[#60121c] py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors shadow-sm mt-2 cursor-pointer font-outfit"
+                className="w-full rounded-xl bg-[#7e1925] hover:bg-[#60121c] py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors shadow-sm mt-2 cursor-pointer font-sans"
               >
                 {isSubmitting ? 'Creating Account...' : 'Create Account'}
               </button>

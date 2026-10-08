@@ -99,7 +99,7 @@ export const PlanView = ({ sites, savedSiteIds, onSelectSite, onExploreClick, on
   );
 
   return <section id="plan-view" className="max-w-7xl mx-auto px-4 py-8 pb-28 space-y-6 text-[#1e1b19]">
-    <h1 className="headline-lg">Plan Your Heritage Trip</h1>
+    <h1 className="page-title">Plan Your Heritage Trip</h1>
     {onPassport && <button className={buttonStyle} onClick={onPassport}>Heritage Passport</button>}
     <div className="flex flex-wrap gap-2" role="group" aria-label="Itinerary mode">
       {(['recommended', 'custom'] as const).map(value => <button key={value} id={`plan-${value}-tab`} aria-pressed={mode === value} className={`${buttonStyle} ${mode === value ? 'bg-[#7e1925] text-white hover:bg-[#580b14]' : 'bg-white'}`} onClick={() => { setMode(value); setMapOpen(false); }}>{value === 'recommended' ? 'Recommended' : 'Build My Own Itinerary'}</button>)}

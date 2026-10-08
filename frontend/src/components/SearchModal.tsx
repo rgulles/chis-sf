@@ -145,7 +145,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                             referrerPolicy="no-referrer"
                           />
                           <div>
-                            <h4 className="font-serif text-sm font-semibold text-[#1e1b19]">{site.name}</h4>
+                            <h4 className="font-sans text-sm font-semibold text-[#1e1b19]">{site.name}</h4>
                             <div className="flex items-center gap-2 body-sm text-[#574141] mt-0.5">
                               <span className="text-[#7e1925] font-medium">{site.category}</span>
                               <span>•</span>
@@ -195,7 +195,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                             }}
                           />
                           <div>
-                            <h4 className="font-serif text-sm font-semibold text-[#1e1b19]">{evt.title}</h4>
+                            <h4 className="font-sans text-sm font-semibold text-[#1e1b19]">{evt.title}</h4>
                             <div className="flex items-center gap-2 body-sm text-[#574141] mt-0.5">
                               <span className="flex items-center gap-1 text-[#7e1925]">
                                 <Calendar className="w-3 h-3" />

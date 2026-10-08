@@ -28,7 +28,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
   const totalSaved = savedSites.length + savedEvents.length;
 
   return (
-    <div id="saved-favorites-page" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-28 font-outfit">
+    <div id="saved-favorites-page" className="max-w-7xl xl:max-w-[1360px] 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-28 font-sans">
       {/* Header Bar */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -38,12 +38,12 @@ export const SavedView: React.FC<SavedViewProps> = ({
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-outfit text-xs font-bold uppercase tracking-[0.18em] text-[#7e1925]">
+            <span className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-[#7e1925]">
               Personal Travel Bucket
             </span>
-            <span className="font-outfit text-xs text-[#8a7171]">• Saved Heritage & Events</span>
+            <span className="font-sans text-xs text-[#8a7171]">• Saved Heritage & Events</span>
           </div>
-          <h1 id="saved-header-title" className="font-outfit text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
+          <h1 id="saved-header-title" className="font-sans text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e1b19] tracking-tight mt-1">
             My Saved Landmarks & Events
           </h1>
         </div>
@@ -70,16 +70,16 @@ export const SavedView: React.FC<SavedViewProps> = ({
           <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-[#faf2ee] text-[#7e1925] border border-[#e8dfd5]">
             <Bookmark className="h-7 w-7" />
           </div>
-          <h3 className="font-outfit text-xl font-bold text-[#1e1b19] tracking-tight">
+          <h3 className="font-sans text-xl font-bold text-[#1e1b19] tracking-tight">
             No saved landmarks yet
           </h3>
-          <p className="font-outfit text-sm text-[#574141] leading-relaxed max-w-sm mx-auto">
+          <p className="font-sans text-sm text-[#574141] leading-relaxed max-w-sm mx-auto">
             As you explore San Fernando’s heritage buildings, churches, and cultural festivals, tap the bookmark icon to keep them organized here.
           </p>
           <div className="pt-2">
             <button
               onClick={onExploreClick}
-              className="font-outfit inline-flex items-center gap-2 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-7 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider text-white transition-all shadow-md hover:scale-[1.02] cursor-pointer"
+              className="font-sans inline-flex items-center gap-2 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-7 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider text-white transition-all shadow-md hover:scale-[1.02] cursor-pointer"
             >
               <span>Start Exploring Archive</span>
               <ArrowRight className="w-4 h-4" />
@@ -92,7 +92,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
           {/* SAVED HERITAGE SITES */}
           <div className="space-y-5">
             <div className="flex items-center justify-between border-b border-[#e8dfd5] pb-3">
-              <h2 className="font-outfit text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
+              <h2 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
                 Saved Heritage Landmarks ({savedSites.length})
               </h2>
             </div>
@@ -118,7 +118,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
                           onError={handleHeritageImageError}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                        <span className="absolute top-3.5 left-3.5 rounded-full bg-white/95 backdrop-blur-md px-3 py-1 font-outfit text-[11px] font-bold text-[#7e1925] border border-white/40 shadow-xs uppercase tracking-wider">
+                        <span className="absolute top-3.5 left-3.5 rounded-full bg-white/95 backdrop-blur-md px-3 py-1 font-sans text-[11px] font-bold text-[#7e1925] border border-white/40 shadow-xs uppercase tracking-wider">
                           {site.category}
                         </span>
                         <button
@@ -131,10 +131,10 @@ export const SavedView: React.FC<SavedViewProps> = ({
                       </div>
 
                       <div className="p-5 sm:p-6 space-y-1.5">
-                        <h3 className="font-outfit text-lg sm:text-xl font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug tracking-tight">
+                        <h3 className="font-sans text-lg sm:text-xl font-bold text-[#1e1b19] group-hover:text-[#7e1925] transition-colors leading-snug tracking-tight">
                           {site.name}
                         </h3>
-                        <p className="font-outfit text-xs text-[#574141] flex items-center gap-1.5">
+                        <p className="font-sans text-xs text-[#574141] flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5 text-[#7e1925]" />
                           <span>{site.address}</span>
                         </p>
@@ -145,13 +145,13 @@ export const SavedView: React.FC<SavedViewProps> = ({
                       <div className="border-t border-[#e8dfd5] pt-4 flex justify-between items-center">
                         <button
                           onClick={() => onRemoveSite(site.id)}
-                          className="font-outfit text-xs font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
+                          className="font-sans text-xs font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
                         >
                           Remove
                         </button>
                         <button
                           onClick={() => onSelectSite(site)}
-                          className="font-outfit inline-flex items-center gap-1.5 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs hover:scale-[1.02] cursor-pointer"
+                          className="font-sans inline-flex items-center gap-1.5 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs hover:scale-[1.02] cursor-pointer"
                         >
                           <span>Explore</span>
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -162,7 +162,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
                 ))}
               </div>
             ) : (
-              <p className="font-outfit text-sm text-[#574141]">No heritage sites bookmarked yet.</p>
+              <p className="font-sans text-sm text-[#574141]">No heritage sites bookmarked yet.</p>
             )}
           </div>
 
@@ -170,7 +170,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
           {savedEvents.length > 0 && (
             <div className="space-y-5">
               <div className="flex items-center justify-between border-b border-[#e8dfd5] pb-3">
-                <h2 className="font-outfit text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
+                <h2 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
                   Saved Events & Tours ({savedEvents.length})
                 </h2>
               </div>
@@ -196,13 +196,13 @@ export const SavedView: React.FC<SavedViewProps> = ({
                         }}
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="font-outfit text-xs font-bold uppercase tracking-wider text-[#b45309] block">
+                        <span className="font-sans text-xs font-bold uppercase tracking-wider text-[#b45309] block">
                           {evt.category}
                         </span>
-                        <h4 className="font-outfit text-base font-bold text-[#1e1b19] leading-snug truncate">
+                        <h4 className="font-sans text-base font-bold text-[#1e1b19] leading-snug truncate">
                           {evt.title}
                         </h4>
-                        <p className="font-outfit text-xs text-[#574141] mt-1.5 flex items-center gap-1.5">
+                        <p className="font-sans text-xs text-[#574141] mt-1.5 flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 text-[#7e1925]" />
                           <span>{evt.date}</span>
                         </p>
@@ -212,13 +212,13 @@ export const SavedView: React.FC<SavedViewProps> = ({
                     <div className="mt-4 pt-4 border-t border-[#e8dfd5] flex justify-between items-center">
                       <button
                         onClick={() => onRemoveEvent(evt.id)}
-                        className="font-outfit text-xs font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
+                        className="font-sans text-xs font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
                       >
                         Remove
                       </button>
                       <button
                         onClick={() => onSelectEvent(evt)}
-                        className="font-outfit text-xs font-bold text-[#7e1925] hover:text-[#580b14] flex items-center gap-1 cursor-pointer uppercase tracking-wider"
+                        className="font-sans text-xs font-bold text-[#7e1925] hover:text-[#580b14] flex items-center gap-1 cursor-pointer uppercase tracking-wider"
                       >
                         <span>View Schedule</span>
                         <ChevronRight className="w-3.5 h-3.5" />

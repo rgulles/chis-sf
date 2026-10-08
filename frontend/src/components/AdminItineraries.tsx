@@ -5,7 +5,7 @@ import { moveItineraryStop } from '../utils/customItinerary';
 
 interface Props { sites: { id: string | number; name: string; status: string }[] }
 interface Draft { id?: string; name: string; description: string; status: 'active' | 'archived'; ids: string[] }
-const control = 'min-h-11 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50';
+const control = 'ui-control hover:bg-gray-50 disabled:opacity-50';
 
 export const AdminItineraries = ({ sites }: Props) => {
   const [routes, setRoutes] = useState<Itinerary[]>([]);
@@ -40,11 +40,11 @@ export const AdminItineraries = ({ sites }: Props) => {
   const stopName = (id: string) => sites.find(site => String(site.id) === id)?.name
     || routes.flatMap(route => route.stops).find(stop => stop.siteId === id)?.site?.name || `Unavailable heritage site #${id}`;
   return <section id="admin-itineraries" className="space-y-5">
-    <div className="flex flex-wrap justify-between gap-3"><h2 className="text-2xl font-bold">Recommended Itineraries</h2><button id="admin-itinerary-new" disabled={busy || loading || !!loadError} className={control} onClick={() => open()}>Create itinerary</button></div>
+    <div className="flex flex-wrap justify-between gap-3"><h2 className="page-title">Recommended Itineraries</h2><button id="admin-itinerary-new" disabled={busy || loading || !!loadError} className={control} onClick={() => open()}>Create itinerary</button></div>
     {loading && <p role="status">Loading itineraries…</p>}
     {loadError && <div role="alert"><p>{loadError}</p><button className={control} onClick={refresh}>Retry</button></div>}
-    {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
-    {draft && <form id="admin-itinerary-form" className="rounded-xl border bg-white p-4 space-y-4" onSubmit={event => {
+    {error && <p role="alert">{error}</p>}{notice && <p role="status" className="status-success">{notice}</p>}
+    {draft && <form id="admin-itinerary-form" className="ui-card p-4 space-y-4" onSubmit={event => {
       event.preventDefault();
       const payload: ItineraryInput = { name: draft.name, description: draft.description.trim() || null, status: draft.status, stops: draft.ids.map((id, index) => ({ heritage_site_id: Number(id), sort_order: index })) };
       void mutate(() => apiSaveItinerary(payload, draft.id), 'Itinerary saved.', true);

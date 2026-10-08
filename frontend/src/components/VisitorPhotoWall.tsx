@@ -293,7 +293,7 @@ export const VisitorPhotoWall: React.FC<VisitorPhotoWallProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-[#D49B24]" />
-              <h3 className="font-serif text-base font-bold text-[#1e1b19]">
+              <h3 className="font-sans text-base font-bold text-[#1e1b19]">
                 Contribute to the Heritage Archive
               </h3>
             </div>
@@ -497,7 +497,7 @@ export const VisitorPhotoWall: React.FC<VisitorPhotoWallProps> = ({
             <ImageIcon className="h-6 w-6 text-[#D49B24]" />
           </div>
           <div>
-            <h4 className="font-serif text-base font-semibold text-[#1e1b19]">
+            <h4 className="font-sans text-base font-semibold text-[#1e1b19]">
               No photos in this category yet
             </h4>
             <p className="body-sm text-[#574141] mt-0.5 max-w-sm mx-auto">
@@ -642,7 +642,7 @@ export const VisitorPhotoWall: React.FC<VisitorPhotoWallProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-serif text-sm font-semibold text-white">
+                    <span className="font-sans text-sm font-semibold text-white">
                       {activeLightboxPhoto.contributorName}
                     </span>
                     {activeLightboxPhoto.isUserUploaded && (

@@ -28,7 +28,7 @@ export const DirectionsModal: React.FC<DirectionsModalProps> = ({
               <Navigation className="h-3.5 w-3.5" />
             </div>
             <div>
-              <h3 className="font-serif text-sm font-semibold text-[#1e1b19]">Getting There</h3>
+              <h3 className="font-sans text-sm font-semibold text-[#1e1b19]">Getting There</h3>
               <p className="label-compact text-[#574141] truncate max-w-[220px]">{site.name}</p>
             </div>
           </div>

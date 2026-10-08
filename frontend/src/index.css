@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Tailwind font utilities and inherited UI typography share the same families. */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, Cambria, serif;
+}
+
 @layer base {
   :root {
     /* Colors - San Fernando Heritage Platform Design System */
@@ -61,12 +67,6 @@
     --heritage-charcoal: #1e1b19;
     --heritage-ivory: #faf2ee;
 
-    /* Typography */
-    --font-serif: 'Playfair Display', Georgia, Cambria, serif;
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-cinzel: 'Cinzel', 'Playfair Display', Georgia, serif;
-    --font-montserrat: 'Montserrat', system-ui, -apple-system, sans-serif;
-    --font-outfit: 'Outfit', system-ui, -apple-system, sans-serif;
   }
 
   body {
@@ -76,25 +76,8 @@
     overflow-x: hidden;
   }
 
-  h1,
-  h2,
-  h3,
-  .font-serif,
-  .font-editorial {
-    font-family: var(--font-serif);
-  }
-}
-
-.font-cinzel {
-  font-family: var(--font-cinzel);
-}
-
-.font-montserrat {
-  font-family: var(--font-montserrat);
-}
-
-.font-outfit {
-  font-family: var(--font-outfit);
+  button, input, select, textarea { font: inherit; }
+  h1, h2, h3, h4, h5, h6 { font-family: var(--font-sans); }
 }
 
 /* Typography Hierarchy Classes */
@@ -115,7 +98,7 @@
 }
 
 .headline-lg {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 40px;
   font-weight: 600;
   line-height: 48px;
@@ -131,14 +114,14 @@
 }
 
 .headline-md {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 28px;
   font-weight: 500;
   line-height: 36px;
 }
 
 .headline-sm {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 500;
   line-height: 30px;
@@ -191,6 +174,72 @@
   text-transform: uppercase;
 }
 
+/* Small shared UI vocabulary; editorial type is always an explicit choice. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}
+.font-editorial { font-family: var(--font-serif); }
+.page-title {
+  font-family: var(--font-sans);
+  font-size: clamp(1.5rem, 3vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.section-title { font-size: 1.25rem; font-weight: 600; line-height: 1.4; }
+.ui-card { border: 1px solid #e8dfd5; border-radius: 0.75rem; background: #fff; box-shadow: none; }
+.ui-label { font-size: 0.875rem; font-weight: 500; line-height: 1.5; }
+.ui-muted { color: #574141; font-size: 0.875rem; line-height: 1.6; }
+.ui-control, .ui-button-primary, .ui-button-secondary {
+  min-height: 2.75rem;
+  border: 1px solid #e8dfd5;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.ui-button-primary { background: #7e1925; border-color: #7e1925; color: white; font-weight: 600; }
+.ui-button-secondary { font-weight: 600; }
+.ui-button-primary:hover:not(:disabled) { background: #580b14; }
+.ui-button-secondary:hover:not(:disabled) { border-color: #7e1925; }
+:where(.ui-control, .ui-button-primary, .ui-button-secondary):disabled { opacity: 0.55; cursor: not-allowed; }
+.status-error, .status-success {
+  border: 1px solid;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.status-error { background: #fff1f2; border-color: #fecdd3; color: #881337; }
+.status-success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.admin-shell { font-family: var(--font-sans); color: #1e1b19; }
+.admin-shell :where(h1, h2, h3, h4, label, input, select, textarea, button, table) { font-family: var(--font-sans); }
+.admin-shell :where(label) { font-size: 0.875rem; font-weight: 500; }
+.admin-shell :where(button) { min-height: 2.75rem; }
+.admin-shell :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 2.75rem;
+  border-color: #e8dfd5;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+.admin-shell :where(th, td) { padding: 0.875rem 1rem; line-height: 1.5; }
+.admin-shell :where(th) { font-weight: 600; }
+.admin-shell :where(td) { vertical-align: middle; }
+.admin-shell :where([role="dialog"]) { padding: 1rem; }
+@media (max-width: 639px) {
+  .admin-shell :where([role="dialog"] form) { padding: 1rem; }
+  .admin-shell :where([role="dialog"] .grid-cols-2) { grid-template-columns: minmax(0, 1fr); }
+  .admin-shell :where([role="dialog"] .col-span-2) { grid-column: span 1 / span 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+  .admin-shell * { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+
 /* Archival Heritage Pattern */
 .bg-heritage-pattern {
   background-color: #fff8f5;
@@ -222,8 +271,8 @@
 /* Planar Architectural Card Style */
 .heritage-card {
   background-color: #ffffff;
-  border: 1px solid #e7e0d6;
-  border-radius: 4px;
+  border: 1px solid #e8dfd5;
+  border-radius: 12px;
   box-shadow: none;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
@@ -234,10 +283,12 @@
 
 /* Buttons - San Fernando Heritage Platform Design */
 .btn-primary {
+  min-height: 44px;
+  font-family: var(--font-sans);
   background-color: #7e1925;
   color: #ffffff;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 8px;
   font-weight: 600;
   letter-spacing: 0.02em;
   transition: background-color 0.2s ease;
@@ -248,10 +299,12 @@
 }
 
 .btn-secondary {
+  min-height: 44px;
+  font-family: var(--font-sans);
   background-color: transparent;
   color: #7e1925;
   border: 1px solid #7e1925;
-  border-radius: 4px;
+  border-radius: 8px;
   font-weight: 600;
   transition: background-color 0.2s ease;
 }

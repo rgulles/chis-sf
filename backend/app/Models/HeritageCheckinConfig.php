@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HeritageCheckinConfig extends Model
 {
+    // Deprecated token columns remain only for compatibility with existing databases.
+    protected $hidden = ['public_token', 'token_rotated_at'];
+
     protected $fillable = ['heritage_site_id', 'public_token', 'radius_meters', 'enabled', 'created_by', 'token_rotated_at'];
 
     protected function casts(): array
