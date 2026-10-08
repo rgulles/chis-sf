@@ -147,9 +147,215 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
     }
   };
 
+interface DraftImage {
+  key: string;
+  id?: string | number;
+  image_path?: string;
+  imageFile?: File | null;
+  previewUrl: string;
+  caption: string;
+  is_cover: boolean;
+}
+
+interface DraftTimeline {
+  key: string;
+  id?: string | number;
+  year: string;
+  title: string;
+  description: string;
+}
+
+function parseYearNumber(yearStr: string): number {
+  if (!yearStr) return 9999;
+  const match = yearStr.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 9999;
+}
+
   // --- MODAL STATE ---
   const [siteModalOpen, setSiteModalOpen] = useState(false);
   const [siteForm, setSiteForm] = useState<any>({});
+  const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
+  const [draftTimelines, setDraftTimelines] = useState<DraftTimeline[]>([]);
+  const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+  const [removedTimelineIds, setRemovedTimelineIds] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [stepError, setStepError] = useState<string | null>(null);
+
+  const [timelineSubModalOpen, setTimelineSubModalOpen] = useState(false);
+  const [editingTimelineKey, setEditingTimelineKey] = useState<string | null>(null);
+  const [timelineSubError, setTimelineSubError] = useState<string | null>(null);
+  const [timelineItemForm, setTimelineItemForm] = useState<{ year: string; title: string; description: string }>({
+    year: '',
+    title: '',
+    description: '',
+  });
+
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const validateBasicInfo = (): boolean => {
+    if (!siteForm.name?.trim() || !siteForm.address?.trim() || !siteForm.description?.trim() || !siteForm.history?.trim()) {
+      setStepError('Please fill out all required Basic Information fields (Name, Address, Description, and History).');
+      return false;
+    }
+    setStepError(null);
+    return true;
+  };
+
+  const goToStep = (step: number) => {
+    if (step > 1 && !validateBasicInfo()) return;
+    setStepError(null);
+    setCurrentStep(step);
+  };
+
+  const openCreateSiteModal = () => {
+    openForm('site', () => {
+      setSiteForm({ status: 'active', category: '' });
+      setDraftImages([]);
+      setDraftTimelines([]);
+      setRemovedImageIds([]);
+      setRemovedTimelineIds([]);
+      setStepError(null);
+      setCurrentStep(1);
+      setSiteModalOpen(true);
+    });
+  };
+
+  const openEditSiteModal = (s: any) => {
+    openForm('site', () => {
+      setSiteForm({ ...s });
+      setDraftImages(
+        (s.images || []).map((img: any) => ({
+          key: `img_${img.id}`,
+          id: img.id,
+          image_path: img.image_path,
+          imageFile: null,
+          previewUrl: storageImageUrl(img.image_path),
+          caption: img.caption || '',
+          is_cover: Boolean(img.is_cover),
+        }))
+      );
+      setDraftTimelines(
+        (s.timelines || []).map((t: any) => ({
+          key: `t_${t.id}`,
+          id: t.id,
+          year: t.year || '',
+          title: t.title || '',
+          description: t.description || '',
+        }))
+      );
+      setRemovedImageIds([]);
+      setRemovedTimelineIds([]);
+      setStepError(null);
+      setCurrentStep(1);
+      setSiteModalOpen(true);
+    });
+  };
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newDrafts: DraftImage[] = [];
+    const maxBytes = 5 * 1024 * 1024;
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!validTypes.includes(file.type)) {
+        setStepError(`File "${file.name}" is not a supported image format (JPEG, PNG, WEBP, GIF).`);
+        continue;
+      }
+      if (file.size > maxBytes) {
+        setStepError(`File "${file.name}" exceeds the maximum size limit of 5MB.`);
+        continue;
+      }
+      const currentCoverExists = draftImages.some(img => img.is_cover) || newDrafts.some(img => img.is_cover);
+      newDrafts.push({
+        key: `temp_img_${Date.now()}_${Math.random()}`,
+        imageFile: file,
+        previewUrl: URL.createObjectURL(file),
+        caption: '',
+        is_cover: !currentCoverExists,
+      });
+    }
+
+    if (newDrafts.length > 0) {
+      setDraftImages(prev => [...prev, ...newDrafts]);
+    }
+    e.target.value = '';
+  };
+
+  const handleToggleCover = (key: string) => {
+    setDraftImages(prev =>
+      prev.map(img => ({
+        ...img,
+        is_cover: img.key === key ? !img.is_cover : false,
+      }))
+    );
+  };
+
+  const handleRemoveImage = (key: string) => {
+    const target = draftImages.find(img => img.key === key);
+    if (target?.id) {
+      setRemovedImageIds(prev => [...prev, String(target.id)]);
+    }
+    setDraftImages(prev => prev.filter(img => img.key !== key));
+  };
+
+  const openAddTimelineSubModal = () => {
+    setEditingTimelineKey(null);
+    setTimelineSubError(null);
+    setTimelineItemForm({ year: '', title: '', description: '' });
+    setTimelineSubModalOpen(true);
+  };
+
+  const openEditTimelineSubModal = (key: string) => {
+    const item = draftTimelines.find(t => t.key === key);
+    if (!item) return;
+    setEditingTimelineKey(key);
+    setTimelineSubError(null);
+    setTimelineItemForm({
+      year: item.year || '',
+      title: item.title || '',
+      description: item.description || '',
+    });
+    setTimelineSubModalOpen(true);
+  };
+
+  const handleSaveTimelineSubItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!timelineItemForm.year.trim() || !timelineItemForm.title.trim() || !timelineItemForm.description.trim()) {
+      setTimelineSubError('Please fill out Year, Title, and Description for the timeline item.');
+      return;
+    }
+    if (editingTimelineKey) {
+      setDraftTimelines(prev =>
+        prev.map(item =>
+          item.key === editingTimelineKey
+            ? { ...item, year: timelineItemForm.year.trim(), title: timelineItemForm.title.trim(), description: timelineItemForm.description.trim() }
+            : item
+        )
+      );
+    } else {
+      setDraftTimelines(prev => [
+        ...prev,
+        {
+          key: `temp_t_${Date.now()}_${Math.random()}`,
+          year: timelineItemForm.year.trim(),
+          title: timelineItemForm.title.trim(),
+          description: timelineItemForm.description.trim(),
+        },
+      ]);
+    }
+    setTimelineSubModalOpen(false);
+  };
+
+  const handleRemoveTimelineItem = (key: string) => {
+    const target = draftTimelines.find(t => t.key === key);
+    if (target?.id) {
+      setRemovedTimelineIds(prev => [...prev, String(target.id)]);
+    }
+    setDraftTimelines(prev => prev.filter(t => t.key !== key));
+  };
   
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventForm, setEventForm] = useState<any>({});
@@ -241,14 +447,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
 
   const handleSaveSite = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
+    const sitePayload = {
       name: siteForm.name,
       category: siteForm.category || null,
       year_built: siteForm.year_built || null,
       description: siteForm.description,
       history: siteForm.history,
       address: siteForm.address,
-      status: siteForm.status,
+      status: siteForm.status || 'active',
       latitude: String(siteForm.latitude ?? '').trim() || null,
       longitude: String(siteForm.longitude ?? '').trim() || null,
       opening_hours: siteForm.opening_hours?.trim() || null,
@@ -257,9 +463,68 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
       visit_notes: siteForm.visit_notes?.trim() || null,
       contact_information: siteForm.contact_information?.trim() || null,
     };
-    await runMutation('save:site', () => siteForm.id
-      ? apiUpdateSite(siteForm.id, payload) : apiCreateSite(payload),
-    `Heritage site ${siteForm.id ? 'updated' : 'created'} successfully.`, () => setSiteModalOpen(false), 'site');
+
+    const sortedTimelines = [...draftTimelines].sort((a, b) => parseYearNumber(a.year) - parseYearNumber(b.year));
+
+    await runMutation('save:site', async () => {
+      // 1. Create or update heritage site
+      let siteId: string | number;
+      if (siteForm.id) {
+        await apiUpdateSite(siteForm.id, sitePayload);
+        siteId = siteForm.id;
+      } else {
+        const created = await apiCreateSite(sitePayload);
+        siteId = created.id;
+      }
+
+      // 2. Remove deleted images
+      for (const imgId of removedImageIds) {
+        await apiDeleteSiteImage(imgId);
+      }
+
+      // 3. Process draft images (create / update)
+      for (let i = 0; i < draftImages.length; i++) {
+        const img = draftImages[i];
+        if (img.imageFile) {
+          await apiCreateSiteImage({
+            heritage_site_id: siteId,
+            imageFile: img.imageFile,
+            caption: img.caption?.trim() || null,
+            is_cover: Boolean(img.is_cover),
+            sort_order: i,
+          });
+        } else if (img.id) {
+          await apiUpdateSiteImage(String(img.id), {
+            heritage_site_id: siteId,
+            caption: img.caption?.trim() || null,
+            is_cover: Boolean(img.is_cover),
+            sort_order: i,
+          });
+        }
+      }
+
+      // 4. Remove deleted timeline entries
+      for (const tId of removedTimelineIds) {
+        await apiDeleteTimeline(tId);
+      }
+
+      // 5. Process draft timeline items (create / update)
+      for (let i = 0; i < sortedTimelines.length; i++) {
+        const t = sortedTimelines[i];
+        const tPayload = {
+          heritage_site_id: siteId,
+          year: t.year,
+          title: t.title,
+          description: t.description,
+          sort_order: i,
+        };
+        if (t.id) {
+          await apiUpdateTimeline(String(t.id), tPayload);
+        } else {
+          await apiCreateTimeline(tPayload);
+        }
+      }
+    }, `Heritage site ${siteForm.id ? 'updated' : 'created'} successfully.`, () => setSiteModalOpen(false), 'site');
   };
 
   const handleSaveEvent = async (e: React.FormEvent) => {
@@ -425,7 +690,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                       <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
                       <div className="space-y-3">
-                        <button onClick={() => openForm('site', () => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); })} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
+                        <button onClick={openCreateSiteModal} className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition-colors">
                           <span className="font-medium text-gray-700">Add Heritage Site</span>
                           <Plus className="w-4 h-4 text-gray-400" />
                         </button>
@@ -467,7 +732,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Heritage Sites</h1>
-                    <button onClick={() => openForm('site', () => { setSiteForm({ status: 'active' }); setSiteModalOpen(true); })} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
+                    <button onClick={openCreateSiteModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-sm transition-colors">
                       <Plus className="w-4 h-4" /> Add Site
                     </button>
                   </div>
@@ -492,7 +757,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{s.status}</span>
                               </td>
                               <td className="px-6 py-4 text-right">
-                                <button onClick={() => openForm('site', () => { setSiteForm(s); setSiteModalOpen(true); })} className="text-blue-600 hover:text-blue-800 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => openEditSiteModal(s)} className="text-blue-600 hover:text-blue-850 p-1.5 mr-2 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
                                 <button disabled={pending.has(`delete:site:${s.id}`)} aria-busy={pending.has(`delete:site:${s.id}`)} onClick={() => handleDeleteSite(s.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Archive" aria-label="Archive">{pending.has(`delete:site:${s.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
                               </td>
                             </tr>
@@ -665,65 +930,169 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
       {siteModalOpen && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
-              <button type="button" disabled={pending.has('save:site')} onClick={() => setSiteModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-sm border border-gray-200 transition-colors"><X className="w-4 h-4"/></button>
-            </div>
-            <form id="admin-site-form" onSubmit={handleSaveSite} className="flex-1 overflow-auto p-6 space-y-5 text-sm">
-              {renderFormError('site')}
-              <fieldset disabled={pending.has('save:site')} className="contents">
-              <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-1.5 col-span-2">
-                  <label className="font-semibold text-gray-700">Name</label>
-                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.name || ''} onChange={e => setSiteForm({...siteForm, name: e.target.value})} placeholder="Site Name" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Category</label>
-                  <select className="w-full border border-gray-300 rounded-xl p-2.5 outline-none bg-white" value={siteForm.category || ''} onChange={e => setSiteForm({...siteForm, category: e.target.value})}>
-                    <option value="">Unspecified</option>
-                    {siteForm.category && !HERITAGE_CATEGORIES.some(category => category !== 'All' && category === siteForm.category) && (
-                      <option value={siteForm.category}>{siteForm.category} (choose a supported category)</option>
-                    )}
-                    {HERITAGE_CATEGORIES.filter(category => category !== 'All').map(category => <option key={category} value={category}>{category}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Year Built</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.year_built || ''} onChange={e => setSiteForm({...siteForm, year_built: e.target.value})} placeholder="e.g. 1755" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Address</label>
-                  <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.address || ''} onChange={e => setSiteForm({...siteForm, address: e.target.value})} placeholder="Full address" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Status</label>
-                  <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={siteForm.status || 'active'} onChange={e => setSiteForm({...siteForm, status: e.target.value})}>
-                    <option value="active">Active</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Latitude</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude ?? ''} onChange={e => setSiteForm({...siteForm, latitude: e.target.value})} placeholder="e.g. 15.031" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-gray-700">Longitude</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude ?? ''} onChange={e => setSiteForm({...siteForm, longitude: e.target.value})} placeholder="e.g. 120.689" />
-                </div>
-              </div>
-              
-              <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">Description</label>
-                <textarea required rows={3} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.description || ''} onChange={e => setSiteForm({...siteForm, description: e.target.value})} placeholder="Brief description..." />
+            <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50 rounded-t-2xl">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
+                <h3 className="text-sm font-semibold text-[#7A1C30] mt-0.5">
+                  {currentStep === 1 ? 'Basic Information' : currentStep === 2 ? 'Historical Timeline' : currentStep === 3 ? 'Visitor Information' : 'Images'}
+                </h3>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold text-gray-700">History</label>
-                <textarea required rows={5} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm({...siteForm, history: e.target.value})} placeholder="Full historical context..." />
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                {/* Step Bar Indicator matching photo */}
+                <div className="flex items-center gap-1.5" aria-label="Form progress">
+                  {[
+                    { step: 1, label: 'Basic Information' },
+                    { step: 2, label: 'Timeline' },
+                    { step: 3, label: 'Visitor Information' },
+                    { step: 4, label: 'Images' },
+                  ].map(({ step, label }) => (
+                    <button
+                      key={step}
+                      type="button"
+                      onClick={() => goToStep(step)}
+                      className={`h-2.5 rounded-full transition-all cursor-pointer ${
+                        currentStep === step
+                          ? 'w-9 bg-[#7A1C30]'
+                          : currentStep > step
+                          ? 'w-7 bg-[#7A1C30]/70 hover:bg-[#7A1C30]'
+                          : 'w-7 bg-gray-200 hover:bg-gray-300'
+                      }`}
+                      title={`${step}. ${label}`}
+                      aria-label={`Step ${step}: ${label}`}
+                    />
+                  ))}
+                </div>
+
+                <button type="button" disabled={pending.has('save:site')} onClick={() => setSiteModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 shadow-xs border border-gray-200 transition-colors ml-1" title="Close"><X className="w-4 h-4"/></button>
               </div>
-              <section className="space-y-4 border-t border-gray-200 pt-4" aria-labelledby="admin-visitor-information-title">
-                <h3 id="admin-visitor-information-title" className="font-bold text-gray-900">Visitor Information</h3>
-                <p className="text-xs text-gray-500">Optional. Leave unknown information blank.</p>
+            </div>
+
+            <form id="admin-site-form" onSubmit={handleSaveSite} className="flex-1 overflow-auto p-6 space-y-5 text-sm">
+              {renderFormError('site')}
+              {stepError && (
+                <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <p>{stepError}</p>
+                </div>
+              )}
+              <fieldset disabled={pending.has('save:site')} className="contents">
+
+              {/* PAGE 1: BASIC INFORMATION */}
+              <div className={currentStep === 1 ? 'space-y-5' : 'hidden'}>
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-1.5 col-span-2">
+                    <label className="font-semibold text-gray-700">Name</label>
+                    <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.name || ''} onChange={e => setSiteForm((prev: any) => ({...prev, name: e.target.value}))} placeholder="Site Name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-gray-700">Category</label>
+                    <select className="w-full border border-gray-300 rounded-xl p-2.5 outline-none bg-white" value={siteForm.category || ''} onChange={e => setSiteForm((prev: any) => ({...prev, category: e.target.value}))}>
+                      <option value="">Unspecified</option>
+                      {siteForm.category && !HERITAGE_CATEGORIES.some(category => category !== 'All' && category === siteForm.category) && (
+                        <option value={siteForm.category}>{siteForm.category} (choose a supported category)</option>
+                      )}
+                      {HERITAGE_CATEGORIES.filter(category => category !== 'All').map(category => <option key={category} value={category}>{category}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-gray-700">Year Built</label>
+                    <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.year_built || ''} onChange={e => setSiteForm((prev: any) => ({...prev, year_built: e.target.value}))} placeholder="e.g. 1755" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-gray-700">Address</label>
+                    <input required type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.address || ''} onChange={e => setSiteForm((prev: any) => ({...prev, address: e.target.value}))} placeholder="Full address" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-gray-700">Status</label>
+                    <select required className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={siteForm.status || 'active'} onChange={e => setSiteForm((prev: any) => ({...prev, status: e.target.value}))}>
+                      <option value="active">Active</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-gray-700">Latitude</label>
+                    <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, latitude: e.target.value}))} placeholder="e.g. 15.031" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-gray-700">Longitude</label>
+                    <input type="text" className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, longitude: e.target.value}))} placeholder="e.g. 120.689" />
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">Description</label>
+                  <textarea required rows={3} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.description || ''} onChange={e => setSiteForm((prev: any) => ({...prev, description: e.target.value}))} placeholder="Brief description..." />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-gray-700">History</label>
+                  <textarea required rows={4} className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm((prev: any) => ({...prev, history: e.target.value}))} placeholder="Full historical context..." />
+                </div>
+              </div>
+
+              {/* PAGE 2: HISTORICAL TIMELINE */}
+              <section className={currentStep === 2 ? 'space-y-4' : 'hidden'}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base">Historical Timeline</h3>
+                    <p className="text-xs text-gray-500">Optional. Items automatically order by year ascending.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openAddTimelineSubModal}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7A1C30] hover:text-[#581020] bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Timeline Item
+                  </button>
+                </div>
+
+                {draftTimelines.length > 0 ? (
+                  <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                    {[...draftTimelines]
+                      .sort((a, b) => parseYearNumber(a.year) - parseYearNumber(b.year))
+                      .map((item) => (
+                        <div key={item.key} className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl flex items-start justify-between gap-3">
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 bg-[#7A1C30]/10 text-[#7A1C30] text-xs font-bold rounded-md border border-[#7A1C30]/20">
+                                {item.year}
+                              </span>
+                              <h4 className="text-sm font-bold text-gray-900 truncate">{item.title}</h4>
+                            </div>
+                            <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{item.description}</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => openEditTimelineSubModal(item.key)}
+                              className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTimelineItem(item.key)}
+                              className="text-xs font-semibold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400 italic text-center py-8 bg-gray-50 border border-gray-200 border-dashed rounded-xl">
+                    No timeline items added. Click "+ Add Timeline Item" above to add historical events.
+                  </div>
+                )}
+              </section>
+
+              {/* PAGE 3: VISITOR INFORMATION */}
+              <section className={currentStep === 3 ? 'space-y-4' : 'hidden'} aria-labelledby="admin-visitor-information-title">
+                <div>
+                  <h3 id="admin-visitor-information-title" className="font-bold text-gray-900 text-base">Visitor Information</h3>
+                  <p className="text-xs text-gray-500">Optional. Leave unknown information blank.</p>
+                </div>
                 {[
                   { field: 'opening_hours', label: 'Opening Hours', maxLength: 1000, rows: 2 },
                   { field: 'entrance_fee', label: 'Entrance Fee / Admission', maxLength: 1000, rows: 2 },
@@ -739,12 +1108,206 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
                   </div>
                 ))}
               </section>
+
+              {/* PAGE 4: IMAGES */}
+              <section className={currentStep === 4 ? 'space-y-4' : 'hidden'}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base">Images</h3>
+                    <p className="text-xs text-gray-500">Optional. Select images from your device.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7A1C30] hover:text-[#581020] bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Image
+                  </button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleImageFileSelect}
+                  />
+                </div>
+
+                {draftImages.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-1">
+                    {draftImages.map((img) => (
+                      <div key={img.key} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col space-y-2.5">
+                        <div className="relative h-36 rounded-lg overflow-hidden border border-gray-200 bg-white">
+                          <img src={img.previewUrl} onError={handleHeritageImageError} alt="Preview" className="w-full h-full object-cover" />
+                          {img.is_cover && (
+                            <span className="absolute top-2 left-2 bg-[#7A1C30] text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shadow-sm">
+                              Cover Image
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-gray-700">Caption</label>
+                          <input
+                            type="text"
+                            placeholder="Image caption (e.g. Front view)"
+                            className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                            value={img.caption}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDraftImages(prev => prev.map(item => item.key === img.key ? { ...item, caption: val } : item));
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1">
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={img.is_cover}
+                              onChange={() => handleToggleCover(img.key)}
+                              className="rounded border-gray-300 text-[#7A1C30] focus:ring-[#7A1C30]"
+                            />
+                            Cover Image
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(img.key)}
+                            className="text-xs font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400 italic text-center py-8 bg-gray-50 border border-gray-200 border-dashed rounded-xl">
+                    No images added yet. Click "+ Add Image" above to select images.
+                  </div>
+                )}
+              </section>
+
               </fieldset>
             </form>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" disabled={pending.has('save:site')} onClick={() => setSiteModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-sm">Cancel</button>
-              <button type="submit" form="admin-site-form" disabled={pending.has('save:site')} className="px-5 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors">{pending.has('save:site') ? 'Saving...' : 'Save Heritage Site'}</button>
+
+            {/* Modal Footer with Navigation */}
+            <div className="p-5 border-t border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-b-2xl text-xs">
+              <div>
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    disabled={pending.has('save:site')}
+                    onClick={() => setCurrentStep(prev => prev - 1)}
+                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    ← Back
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {currentStep < 4 && (
+                  <button
+                    type="button"
+                    onClick={() => goToStep(currentStep + 1)}
+                    className="px-5 py-2 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    Next →
+                  </button>
+                )}
+
+                {currentStep === 4 && (
+                  <button
+                    type="submit"
+                    form="admin-site-form"
+                    disabled={pending.has('save:site')}
+                    className="px-5 py-2 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors cursor-pointer"
+                  >
+                    {pending.has('save:site') ? 'Saving...' : 'Save Heritage Site'}
+                  </button>
+                )}
+              </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TIMELINE SUB-MODAL */}
+      {timelineSubModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="font-bold text-gray-900 text-lg">
+                {editingTimelineKey ? 'Edit Timeline Item' : 'Add Timeline Item'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setTimelineSubModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTimelineSubItem} className="space-y-4 text-sm">
+              {timelineSubError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                  <p>{timelineSubError}</p>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Year</label>
+                <input
+                  required
+                  type="text"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                  placeholder="e.g. 1755"
+                  value={timelineItemForm.year}
+                  onChange={(e) => setTimelineItemForm({ ...timelineItemForm, year: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Title</label>
+                <input
+                  required
+                  type="text"
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                  placeholder="e.g. Augustinian Foundation"
+                  value={timelineItemForm.title}
+                  onChange={(e) => setTimelineItemForm({ ...timelineItemForm, title: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-gray-700">Description</label>
+                <textarea
+                  required
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none resize-none"
+                  placeholder="Describe the historical event..."
+                  value={timelineItemForm.description}
+                  onChange={(e) => setTimelineItemForm({ ...timelineItemForm, description: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setTimelineSubModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors"
+                >
+                  {editingTimelineKey ? 'Save Changes' : 'Add Timeline Item'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

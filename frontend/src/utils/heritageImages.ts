@@ -2,8 +2,8 @@ import type { SyntheticEvent } from 'react';
 
 export const HERITAGE_IMAGE_PLACEHOLDER = '/images/heritage-placeholder.svg';
 
-export function heritageImageUrl(path: string, backendBase = import.meta.env?.VITE_STORAGE_BASE_URL || ''): string {
-  const value = path.trim();
+export function heritageImageUrl(path?: string | null, backendBase = import.meta.env?.VITE_STORAGE_BASE_URL || ''): string {
+  const value = (path || '').trim();
   if (!value) return HERITAGE_IMAGE_PLACEHOLDER;
   if (/^(https?:)?\/\//i.test(value) || value.startsWith('/images/')) return value;
   const base = backendBase.replace(/\/+$/, '').replace(/\/api$/, '');
