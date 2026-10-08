@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, AlertCircle, LogOut, ShieldCheck, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, LogOut, ShieldCheck, Eye, EyeOff, ArrowRight, User, Award } from 'lucide-react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import type { UserProfile, HeritageSite } from '../types';
+import type { UserProfile, HeritageSite, HeritagePassport } from '../types';
 import { apiLogin, apiRegister, apiGoogleLogin } from '../api/client';
 
 interface AuthModalProps {
@@ -13,6 +13,10 @@ interface AuthModalProps {
   savedSiteIds?: string[];
   sites?: HeritageSite[];
   onNavigateAdmin?: () => void;
+  passport?: HeritagePassport | null;
+  passportError?: string;
+  onSite?: (site: HeritageSite) => void;
+  onOpenPassport?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -23,7 +27,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLogout,
   savedSiteIds = [],
   sites: _sites = [],
-  onNavigateAdmin
+  onNavigateAdmin,
+  passport,
+  onOpenPassport
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'profile'>(user ? 'profile' : 'login');
   const [email, setEmail] = useState('');
@@ -153,52 +159,89 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="p-6 sm:p-7">
           {/* PROFILE VIEW */}
           {mode === 'profile' && user ? (
-            <div className="space-y-5">
+            <div className="space-y-4 font-outfit">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#e8dfd5]">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e8dfd5] bg-[#faf2ee] text-[#7e1925]">
+                    <User className="h-5 w-5 stroke-[2]" />
+                  </div>
+                  <h3 className="font-outfit text-xl font-extrabold text-[#1e1b19] tracking-tight">
+                    Traveler Profile
+                  </h3>
+                </div>
+              </div>
+
               {/* Profile Card Header */}
-              <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-[#e8dfd5] shadow-xs">
+              <div className="flex items-start gap-3.5 bg-white p-4 rounded-xl border border-[#e8dfd5] shadow-xs">
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="h-14 w-14 rounded-full border-2 border-[#7e1925] object-cover shadow-xs"
+                  className="h-14 w-14 rounded-xl border border-[#e8dfd5] object-cover shadow-xs flex-shrink-0"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/images/characters/nicolasa-dayrit.jpg';
                   }}
                 />
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-outfit text-base font-bold text-[#1e1b19] truncate">{user.name}</h4>
-                  <p className="text-xs text-[#736b66] truncate">{user.email}</p>
-                  <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${
-                    isUserAdmin 
-                      ? 'bg-[#7e1925]/10 text-[#7e1925] border border-[#7e1925]/20' 
-                      : 'bg-[#f2ebe2] text-[#554d48]'
-                  }`}>
-                    {isUserAdmin ? (
-                      <>
-                        <ShieldCheck className="w-3 h-3 text-[#7e1925]" />
-                        <span>City Administrator</span>
-                      </>
-                    ) : (
-                      <span>Heritage Explorer</span>
-                    )}
-                  </span>
+                  <h4 className="font-outfit text-lg font-bold text-[#1e1b19] truncate leading-tight">{user.name}</h4>
+                  <p className="text-xs font-semibold uppercase text-[#736b66] tracking-wider truncate mt-0.5">{user.email}</p>
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#faf2ee] border border-[#e8dfd5] text-[10px] font-bold tracking-wider uppercase text-[#7e1925]">
+                    <span>{isUserAdmin ? 'CITY ADMINISTRATOR' : 'HERITAGE EXPLORER • MEMBER'}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Stats Summary */}
-              <div className="grid grid-cols-2 gap-2.5 text-center">
+              {/* Stats Summary - 3 items in a row */}
+              <div className="grid grid-cols-3 gap-2.5 text-center">
+                <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
+                  <span className="font-outfit text-2xl font-extrabold text-[#1e1b19] block leading-none mb-1">
+                    {passport?.visited_count ?? 0}
+                  </span>
+                  <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">QR STAMPS</p>
+                </div>
 
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
-                  <span className="font-outfit text-xl font-bold text-[#b45309] block leading-none mb-1">
+                  <span className="font-outfit text-2xl font-extrabold text-[#b45309] block leading-none mb-1">
                     {_sites.filter(site => savedSiteIds.includes(site.id)).length}
                   </span>
-                  <p className="text-[10px] font-semibold text-[#736b66] uppercase tracking-wider">Saved</p>
+                  <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">SAVED SITES</p>
                 </div>
+
                 <div className="bg-white p-3 rounded-xl border border-[#e8dfd5]">
-                  <span className="font-outfit text-xl font-bold text-[#1e1b19] block leading-none mb-1">
-                    {isUserAdmin ? 'Admin' : 'Explorer'}
+                  <span className="font-outfit text-lg font-bold text-[#1e1b19] block leading-none mb-1 mt-0.5">
+                    Level {Math.max(1, Math.floor((passport?.visited_count || 0) / 2) + 1)}
                   </span>
-                  <p className="text-[10px] font-semibold text-[#736b66] uppercase tracking-wider">Role</p>
+                  <p className="text-[10px] font-bold text-[#736b66] uppercase tracking-wider">RANK</p>
+                </div>
+              </div>
+
+              {/* Digital Heritage Passport Banner */}
+              <div className="rounded-xl bg-[#7e1925] text-white p-4 shadow-sm space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white flex-shrink-0">
+                      <Award className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h5 className="font-outfit text-xs font-bold uppercase tracking-wider text-white truncate">
+                        DIGITAL HERITAGE PASSPORT
+                      </h5>
+                      <p className="text-xs text-white/80 mt-0.5 truncate">
+                        {passport ? `${passport.visited_eligible_count} of ${passport.eligible_site_count} sites explored` : 'Loading passport...'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      if (onOpenPassport) onOpenPassport();
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex-shrink-0"
+                  >
+                    OPEN
+                  </button>
                 </div>
               </div>
 
@@ -228,14 +271,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Logout button */}
               <button
                 id="auth-logout-btn"
+                type="button"
                 onClick={() => {
                   onLogout();
                   setMode('login');
                 }}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#e8dfd5] bg-white py-2.5 text-xs font-semibold text-[#a12616] hover:bg-[#fff5f3] transition-colors"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ded5cb] bg-white py-3 text-xs font-bold uppercase tracking-wider text-[#7e1925] hover:bg-[#fff5f3] transition-colors shadow-xs cursor-pointer mt-2"
               >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>Log Out</span>
+                <LogOut className="h-4 w-4 text-[#7e1925]" />
+                <span>LOG OUT</span>
               </button>
             </div>
           ) : mode === 'login' ? (

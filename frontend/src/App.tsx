@@ -575,6 +575,10 @@ export default function App() {
           setIsAuthOpen(false);
           navigateTo('admin');
         }}
+        passport={passport}
+        passportError={passportError}
+        onSite={handleSelectSite}
+        onOpenPassport={() => navigateTo('passport')}
       />
 
       {/* DIRECTIONS & TRANSIT MODAL */}
