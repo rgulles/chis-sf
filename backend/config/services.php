@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID', '174508332940-jo27amuer76f09op7k4mftucsdi4m2p6.apps.googleusercontent.com'),
+    ],
+
 ];

@@ -21,6 +21,7 @@ Route::get('/test', function () {
 });
 
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/google', [AuthController::class, 'google'])->middleware('throttle:10,1');
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::get('/check-in/{token}', [HeritageCheckinController::class, 'resolve'])->middleware('throttle:60,1');
 Route::get('/heritage-sites/{heritageSite}/check-in', [HeritageCheckinController::class, 'availability']);
@@ -41,6 +42,7 @@ Route::get('heritage-sites/{heritageSiteId}/timelines', [HeritageTimelineControl
 Route::apiResource('heritage-timelines', HeritageTimelineController::class)->only('show');
 
 Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+    Route::get('admin/travelers', [AuthController::class, 'travelers']);
     Route::get('admin/check-in-configs', [HeritageCheckinController::class, 'adminIndex']);
     Route::put('admin/heritage-sites/{heritageSite}/check-in', [HeritageCheckinController::class, 'configure']);
     Route::post('admin/heritage-sites/{heritageSite}/check-in/rotate', [HeritageCheckinController::class, 'rotate']);

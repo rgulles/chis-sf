@@ -10,7 +10,8 @@ import {
   Edit3, 
   Menu, 
   X,
-  Clock
+  Clock,
+  Users
 } from 'lucide-react';
 import { 
   apiFetchRawSites, apiCreateSite, apiUpdateSite, apiDeleteSite,
@@ -24,6 +25,7 @@ import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
 import { HERITAGE_IMAGE_PLACEHOLDER, handleHeritageImageError } from '../utils/heritageImages';
 import { AdminItineraries } from '../components/AdminItineraries';
 import { AdminCheckins } from '../components/AdminCheckins';
+import { AdminTravelers } from '../components/AdminTravelers';
 
 const TIME_OPTIONS = [
   '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
@@ -38,7 +40,7 @@ interface AdminViewProps {
   onLogout: () => void;
 }
 
-type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines' | 'itineraries' | 'checkins';
+type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines' | 'itineraries' | 'checkins' | 'travelers';
 type FormType = 'site' | 'event' | 'image' | 'timeline';
 
 export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
@@ -333,6 +335,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
           {renderSidebarItem('events', 'Events', CalendarIcon)}
           {renderSidebarItem('itineraries', 'Recommended Itineraries', Map)}
           {renderSidebarItem('checkins', 'Heritage Check-In', Map)}
+          {renderSidebarItem('travelers', 'Travelers', Users)}
         </div>
       </aside>
 
@@ -383,6 +386,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout }) => {
               {/* DASHBOARD TAB */}
               {activeTab === 'itineraries' && <AdminItineraries sites={sites} />}
               {activeTab === 'checkins' && <AdminCheckins sites={sites} />}
+              {activeTab === 'travelers' && <AdminTravelers />}
               {activeTab === 'dashboard' && (
                 <div className="space-y-6">
                   <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>

@@ -14,7 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 use App\Models\HeritageSite;
 use App\Models\Event;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'google_id', 'avatar'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

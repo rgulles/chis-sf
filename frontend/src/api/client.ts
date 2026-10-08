@@ -169,6 +169,31 @@ export async function apiRegister(name: string, email: string, password: string,
   return authenticate('/auth/register', { name, email, password, hometown });
 }
 
+export async function apiGoogleLogin(credential: string): Promise<{ token: string; user: UserProfile }> {
+  return authenticate('/auth/google', { credential });
+}
+
+export interface RegisteredTraveler {
+  id: string;
+  name: string;
+  email: string;
+  loginMethod: 'Google' | 'Email/Password';
+  avatar: string | null;
+  createdAt: string;
+}
+
+export async function apiFetchTravelers(): Promise<RegisteredTraveler[]> {
+  const data = await adminList('/admin/travelers') as Array<Record<string, unknown>>;
+  return data.map(raw => ({
+    id: String(raw.id),
+    name: String(raw.name || ''),
+    email: String(raw.email || ''),
+    loginMethod: raw.login_method === 'Google' ? 'Google' : 'Email/Password',
+    avatar: typeof raw.avatar === 'string' && raw.avatar.trim() ? raw.avatar : null,
+    createdAt: String(raw.created_at || ''),
+  }));
+}
+
 export async function apiLogout(): Promise<void> {
   const token = getJwtToken();
   authGeneration += 1;
