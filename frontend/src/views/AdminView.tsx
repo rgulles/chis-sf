@@ -55,7 +55,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
   
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
   const [formErrors, setFormErrors] = useState<Partial<Record<FormType, AdminApiError>>>({});
   const pendingRequests = useRef(new Set<string>());
   const [pending, setPending] = useState(new Set<string>());
@@ -635,10 +635,15 @@ function parseYearNumber(yearStr: string): number {
           </div>
         </header>
         
-        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 relative">
           {notice && (
-            <div role={notice.type === 'error' ? 'alert' : 'status'} className={`mb-4 ${notice.type === 'error' ? 'status-error' : 'status-success'}`}>
-              {notice.message}
+            <div role={notice.type === 'error' ? 'alert' : 'status'} className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-xl shadow-lg border ${notice.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : notice.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'} transition-all duration-300 transform`}>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">{notice.message}</span>
+                <button onClick={() => setNotice(null)} className="ml-4 text-gray-500 hover:text-gray-700">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
           {loading ? (
@@ -941,10 +946,7 @@ function parseYearNumber(yearStr: string): number {
           <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50/50 rounded-t-2xl">
               <div>
-                <h2 className="section-title text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
-                <h3 className="text-sm font-semibold text-[#7A1C30] mt-0.5">
-                  {currentStep === 1 ? 'Basic Information' : currentStep === 2 ? 'Historical Timeline' : currentStep === 3 ? 'Visitor Information' : 'Images'}
-                </h3>
+                <h2 className="text-2xl font-extrabold text-gray-900">{siteForm.id ? 'Edit Heritage Site' : 'Add Heritage Site'}</h2>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
@@ -960,11 +962,11 @@ function parseYearNumber(yearStr: string): number {
                       key={step}
                       type="button"
                       onClick={() => goToStep(step)}
-                      className="min-h-11 min-w-11 flex items-center justify-center"
+                      className="flex items-center justify-center py-2 px-0.5"
                       title={`${step}. ${label}`}
                       aria-label={`Step ${step}: ${label}`}
                       aria-current={currentStep === step ? 'step' : undefined}
-                    ><span aria-hidden="true" className={`h-2.5 rounded-full ${currentStep === step ? 'w-9 bg-[#7e1925]' : currentStep > step ? 'w-7 bg-[#7e1925]/70' : 'w-7 bg-gray-200'}`} /></button>
+                    ><span aria-hidden="true" className={`h-1.5 rounded-full transition-all duration-300 ${currentStep === step ? 'w-10 bg-[#0f172a]' : currentStep > step ? 'w-5 bg-[#0f172a]' : 'w-5 bg-gray-200'}`} /></button>
                   ))}
                 </div>
 
@@ -973,6 +975,11 @@ function parseYearNumber(yearStr: string): number {
             </div>
 
             <form id="admin-site-form" onSubmit={handleSaveSite} className="flex-1 overflow-auto p-6 space-y-5 text-sm">
+              <div className="text-center mb-2">
+                <h3 className="text-lg font-bold text-gray-800">
+                  {currentStep === 1 ? 'Basic Information' : currentStep === 2 ? 'Historical Timeline' : currentStep === 3 ? 'Visitor Information' : 'Images'}
+                </h3>
+              </div>
               {renderFormError('site')}
               {stepError && (
                 <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -982,15 +989,16 @@ function parseYearNumber(yearStr: string): number {
               <fieldset disabled={pending.has('save:site')} className="contents">
 
               {/* PAGE 1: BASIC INFORMATION */}
-              <div className={currentStep === 1 ? 'space-y-5' : 'hidden'}>
+              <div className={currentStep === 1 ? 'space-y-5 animate-fade-slide-in' : 'hidden'}>
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-1.5 col-span-2">
                     <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-1">Name</label>
-                    <input id="admin-field-1" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.name || ''} onChange={e => setSiteForm((prev: any) => ({...prev, name: e.target.value}))} placeholder="Site Name" />
+                    <input id="admin-field-1" required type="text" className={`w-full border rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none ${!siteForm.name && stepError?.includes('Name') ? 'border-red-500 bg-red-50' : 'border-[#e8dfd5]'}`} value={siteForm.name || ''} onChange={e => setSiteForm((prev) => ({...prev, name: e.target.value}))} placeholder="Site Name" />
+                    {!siteForm.name && stepError?.includes('Name') && <p className="text-xs text-red-600 mt-1 font-medium">Name is required.</p>}
                   </div>
                   <div className="space-y-1.5">
                     <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-2">Category</label>
-                    <select id="admin-field-2" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 outline-none bg-white" value={siteForm.category || ''} onChange={e => setSiteForm((prev: any) => ({...prev, category: e.target.value}))}>
+                    <select id="admin-field-2" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 outline-none bg-white" value={siteForm.category || ''} onChange={e => setSiteForm((prev) => ({...prev, category: e.target.value}))}>
                       <option value="">Unspecified</option>
                       {siteForm.category && !HERITAGE_CATEGORIES.some(category => category !== 'All' && category === siteForm.category) && (
                         <option value={siteForm.category}>{siteForm.category} (choose a supported category)</option>
@@ -1000,42 +1008,45 @@ function parseYearNumber(yearStr: string): number {
                   </div>
                   <div className="space-y-1.5">
                     <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-3">Year Built</label>
-                    <input id="admin-field-3" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.year_built || ''} onChange={e => setSiteForm((prev: any) => ({...prev, year_built: e.target.value}))} placeholder="e.g. 1755" />
+                    <input id="admin-field-3" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" value={siteForm.year_built || ''} onChange={e => setSiteForm((prev) => ({...prev, year_built: e.target.value}))} placeholder="e.g. 1755" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-4">Address</label>
-                    <input id="admin-field-4" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.address || ''} onChange={e => setSiteForm((prev: any) => ({...prev, address: e.target.value}))} placeholder="Full address" />
+                    <input id="admin-field-4" required type="text" className={`w-full border rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none ${!siteForm.address && stepError?.includes('Address') ? 'border-red-500 bg-red-50' : 'border-[#e8dfd5]'}`} value={siteForm.address || ''} onChange={e => setSiteForm((prev) => ({...prev, address: e.target.value}))} placeholder="Full address" />
+                    {!siteForm.address && stepError?.includes('Address') && <p className="text-xs text-red-600 mt-1 font-medium">Address is required.</p>}
                   </div>
                   <div className="space-y-1.5">
                     <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-5">Status</label>
-                    <select id="admin-field-5" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={siteForm.status || 'active'} onChange={e => setSiteForm((prev: any) => ({...prev, status: e.target.value}))}>
+                    <select id="admin-field-5" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white" value={siteForm.status || 'active'} onChange={e => setSiteForm((prev) => ({...prev, status: e.target.value}))}>
                       <option value="active">Active</option>
                       <option value="archived">Archived</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-6">Latitude</label>
-                    <input id="admin-field-6" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.latitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, latitude: e.target.value}))} placeholder="e.g. 15.031" />
+                    <input id="admin-field-6" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" value={siteForm.latitude ?? ''} onChange={e => setSiteForm((prev) => ({...prev, latitude: e.target.value}))} placeholder="e.g. 15.031" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-7">Longitude</label>
-                    <input id="admin-field-7" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={siteForm.longitude ?? ''} onChange={e => setSiteForm((prev: any) => ({...prev, longitude: e.target.value}))} placeholder="e.g. 120.689" />
+                    <input id="admin-field-7" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" value={siteForm.longitude ?? ''} onChange={e => setSiteForm((prev) => ({...prev, longitude: e.target.value}))} placeholder="e.g. 120.689" />
                   </div>
                 </div>
                 
                 <div className="space-y-1.5">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-8">Description</label>
-                  <textarea id="admin-field-8" required rows={3} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.description || ''} onChange={e => setSiteForm((prev: any) => ({...prev, description: e.target.value}))} placeholder="Brief description..." />
+                  <textarea id="admin-field-8" required rows={3} className={`w-full border rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none resize-none ${!siteForm.description && stepError?.includes('Description') ? 'border-red-500 bg-red-50' : 'border-[#e8dfd5]'}`} value={siteForm.description || ''} onChange={e => setSiteForm((prev) => ({...prev, description: e.target.value}))} placeholder="Brief description..." />
+                  {!siteForm.description && stepError?.includes('Description') && <p className="text-xs text-red-600 mt-1 font-medium">Description is required.</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-9">History</label>
-                  <textarea id="admin-field-9" required rows={4} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={siteForm.history || ''} onChange={e => setSiteForm((prev: any) => ({...prev, history: e.target.value}))} placeholder="Full historical context..." />
+                  <textarea id="admin-field-9" required rows={4} className={`w-full border rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none resize-none ${!siteForm.history && stepError?.includes('History') ? 'border-red-500 bg-red-50' : 'border-[#e8dfd5]'}`} value={siteForm.history || ''} onChange={e => setSiteForm((prev) => ({...prev, history: e.target.value}))} placeholder="Full historical context..." />
+                  {!siteForm.history && stepError?.includes('History') && <p className="text-xs text-red-600 mt-1 font-medium">History is required.</p>}
                 </div>
               </div>
 
               {/* PAGE 2: HISTORICAL TIMELINE */}
-              <section className={currentStep === 2 ? 'space-y-4' : 'hidden'}>
+              <section className={currentStep === 2 ? 'space-y-4 animate-fade-slide-in' : 'hidden'}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-gray-900 text-base">Historical Timeline</h3>
@@ -1092,7 +1103,7 @@ function parseYearNumber(yearStr: string): number {
               </section>
 
               {/* PAGE 3: VISITOR INFORMATION */}
-              <section className={currentStep === 3 ? 'space-y-4' : 'hidden'} aria-labelledby="admin-visitor-information-title">
+              <section className={currentStep === 3 ? 'space-y-4 animate-fade-slide-in' : 'hidden'} aria-labelledby="admin-visitor-information-title">
                 <div>
                   <h3 id="admin-visitor-information-title" className="font-bold text-gray-900 text-base">Visitor Information</h3>
                   <p className="text-xs text-gray-500">Optional. Leave unknown information blank.</p>
@@ -1107,14 +1118,14 @@ function parseYearNumber(yearStr: string): number {
                   <div key={field} className="space-y-1.5">
                     <label htmlFor={`admin-site-${field}`} className="font-semibold text-gray-700">{label}</label>
                     <textarea id={`admin-site-${field}`} name={field} rows={rows} maxLength={maxLength}
-                      className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none"
+                      className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none"
                       value={siteForm[field] ?? ''} onChange={e => setSiteForm({ ...siteForm, [field]: e.target.value })} />
                   </div>
                 ))}
               </section>
 
               {/* PAGE 4: IMAGES */}
-              <section className={currentStep === 4 ? 'space-y-4' : 'hidden'}>
+              <section className={currentStep === 4 ? 'space-y-4 animate-fade-slide-in' : 'hidden'}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-gray-900 text-base">Images</h3>
@@ -1155,7 +1166,7 @@ function parseYearNumber(yearStr: string): number {
                           <input id="admin-field-10"
                             type="text"
                             placeholder="Image caption (e.g. Front view)"
-                            className="w-full border border-[#e8dfd5] rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                            className="w-full border border-[#e8dfd5] rounded-lg p-2 text-xs focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white"
                             value={img.caption}
                             onChange={(e) => {
                               const val = e.target.value;
@@ -1196,28 +1207,28 @@ function parseYearNumber(yearStr: string): number {
             </form>
 
             {/* Modal Footer with Navigation */}
-            <div className="p-5 border-t border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-b-2xl text-xs">
+            <div className="p-5 border-t border-gray-100 flex items-center justify-between bg-white rounded-b-2xl">
               <div>
                 {currentStep > 1 && (
                   <button
                     type="button"
                     disabled={pending.has('save:site')}
                     onClick={() => setCurrentStep(prev => prev - 1)}
-                    className="px-4 py-2 border border-[#e8dfd5] rounded-xl text-gray-700 hover:bg-white font-semibold transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                    className="group px-6 py-2.5 bg-white border border-[#e8dfd5] rounded-full text-gray-700 hover:bg-gray-50 hover:text-black font-semibold transition-all shadow-sm cursor-pointer flex items-center gap-2 text-sm"
                   >
-                    ← Back
+                    <span className="inline-block transition-transform duration-300 group-hover:-translate-x-1">←</span> Back
                   </button>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {currentStep < 4 && (
                   <button
                     type="button"
                     onClick={() => goToStep(currentStep + 1)}
-                    className="px-5 py-2 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="group px-7 py-2.5 bg-[#0f172a] hover:bg-black text-white rounded-full font-semibold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2 text-sm"
                   >
-                    Next →
+                    Next <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
                   </button>
                 )}
 
@@ -1226,7 +1237,7 @@ function parseYearNumber(yearStr: string): number {
                     type="submit"
                     form="admin-site-form"
                     disabled={pending.has('save:site')}
-                    className="px-5 py-2 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-xl font-bold shadow-md transition-colors cursor-pointer"
+                    className="px-7 py-2.5 bg-[#7A1C30] hover:bg-[#581020] text-white rounded-full font-bold shadow-md hover:shadow-lg transition-all cursor-pointer text-sm"
                   >
                     {pending.has('save:site') ? 'Saving...' : 'Save Heritage Site'}
                   </button>
@@ -1265,7 +1276,7 @@ function parseYearNumber(yearStr: string): number {
                 <input id="admin-field-11"
                   required
                   type="text"
-                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none"
                   placeholder="e.g. 1755"
                   value={timelineItemForm.year}
                   onChange={(e) => setTimelineItemForm({ ...timelineItemForm, year: e.target.value })}
@@ -1277,7 +1288,7 @@ function parseYearNumber(yearStr: string): number {
                 <input id="admin-field-12"
                   required
                   type="text"
-                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none"
                   placeholder="e.g. Augustinian Foundation"
                   value={timelineItemForm.title}
                   onChange={(e) => setTimelineItemForm({ ...timelineItemForm, title: e.target.value })}
@@ -1289,7 +1300,7 @@ function parseYearNumber(yearStr: string): number {
                 <textarea id="admin-field-13"
                   required
                   rows={3}
-                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none resize-none"
+                  className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none resize-none"
                   placeholder="Describe the historical event..."
                   value={timelineItemForm.description}
                   onChange={(e) => setTimelineItemForm({ ...timelineItemForm, description: e.target.value })}
@@ -1332,11 +1343,11 @@ function parseYearNumber(yearStr: string): number {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5 sm:col-span-2">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-14">Title</label>
-                  <input id="admin-field-14" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
+                  <input id="admin-field-14" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" value={eventForm.title || ''} onChange={e => setEventForm({...eventForm, title: e.target.value})} placeholder="Event Title" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-15">Category</label>
-                  <select id="admin-field-15" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.category || 'Festival'} onChange={e => setEventForm({...eventForm, category: e.target.value})}>
+                  <select id="admin-field-15" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white" value={eventForm.category || 'Festival'} onChange={e => setEventForm({...eventForm, category: e.target.value})}>
                     <option value="Festival">Festival</option>
                     <option value="Heritage Tour">Heritage Tour</option>
                     <option value="Exhibition">Exhibition</option>
@@ -1381,7 +1392,7 @@ function parseYearNumber(yearStr: string): number {
                       <input id="admin-field-16"
                         required
                         type="date"
-                        className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                        className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white"
                         value={eventDateForInput(eventForm.event_date)}
                         onChange={(e) => setEventForm({ ...eventForm, event_date: replaceEventDate(events.find(event => String(event.id) === String(eventForm.id))?.event_date || eventForm.event_date, e.target.value) })}
                       />
@@ -1391,7 +1402,7 @@ function parseYearNumber(yearStr: string): number {
                       <input id="admin-field-17"
                         required
                         type="date"
-                        className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                        className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white"
                         value={eventDateForInput(eventForm.end_date)}
                         onChange={(e) => setEventForm({ ...eventForm, end_date: replaceEventDate(eventForm.end_date, e.target.value) })}
                       />
@@ -1403,7 +1414,7 @@ function parseYearNumber(yearStr: string): number {
                     <input id="admin-field-18"
                       required
                       type="date"
-                      className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                      className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white"
                       value={eventDateForInput(eventForm.event_date)}
                       onChange={(e) => setEventForm({ ...eventForm, event_date: replaceEventDate(events.find(event => String(event.id) === String(eventForm.id))?.event_date || eventForm.event_date, e.target.value) })}
                     />
@@ -1416,7 +1427,7 @@ function parseYearNumber(yearStr: string): number {
                 <div className="space-y-1.5">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-19">Start Time</label>
                   <select id="admin-field-19"
-                    className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                    className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white"
                     value={eventForm.start_time || ''}
                     onChange={(e) => setEventForm({ ...eventForm, start_time: e.target.value })}
                   >
@@ -1430,7 +1441,7 @@ function parseYearNumber(yearStr: string): number {
                 <div className="space-y-1.5">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-20">End Time</label>
                   <select id="admin-field-20"
-                    className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none bg-white"
+                    className="w-full border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white"
                     value={eventForm.end_time || ''}
                     onChange={(e) => setEventForm({ ...eventForm, end_time: e.target.value })}
                   >
@@ -1446,11 +1457,11 @@ function parseYearNumber(yearStr: string): number {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5 sm:col-span-2">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-21">Location</label>
-                  <input id="admin-field-21" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={eventForm.location || ''} onChange={e => setEventForm({...eventForm, location: e.target.value})} placeholder="Event Location" />
+                  <input id="admin-field-21" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" value={eventForm.location || ''} onChange={e => setEventForm({...eventForm, location: e.target.value})} placeholder="Event Location" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-22">Status</label>
-                  <select id="admin-field-22" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={eventForm.status || 'upcoming'} onChange={e => setEventForm({...eventForm, status: e.target.value})}>
+                  <select id="admin-field-22" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white" value={eventForm.status || 'upcoming'} onChange={e => setEventForm({...eventForm, status: e.target.value})}>
                     <option value="upcoming">Upcoming</option>
                     <option value="ongoing">Ongoing</option>
                     <option value="completed">Completed</option>
@@ -1519,7 +1530,7 @@ function parseYearNumber(yearStr: string): number {
               {/* Description */}
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-23">Description</label>
-                <textarea id="admin-field-23" required rows={3} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
+                <textarea id="admin-field-23" required rows={3} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none resize-none" value={eventForm.description || ''} onChange={e => setEventForm({...eventForm, description: e.target.value})} placeholder="Event description..." />
               </div>
 
               {/* Input-Chip Field for Tags */}
@@ -1549,7 +1560,7 @@ function parseYearNumber(yearStr: string): number {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    className="flex-1 border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none"
+                    className="flex-1 border border-[#e8dfd5] rounded-xl p-2.5 text-sm focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none"
                     placeholder="Type tag and press Enter (e.g. Family Friendly)..."
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
@@ -1693,14 +1704,14 @@ function parseYearNumber(yearStr: string): number {
               <fieldset disabled={pending.has('save:image')} className="contents">
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-24">Heritage Site</label>
-                <select id="admin-field-24" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={imageForm.heritage_site_id || ''} onChange={e => setImageForm({...imageForm, heritage_site_id: parseInt(e.target.value)})}>
+                <select id="admin-field-24" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white" value={imageForm.heritage_site_id || ''} onChange={e => setImageForm({...imageForm, heritage_site_id: parseInt(e.target.value)})}>
                   <option value="">Select a Heritage Site...</option>
                   {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-25">Image Path or URL</label>
-                <input id="admin-field-25" required={!siteImageFile} type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
+                <input id="admin-field-25" required={!siteImageFile} type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" placeholder="e.g. heritage-sites/photo.jpg" value={imageForm.image_path || ''} onChange={e => setImageForm({...imageForm, image_path: e.target.value})} />
                 <p className="text-xs text-gray-500 mt-1">Use an existing URL/path or upload a file. A selected upload takes precedence.</p>
               </div>
               <div className="space-y-1.5">
@@ -1715,7 +1726,7 @@ function parseYearNumber(yearStr: string): number {
               </div>
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-26">Caption</label>
-                <input id="admin-field-26" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" value={imageForm.caption || ''} onChange={e => setImageForm({...imageForm, caption: e.target.value})} placeholder="Image caption..." />
+                <input id="admin-field-26" type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" value={imageForm.caption || ''} onChange={e => setImageForm({...imageForm, caption: e.target.value})} placeholder="Image caption..." />
               </div>
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 font-semibold text-gray-700">
@@ -1753,7 +1764,7 @@ function parseYearNumber(yearStr: string): number {
               <fieldset disabled={pending.has('save:timeline')} className="contents">
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-27">Heritage Site</label>
-                <select id="admin-field-27" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none bg-white" value={timelineForm.heritage_site_id || ''} onChange={e => setTimelineForm({...timelineForm, heritage_site_id: parseInt(e.target.value)})}>
+                <select id="admin-field-27" required className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none bg-white" value={timelineForm.heritage_site_id || ''} onChange={e => setTimelineForm({...timelineForm, heritage_site_id: parseInt(e.target.value)})}>
                   <option value="">Select a Heritage Site...</option>
                   {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -1761,16 +1772,16 @@ function parseYearNumber(yearStr: string): number {
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5 col-span-2">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-28">Title</label>
-                  <input id="admin-field-28" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="Timeline Event Title" value={timelineForm.title || ''} onChange={e => setTimelineForm({...timelineForm, title: e.target.value})} />
+                  <input id="admin-field-28" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" placeholder="Timeline Event Title" value={timelineForm.title || ''} onChange={e => setTimelineForm({...timelineForm, title: e.target.value})} />
                 </div>
                 <div className="space-y-1.5 col-span-2">
                   <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-29">Year</label>
-                  <input id="admin-field-29" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none" placeholder="e.g. 1920 or circa 1920" value={timelineForm.year || ''} onChange={e => setTimelineForm({...timelineForm, year: e.target.value})} />
+                  <input id="admin-field-29" required type="text" className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none" placeholder="e.g. 1920 or circa 1920" value={timelineForm.year || ''} onChange={e => setTimelineForm({...timelineForm, year: e.target.value})} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700" htmlFor="admin-field-30">Description</label>
-                <textarea id="admin-field-30" required rows={4} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] transition-shadow outline-none resize-none" value={timelineForm.description || ''} onChange={e => setTimelineForm({...timelineForm, description: e.target.value})} placeholder="Event description..." />
+                <textarea id="admin-field-30" required rows={4} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-0 focus:border-[#7A1C30] focus:border-2 transition-all outline-none resize-none" value={timelineForm.description || ''} onChange={e => setTimelineForm({...timelineForm, description: e.target.value})} placeholder="Event description..." />
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="admin-timeline-order" className="font-semibold text-gray-700">Sort Order</label>

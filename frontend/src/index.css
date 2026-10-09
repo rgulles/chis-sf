@@ -462,3 +462,6 @@ mark,
 .heritage-document .ui-button-primary, .heritage-document .ui-button-secondary { border-radius: 2px; }
 .heritage-document #visit-verification { border-radius: 2px; border-color: #e7ded4; background: #fdf9f4; }
 .heritage-document #visitor-experiences .ui-card { border-radius: 2px; box-shadow: none; }
+
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+.animate-fade-slide-in { animation: fadeSlideIn 0.4s ease-out forwards; }
