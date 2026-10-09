@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Heritage cleanup regression fixture</title></head><body><div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import App from '/src/App.tsx';
+import '/src/index.css';
+localStorage.clear(); localStorage.setItem('chis_jwt_token', 'browser-fixture-token');
+window.__geoCalls = 0; window.__geoMode = 'success'; window.__routeMode = 'success';
+Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition(ok, fail) { window.__geoCalls++; queueMicrotask(() => window.__geoMode === 'success' ? ok({ coords: { latitude: 15.01, longitude: 120.67, accuracy: 10 } }) : fail({ code: Number(window.__geoMode) })); } } });
+window.__requests = []; window.__consoleErrors = [];
+const originalError = console.error;
+console.error = (...args) => { window.__consoleErrors.push(args.map(String).join(' ')); originalError(...args); };
+const image = '/images/heritage-placeholder.svg';
+const sites = [1,2].map(id => ({ id, name: id === 1 ? 'Metropolitan Cathedral of San Fernando, Pampanga' : 'Lazatin House', status: 'active', category: 'Churches', year_built: '1900', address: 'Recorded address', latitude: 15.03 + (id - 1) * 0.01, longitude: 120.69 + (id - 1) * 0.01, description: 'Recorded description for the browser fixture.', history: 'Recorded history for the browser fixture.', cover_image: { id, image_path: image }, images: [{ id, image_path: image, is_cover: true }, { id: id + 10, image_path: image, caption: 'Recorded official gallery caption' }], timelines: [{ id, year: '1900', title: 'Recorded milestone', description: 'Recorded timeline description' }], opening_hours: 'Recorded opening hours', visit_verification_enabled: true }));
+const itinerary = { id: 7, name: 'Recorded route', description: 'Ordered heritage stops', status: 'active', stops: sites.map((site, index) => ({ id: index + 1, heritage_site_id: site.id, sort_order: index, heritage_site: site })) };
+let verified = false;
+window.fetch = async (input, options = {}) => {
+  const url = String(input); window.__requests.push({ url, method: options.method || 'GET' });
+  let data;
+  if (url.includes('/route/v1/driving/') && window.__routeMode === 'failure') return new Response('{}', { status: 503 });
+  if (url.includes('/route/v1/driving/')) data = { code: 'Ok', routes: [{ geometry: { type: 'LineString', coordinates: [[120.69,15.03],[120.695,15.032],[120.70,15.04]] }, distance: 4800, duration: 720, legs: [{ steps: [{ name: 'Fixture Road', distance: 650, maneuver: { type: 'turn', modifier: 'right' } }, { name: '', distance: 350, maneuver: { type: 'continue' } }, { name: '', distance: 0, maneuver: { type: 'arrive' } }] }] }] };
+  else if (url.endsWith('/auth/me')) data = { user: { id: 2, name: 'Browser traveler', email: 'fixture@example.test', role: 'traveler', avatar: image } };
+  else if (url.endsWith('/passport')) data = { total_points: 100, visited_count: 1, visited_eligible_count: 1, eligible_site_count: 2, visits: [{ id: 1, heritage_site_id: 1, site: sites[0], points_awarded: 100, verified_at: '2026-10-09T12:00:00Z' }], eligible_sites: sites };
+  else if (url.endsWith('/mine')) data = { verified, active: true, can_submit: verified, contribution: null };
+  else if (url.endsWith('/verify-visit')) { verified = true; data = { status: 'verified', points_earned: 100, visit: { id: 1, heritage_site_id: 1, verified_at: '2026-10-09T12:00:00Z', points_awarded: 100 } }; }
+  else if (url.endsWith('/contributions')) data = [{ id: 1, visitor_name: 'Verified visitor', caption: 'Recorded visitor experience.', created_at: '2026-10-09T12:00:00Z', images: [image] }];
+  else if (url.endsWith('/heritage-sites/1') || url.endsWith('/heritage-sites/2')) data = sites[Number(url.slice(-1)) - 1];
+  else if (url.endsWith('/heritage-sites')) data = sites;
+  else if (url.endsWith('/itineraries/7')) data = itinerary;
+  else if (url.endsWith('/itineraries')) data = [itinerary];
+  else if (url.endsWith('/events')) data = [];
+  else return new Response(null, { status: 404 });
+  return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+location.hash = '#/heritage/1';
+createRoot(document.getElementById('root')).render(React.createElement(App));
+</script></body></html>

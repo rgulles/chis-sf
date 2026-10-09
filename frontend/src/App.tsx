@@ -10,14 +10,13 @@ import type {
 
 
 import { apiFetchSites, apiFetchSiteById, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken, apiFetchItineraries } from './api/client';
-import { parseHeritageRoute } from './utils/heritageNavigation';
+import { parseHeritageRoute, mapDestinationId, mapDirectionsUrl } from './utils/heritageNavigation';
 
 // Components
 import { Header } from './components/Header';
 import { MobileNav } from './components/MobileNav';
 import { SearchModal } from './components/SearchModal';
 import { AuthModal } from './components/AuthModal';
-import { DirectionsModal } from './components/DirectionsModal';
 import { HeritageChatbot } from './components/HeritageChatbot';
 
 // Views
@@ -113,7 +112,7 @@ export default function App() {
   // Modals Visibility State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [directionsTargetSite, setDirectionsTargetSite] = useState<HeritageSite | null>(null);
+  const [directionsDestinationId, setDirectionsDestinationId] = useState<string | null>(() => mapDestinationId(window.location?.hash || ''));
   const [sitesLoading, setSitesLoading] = useState(true);
 
   useEffect(() => {
@@ -141,12 +140,11 @@ export default function App() {
         if (!cancelled) {
           setSites(fetchedSites);
           setSitesError(null);
-          setDirectionsTargetSite((previous) => previous ? fetchedSites.find((site) => site.id === previous.id) || null : null);
         }
       }).catch(err => {
         if (!cancelled) {
           setSites([]);
-          setDirectionsTargetSite(null);
+          setDirectionsDestinationId(null);
           setSitesError(err instanceof Error ? err.message : 'Unable to load heritage sites. Please try again.');
         }
       }).finally(() => {
@@ -178,7 +176,8 @@ export default function App() {
       setDetailStatus('loading');
       setRouteSiteId(route.siteId);
       setCurrentView(route.view);
-      setDirectionsTargetSite(null);
+      setDirectionsDestinationId(mapDestinationId(window.location.hash));
+      setSelectedCategory('All');
     };
     window.addEventListener?.('popstate', syncRoute);
     window.addEventListener?.('hashchange', syncRoute);
@@ -244,6 +243,7 @@ export default function App() {
     routeHash.current = hash;
     setRouteSiteId(id || null);
     if (view === 'site-detail') { setSelectedSite(null); setDetailStatus('loading'); setDetailRetry(value => value + 1); }
+    setDirectionsDestinationId(null);
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -276,6 +276,21 @@ export default function App() {
     );
   };
 
+  const openDirections = (site: HeritageSite) => {
+    const hash = mapDirectionsUrl(site.id);
+    if (window.location.hash !== hash) window.history.pushState({ chisNavigation: true }, '', hash);
+    routeHash.current = hash;
+    setDirectionsDestinationId(site.id);
+    setSelectedCategory('All');
+    setCurrentView('map');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  const closeDirections = () => {
+    window.history.replaceState({ chisNavigation: true }, '', '#/map');
+    routeHash.current = '#/map';
+    setDirectionsDestinationId(null);
+  };
+
   // Select Site to View Details (Page 4)
   const handleSelectSite = (site: HeritageSite) => {
     const hash = `#/heritage/${encodeURIComponent(site.id)}`;
@@ -285,6 +300,7 @@ export default function App() {
     setDetailStatus('loading');
     setRouteSiteId(site.id);
     setDetailRetry(value => value + 1);
+    setDirectionsDestinationId(null);
     setCurrentView('site-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -368,6 +384,7 @@ export default function App() {
         {/* COMBINED EXPLORE HERITAGE & MAP */}
         {currentView === 'explore' && !sitesLoading && !sitesError && (
           <ExploreView
+            onOpenDirections={openDirections}
             sites={sites}
             onSelectSite={handleSelectSite}
             savedSiteIds={savedSiteIds}
@@ -380,6 +397,9 @@ export default function App() {
 
         {currentView === 'map' && !sitesLoading && !sitesError && (
           <MapView
+            destinationId={directionsDestinationId}
+            onCloseDirections={closeDirections}
+            onOpenDirections={openDirections}
             sites={sites}
             onSelectSite={handleSelectSite}
             onPlanRoute={() => navigateTo('plan')}
@@ -409,7 +429,7 @@ export default function App() {
             onExplore={() => navigateTo('explore')}
             onVerified={() => { setPassportState(null); setPassportRevision(value => value + 1); }}
             onBack={() => window.history?.state?.chisNavigation ? window.history.back() : navigateTo('explore')}
-            onOpenDirections={(site) => setDirectionsTargetSite(site)}
+            onOpenDirections={openDirections}
             isSaved={savedSiteIds.includes(selectedSite.id)}
             onToggleSave={handleToggleSaveSite}
             onAddToPlan={(siteId) => {
@@ -618,15 +638,10 @@ export default function App() {
         onOpenPassport={() => { if (user) { setIsAuthOpen(false); setPassportOpen(true); } }}
       />
 
-      {/* DIRECTIONS & TRANSIT MODAL */}
-      <DirectionsModal
-        isOpen={!!directionsTargetSite}
-        site={directionsTargetSite}
-        onClose={() => setDirectionsTargetSite(null)}
-      />
-
       {/* LOWER-RIGHT COLLAPSIBLE HERITAGE CHATBOT */}
       <HeritageChatbot
+        currentSite={currentView === 'site-detail' && detailStatus === 'ready' ? selectedSite : null}
+        onOpenDirections={openDirections}
         sites={sites}
         onSelectSite={handleSelectSite}
         onPlanRoute={() => navigateTo('plan')}

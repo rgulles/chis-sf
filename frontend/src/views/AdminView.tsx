@@ -178,7 +178,7 @@ function parseYearNumber(yearStr: string): number {
 
   // --- MODAL STATE ---
   const [siteModalOpen, setSiteModalOpen] = useState(false);
-  const [siteForm, setSiteForm] = useState<any>({});
+  const [siteForm, setSiteForm] = useState<Record<string, string>>({});
   const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
   const [draftTimelines, setDraftTimelines] = useState<DraftTimeline[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);

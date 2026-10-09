@@ -765,7 +765,11 @@ export function mapBackendEvent(raw: any): EventItem {
     timeFormatted = 'TBA';
   }
 
-  const bannerImage = heritageImageUrl(typeof (raw as any).image_url === 'string' ? (raw as any).image_url : (typeof raw.image_path === 'string' ? raw.image_path : ''));
+  // Explicit null means the server could not resolve the image. Only old APIs
+  // that omit image_url should fall back to the legacy stored path.
+  const bannerImage = heritageImageUrl(Object.prototype.hasOwnProperty.call(raw, 'image_url')
+    ? (typeof raw.image_url === 'string' ? raw.image_url : '')
+    : (typeof raw.image_path === 'string' ? raw.image_path : ''));
 
   const rawSchedules = Array.isArray(raw.schedules) ? raw.schedules : [];
   const schedule = rawSchedules.map((item: any) => ({

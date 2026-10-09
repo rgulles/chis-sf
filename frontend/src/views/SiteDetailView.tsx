@@ -109,13 +109,13 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({
       {shareMessage && <p role="status">{shareMessage}</p>}
 
       <header className="heritage-identity space-y-4">
-        <div className="flex flex-wrap justify-between gap-2 border-y border-[#e7ded4] py-3 text-[10px] uppercase tracking-[0.16em] text-[#7e1925]">
-          <span>{site.category}</span>{site.yearBuilt && site.yearBuilt !== 'Unknown' && <span>Year built · {site.yearBuilt}</span>}
-        </div>
         <figure className="space-y-2">
           <img src={site.heroImage} alt={site.name} width={1200} height={720} className="w-full aspect-[5/3] object-cover bg-[#f2e9df]" referrerPolicy="no-referrer" onError={handleHeritageImageError} />
           {mainImage?.caption && <figcaption className="text-xs text-[#61564d]">{mainImage.caption}</figcaption>}
         </figure>
+        <div className="flex flex-wrap justify-between gap-2 border-y border-[#e7ded4] py-3 text-[10px] uppercase tracking-[0.16em] text-[#7e1925]">
+          <span>{site.category}</span>{site.yearBuilt && site.yearBuilt !== 'Unknown' && <span>Year built · {site.yearBuilt}</span>}
+        </div>
         <div className="border-b border-[#e7ded4] pb-5 space-y-3">
           {site.nativeName && site.nativeName !== site.name && <p className="font-editorial italic text-[#7e1925]">{site.nativeName}</p>}
           <h1 id="site-detail-name" className="font-editorial text-3xl sm:text-5xl md:text-6xl leading-tight text-[#1e1b19] break-words">{site.name}</h1>

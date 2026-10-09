@@ -33,37 +33,6 @@ export interface VisitInfo {
   accessibilityNotes?: string | null;
   visitNotes?: string | null;
   contactInformation?: string | null;
-  // Legacy local dataset fields; the live API does not supply these.
-  accessibility?: string;
-  duration?: string;
-  guideAvailable?: boolean;
-  bestTime?: string;
-}
-
-export interface HouseholdVault {
-  id: string;
-  title: string;
-  category: 'Subterranean Secret' | 'Sugar Ledger & Treasury' | 'War Relic' | 'Ancestral Heirloom';
-  description: string;
-  historicalSignificance: string;
-}
-
-export interface SiteEtiquette {
-  shoeCoversRequired: boolean;
-  silenceProtocol: boolean;
-  flashPhotographyAllowed: boolean;
-  preservationNotes: string[];
-}
-
-/** Deprecated local prototype metadata; never used by the live read-aloud feature. */
-export interface AudioStoryData {
-  title: string;
-  duration: string;
-  durationSeconds: number;
-  narrator: string;
-  transcript: string;
-  kapampanganTranscript?: string;
-  chapters?: Array<{ title: string; timeSeconds: number }>;
 }
 
 export interface HeritageImage {
@@ -109,17 +78,10 @@ export interface HeritageSite {
   archivalImage: string;
   modernImage: string;
   thenNowCaption: string;
-  audioStory?: AudioStoryData;
   timeline: TimelineEvent[];
   didYouKnow: string[];
   historicalCharacters: HistoricalCharacter[];
   visitInfo: VisitInfo;
-  householdVaults?: HouseholdVault[];
-  etiquetteRules?: SiteEtiquette;
-  nhcpPlaqueCode?: string; // 4-digit code e.g. "1870"
-  panoramaHotspots?: Hotspot[];
-  scanCount?: number;
-  badgeName?: string;
   isFeatured?: boolean;
 }
 

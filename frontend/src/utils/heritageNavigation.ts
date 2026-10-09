@@ -7,8 +7,18 @@ export function parseHeritageRoute(hash: string): { view: ViewType; siteId: stri
     const match = /^#\/heritage\/([1-9]\d*)\/?$/.exec(hash);
     return { view: 'site-detail', siteId: match?.[1] || null };
   }
+  if (mapDestinationId(hash)) return { view: 'map', siteId: null };
   const view = hash.replace(/^#\//, '') as ViewType;
   return { view: views.includes(view) ? view : !hash || hash === '#/' ? 'home' : 'not-found', siteId: null };
+}
+
+// Only the destination ID is navigable. Visitor coordinates stay in component memory.
+export function mapDirectionsUrl(id: string): string {
+  return `#/map?destination=${encodeURIComponent(id)}`;
+}
+
+export function mapDestinationId(hash: string): string | null {
+  return /^#\/map\?destination=([1-9]\d*)$/.exec(hash)?.[1] || null;
 }
 
 export function heritageSiteUrl(id: string, href: string): string {

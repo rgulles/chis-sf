@@ -1,0 +1,13 @@
+DRY RUN
++-------+-------------------------------------------------------------------+--------+-------------------------------------------------------------------+-------------------------------------------+
+| DB ID | Current Name                                                      | Field  | From                                                              | To                                        |
++-------+-------------------------------------------------------------------+--------+-------------------------------------------------------------------+-------------------------------------------+
+| 22    | Dayrit-Galang House                                               | name   | Dayrit-Galang House                                               | Dayrit-Galang Residence                   |
+| 25    | Datu-Bundalian House                                              | name   | Datu-Bundalian House                                              | Datu-Bundalian Residence                  |
+| 30    | Dayrit-Cuyugan House                                              | name   | Dayrit-Cuyugan House                                              | Dayrit-Cuyugan Residence                  |
+| 36    | City of San Fernando Giant Lantern and Tourist Information Center | name   | City of San Fernando Giant Lantern and Tourist Information Center | City of San Fernando Giant Lantern Center |
+| 38    | Test                                                              | status | active                                                            | archived                                  |
++-------+-------------------------------------------------------------------+--------+-------------------------------------------------------------------+-------------------------------------------+
+Name-list reconciliation only. No detail, coordinate, duplicate merge or missing-site creation. Replacement PDF detail review remains pending.
+Reviewed fingerprint: 6787ade7d466372ecc396556f3923a04195222a60093fa3d3bf3a9ffe52e3e62
+After manual review only: php artisan heritage:reconcile-official --apply --created-by=ADMIN_ID --reviewed-fingerprint=6787ade7d466372ecc396556f3923a04195222a60093fa3d3bf3a9ffe52e3e62

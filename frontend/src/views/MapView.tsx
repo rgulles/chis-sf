@@ -1,6 +1,6 @@
 import { HERITAGE_MARKER_STYLES, heritageMarkerHtml } from '../utils/heritageMap';
 import { handleHeritageImageError, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type Leaflet from 'leaflet';
 import { loadLeaflet } from '../utils/loadLeaflet';
 import { ErrorState } from '../components/ErrorState';
@@ -30,16 +30,22 @@ import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
 import { hasUsableCoordinates } from '../utils/heritageCoordinates';
 import { loadCityBoundary, FALLBACK_CITY_CENTER, FALLBACK_CITY_BOUNDS, type CityBounds } from '../utils/cityBoundary';
 import type { RoadRoute } from '../utils/osrm';
+import type { RoutingPoint } from '../utils/routingLocation';
+const DirectionsPanel = lazy(() => import('../components/DirectionsPanel'));
+
 
 interface MapViewProps {
   sites: HeritageSite[];
   onSelectSite: (site: HeritageSite) => void;
+  onOpenDirections?: (site: HeritageSite) => void;
   onPlanRoute: () => void;
   savedSiteIds: string[];
   onToggleSaveSite: (siteId: string) => void;
   initialViewMode?: 'map' | 'list';
   selectedCategory?: CategoryType | 'All';
   onCategoryChange?: (category: CategoryType | 'All') => void;
+  destinationId?: string | null;
+  onCloseDirections?: () => void;
   roadRoute?: RoadRoute;
   orderedStops?: boolean;
 }
@@ -56,14 +62,31 @@ type MapTileStyle = 'osm' | 'satellite';
 export const MapView: React.FC<MapViewProps> = ({
   sites,
   onSelectSite,
+  onOpenDirections,
   savedSiteIds,
   onToggleSaveSite,
   initialViewMode = 'list',
   selectedCategory: propCategory,
   onCategoryChange: propOnCategoryChange,
-  roadRoute, orderedStops = false
+  roadRoute, orderedStops = false, destinationId = null, onCloseDirections
 }) => {
-  const [selectedSiteId, setSelectedSiteId] = useState<string>(sites[0]?.id || '');
+  const [selectedSiteId, setSelectedSiteId] = useState<string>(destinationId || sites[0]?.id || '');
+  const destination = sites.find(site => site.id === destinationId && site.status === 'active');
+  const destinationKey = destination ? [destination.id, destination.coordinates?.lat, destination.coordinates?.lng].join(':') : '';
+  const [routeDisplay, setRouteDisplay] = useState<{ key: string; start: RoutingPoint | null; route: RoadRoute | null } | null>(null);
+  const routingStart = destinationKey && routeDisplay?.key === destinationKey ? routeDisplay.start : null;
+  const displayedRoute = destinationId ? (destinationKey && routeDisplay?.key === destinationKey ? routeDisplay.route : null) : roadRoute;
+  const updateRoute = useCallback((start: RoutingPoint | null, route: RoadRoute | null) => {
+    setRouteDisplay({ key: destinationKey, start, route });
+  }, [destinationKey]);
+  const closeRouteMode = () => { setRouteDisplay(null); onCloseDirections?.(); };
+  const [previousDestinationKey, setPreviousDestinationKey] = useState(destinationKey);
+  if (previousDestinationKey !== destinationKey) {
+    setPreviousDestinationKey(destinationKey);
+    setRouteDisplay(null);
+    if (destination) setSelectedSiteId(destination.id);
+  }
+
   const [viewMode, setViewMode] = useState<'map' | 'list'>(initialViewMode);
   const [L, setLeaflet] = useState<typeof Leaflet | null>(null);
   const [mapLoadError, setMapLoadError] = useState(''), [mapRetry, setMapRetry] = useState(0);
@@ -107,10 +130,15 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapInstanceRef = useRef<Leaflet.Map | null>(null);
   const markersRef = useRef<Record<string, Leaflet.Marker>>({});
   const routeLayerRef = useRef<Leaflet.Polyline | null>(null);
+  const startMarkerRef = useRef<Leaflet.Marker | null>(null);
+  const routingRef = useRef(!!destinationId);
+  useEffect(() => { routingRef.current = !!destinationId; }, [destinationId]);
   const tileLayerRef = useRef<Leaflet.TileLayer | null>(null);
   const boundaryLayerRef = useRef<Leaflet.Polygon | null>(null);
   const outsideFocusLayerRef = useRef<Leaflet.Polygon | null>(null);
   const cityBoundsRef = useRef<CityBounds>(FALLBACK_CITY_BOUNDS);
+  const cityNavigationBoundsRef = useRef<CityBounds>(FALLBACK_CITY_BOUNDS);
+  const routeModeActiveRef = useRef(false);
   const needsInitialFitRef = useRef(true);
   const visibleMapRef = useRef(initialViewMode === 'map');
   const boundaryVisibleRef = useRef(true);
@@ -122,12 +150,12 @@ export const MapView: React.FC<MapViewProps> = ({
     return sites
       .filter((site) => {
         const matchesCategory = activeCategory === 'All' || site.category === activeCategory;
-        return site.status === 'active' && matchesCategory;
+        return site.status === 'active' && (matchesCategory || site.id === destinationId);
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [sites, activeCategory]);
+  }, [sites, activeCategory, destinationId]);
 
-  const activeSite = filteredAndSortedSites.find((s) => s.id === selectedSiteId);
+  const activeSite = destination || filteredAndSortedSites.find((s) => s.id === selectedSiteId);
 
   // Clear filtered or removed selections before rendering.
   if (selectedSiteId && !activeSite) setSelectedSiteId('');
@@ -161,6 +189,7 @@ export const MapView: React.FC<MapViewProps> = ({
       maxZoom: 18,
       zoomSnap: 0.25,
       zoomDelta: 0.5,
+      zoomAnimation: false,
       maxBounds: FALLBACK_CITY_BOUNDS,
       maxBoundsViscosity: 0.75,
       zoomControl: false,
@@ -176,7 +205,8 @@ export const MapView: React.FC<MapViewProps> = ({
     void loadCityBoundary().then(boundary => {
       if (cancelled || !boundary) return;
       cityBoundsRef.current = boundary.bounds;
-      map.setMaxBounds(boundary.navigationBounds);
+      cityNavigationBoundsRef.current = boundary.navigationBounds;
+      if (!routingRef.current) map.setMaxBounds(boundary.navigationBounds);
       outsideFocusLayerRef.current = L.polygon(boundary.mask, {
         stroke: false, fillColor: '#413b38', fillOpacity: 0.24,
         fillRule: 'evenodd', interactive: false,
@@ -191,8 +221,8 @@ export const MapView: React.FC<MapViewProps> = ({
       needsInitialFitRef.current = true;
       if (visibleMapRef.current) {
         map.invalidateSize();
-        if (routeLayerRef.current) { map.setMinZoom(1); map.fitBounds(routeLayerRef.current.getBounds(), { padding: [28, 28], maxZoom: 16 }); }
-        else fitCity(map, boundary.bounds, L);
+        if (routeLayerRef.current && !routingRef.current) { map.setMinZoom(1); map.fitBounds(routeLayerRef.current.getBounds(), { padding: [28, 28], maxZoom: 16 }); }
+        else if (!routingRef.current) fitCity(map, boundary.bounds, L);
         needsInitialFitRef.current = false;
       }
     });
@@ -262,7 +292,7 @@ export const MapView: React.FC<MapViewProps> = ({
     filteredAndSortedSites.forEach((site) => {
       if (!hasUsableCoordinates(site.coordinates)) return;
       const { lat, lng } = site.coordinates;
-      const isSelected = site.id === selectedSiteId;
+      const isSelected = site.id === (destinationId || selectedSiteId);
       const customIcon = createSiteIcon(site, isSelected);
 
       const marker = L.marker([lat, lng], {
@@ -292,22 +322,42 @@ export const MapView: React.FC<MapViewProps> = ({
 
       markersRef.current[site.id] = marker;
     });
-  }, [filteredAndSortedSites, selectedSiteId, L, orderedStops, sites]);
+  }, [filteredAndSortedSites, selectedSiteId, L, orderedStops, sites, destinationId]);
 
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!L || !map || viewMode !== 'map') return;
     routeLayerRef.current?.remove();
     routeLayerRef.current = null;
-    if (roadRoute) {
-      const line = L.polyline(roadRoute.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]), { color: '#7E1925', weight: 4, opacity: 0.85 }).addTo(map);
+    startMarkerRef.current?.remove();
+    startMarkerRef.current = null;
+    const wasRouting = routeModeActiveRef.current;
+    routeModeActiveRef.current = !!destinationId;
+    if (destinationId) map.setMaxBounds([]);
+    if (routingStart) {
+      startMarkerRef.current = L.marker([routingStart.lat, routingStart.lng], { title: 'Your current location', icon: L.divIcon({ className: 'routing-start-marker', html: '<span aria-label="Your current location">&#9679;</span>', iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(map);
+    }
+    if (displayedRoute) {
+      const line = L.polyline(displayedRoute.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]), { color: '#7E1925', weight: 4, opacity: 0.85 }).addTo(map);
       routeLayerRef.current = line;
       map.setMinZoom(1);
-      map.fitBounds(line.getBounds(), { padding: [28, 28], maxZoom: 16 });
+      const routeBounds = routingStart && destination && hasUsableCoordinates(destination.coordinates)
+        ? [...displayedRoute.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]), [routingStart.lat, routingStart.lng] as [number, number], [destination.coordinates.lat, destination.coordinates.lng] as [number, number]]
+        : line.getBounds();
+      map.fitBounds(routeBounds, { padding: [28, 28], maxZoom: 16, animate: false });
       needsInitialFitRef.current = false;
     }
-    return () => { routeLayerRef.current?.remove(); routeLayerRef.current = null; };
-  }, [roadRoute, L, viewMode]);
+    else if (destination && hasUsableCoordinates(destination.coordinates)) {
+      map.setMinZoom(1);
+      if (routingStart) map.fitBounds([[routingStart.lat, routingStart.lng], [destination.coordinates.lat, destination.coordinates.lng]], { padding: [28, 28], maxZoom: 16 });
+      else map.setView([destination.coordinates.lat, destination.coordinates.lng], 16, { animate: false });
+      needsInitialFitRef.current = false;
+    } else if (wasRouting && !destinationId && !roadRoute) {
+      map.setMaxBounds(cityNavigationBoundsRef.current);
+      fitCity(map, cityBoundsRef.current, L);
+    }
+    return () => { routeLayerRef.current?.remove(); routeLayerRef.current = null; startMarkerRef.current?.remove(); startMarkerRef.current = null; };
+  }, [displayedRoute, L, viewMode, routingStart, destination, destinationId, roadRoute]);
 
   // Recalculate Leaflet size when toggling to Map View
   useEffect(() => {
@@ -323,7 +373,7 @@ export const MapView: React.FC<MapViewProps> = ({
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [viewMode, L]);
+  }, [viewMode, L, destinationId]);
 
   const handleSelectSiteFromCardOrChip = (site: HeritageSite) => {
     setSelectedSiteId(site.id);
@@ -397,7 +447,7 @@ export const MapView: React.FC<MapViewProps> = ({
             </button>
             <button
               id="toggle-list-view"
-              onClick={() => setViewMode('list')}
+              onClick={() => { closeRouteMode(); setViewMode('list'); }}
               className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 viewMode === 'list'
                   ? 'bg-[#7e1925] text-white shadow-xs'
@@ -566,16 +616,17 @@ export const MapView: React.FC<MapViewProps> = ({
 
                     {/* Card Footer Actions */}
                     <div className="p-5 sm:p-6 pt-0">
-                      <div className="border-t border-[#e8dfd5] pt-4 flex items-center justify-between">
+                      <div className="border-t border-[#e8dfd5] pt-4 flex flex-wrap gap-2 items-center justify-between">
 
                         <button
                           id={`view-details-${site.id}`}
                           onClick={() => onSelectSite(site)}
                           className="font-sans inline-flex items-center gap-1.5 rounded-xl bg-[#7e1925] hover:bg-[#580b14] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs hover:scale-[1.02] cursor-pointer"
                         >
-                          <span>Explore</span>
+                          <span>View Site</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
+                        {onOpenDirections && <button id={`directory-directions-${site.id}`} className="ui-button-secondary" onClick={() => onOpenDirections(site)}>Directions</button>}
                       </div>
                     </div>
                   </motion.div>
@@ -617,8 +668,9 @@ export const MapView: React.FC<MapViewProps> = ({
       }}>
         {!L && !mapLoadError && <p role="status">Loading map…</p>}
         {mapLoadError && <ErrorState message={mapLoadError} onRetry={() => setMapRetry(value => value + 1)} />}
+        <div className={destinationId ? 'map-route-workspace' : ''}>
         {/* FULL-WIDTH MAP CANVAS */}
-        <div className="relative pt-32 sm:pt-0 h-[680px] sm:h-[680px] lg:h-[750px] w-full rounded-2xl border border-[#e8dfd5] bg-[#faf2ee] overflow-hidden shadow-xs">
+        <div className={`${destinationId ? 'map-route-canvas' : ''} relative isolate pt-32 sm:pt-0 h-[680px] sm:h-[680px] lg:h-[750px] w-full rounded-2xl border border-[#e8dfd5] bg-[#faf2ee] overflow-hidden shadow-xs`}>
           {/* Leaflet Map Target Div */}
           <div
             id="san-fernando-real-map"
@@ -906,7 +958,7 @@ export const MapView: React.FC<MapViewProps> = ({
           {/* Features Name, Description, Direction Button, and Explore Button      */}
           {/* ===================================================================== */}
           <AnimatePresence>
-            {activeSite && hasUsableCoordinates(activeSite.coordinates) && !isMapCardDismissed && (
+            {!destinationId && activeSite && hasUsableCoordinates(activeSite.coordinates) && !isMapCardDismissed && (
               <motion.div
                 key={activeSite.id}
                 id="map-floating-site-card"
@@ -985,17 +1037,16 @@ export const MapView: React.FC<MapViewProps> = ({
                   {/* Lower Part Buttons: Direction button and Explore button */}
                   <div className="flex items-center gap-2 pt-1">
                     {/* Direction Button */}
-                    <a
+                    <button
                       id="map-card-directions-link"
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${activeSite.coordinates.lat},${activeSite.coordinates.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      onClick={() => onOpenDirections?.(activeSite)}
+                      disabled={!onOpenDirections}
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[#e8dfd5] bg-[#faf2ee] hover:bg-[#ebdcd3] py-2 text-xs font-bold text-[#1e1b19] transition-all cursor-pointer shadow-xs"
-                      title="Get directions in Google Maps"
+                      title="Get directions inside CHIS"
                     >
                       <Navigation className="w-3.5 h-3.5 text-[#7e1925]" />
                       <span>Directions</span>
-                    </a>
+                    </button>
 
                     {/* Explore Button */}
                     <button
@@ -1014,6 +1065,9 @@ export const MapView: React.FC<MapViewProps> = ({
           </AnimatePresence>
         </div>
 
+        {destination && <Suspense fallback={<p role="status">Loading directions…</p>}><DirectionsPanel key={destinationKey} site={destination} onClose={closeRouteMode} onRouteChange={updateRoute} /></Suspense>}
+        {destinationId && !destination && <section role="status" className="map-directions-panel p-4">Destination is unavailable in the current catalogue.<button className="ui-button-secondary" onClick={closeRouteMode}>Close directions</button></section>}
+        </div>
         <p className="text-xs text-[#574141]">City of San Fernando, Pampanga</p>
         {filteredAndSortedSites.length === 0 && <p role="status" className="rounded-xl border border-[#e8dfd5] bg-white p-4 text-sm text-[#574141]">No heritage sites in this category. Choose another category or All.</p>}
         {filteredAndSortedSites.length > 0 && !filteredAndSortedSites.some(site => hasUsableCoordinates(site.coordinates)) && <p role="status" className="text-sm text-[#574141]">No mapped locations in this category. Recorded sites are available in the directory.</p>}

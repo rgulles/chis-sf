@@ -1,0 +1,1253 @@
+{
+    "mode": "DRY RUN — no database writes",
+    "source": "User-supplied Heritage District list for CHIS-SF(1).pdf. Names only; replacement PDF not yet available locally. Does not authorize details or coordinates.",
+    "replacement_pdf_present": false,
+    "database_count": 38,
+    "metadata_count": 35,
+    "statuses": {
+        "DUPLICATE": 2,
+        "NOT_IN_OFFICIAL_SOURCE": 3,
+        "OFFICIAL_MATCH": 29,
+        "OFFICIAL_ALIAS": 4,
+        "MISSING_FROM_DATABASE": 1
+    },
+    "database": [
+        {
+            "id": 1,
+            "name": "San Fernando Cathedral",
+            "official_match": "Metropolitan Cathedral of San Fernando, Pampanga",
+            "source_number": 18,
+            "status": "DUPLICATE",
+            "recommended_action": "Manual duplicate review; preserve IDs and all relationships. Do not merge or delete automatically."
+        },
+        {
+            "id": 2,
+            "name": "Test",
+            "official_match": null,
+            "source_number": null,
+            "status": "NOT_IN_OFFICIAL_SOURCE",
+            "recommended_action": "Already archived; preserve record and relationships. Never delete."
+        },
+        {
+            "id": 3,
+            "name": "Heroes Hall and Heroes Park",
+            "official_match": "Heroes Hall and Heroes Park",
+            "source_number": 1,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 4,
+            "name": "Pampanga Provincial Capitol",
+            "official_match": "Pampanga Provincial Capitol",
+            "source_number": 4,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 5,
+            "name": "Arnedo Park",
+            "official_match": "Arnedo Park",
+            "source_number": 5,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 6,
+            "name": "Megaworld Capital Town",
+            "official_match": "Megaworld Capital Town",
+            "source_number": 6,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 7,
+            "name": "Presidio (Pampanga Provincial Jail)",
+            "official_match": "Presidio (Pampanga Provincial Jail)",
+            "source_number": 7,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 8,
+            "name": "Santungan ning Kulturang Kapampangan",
+            "official_match": "Santungan ning Kulturang Kapampangan",
+            "source_number": 8,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 9,
+            "name": "Death March Marker",
+            "official_match": "Death March Marker",
+            "source_number": 9,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 10,
+            "name": "San Fernando Train Station",
+            "official_match": "San Fernando Train Station",
+            "source_number": 10,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 11,
+            "name": "Lazatin House",
+            "official_match": "Lazatin House",
+            "source_number": 11,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 12,
+            "name": "Consunji House",
+            "official_match": "Consunji House",
+            "source_number": 12,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 13,
+            "name": "Tabacalera House",
+            "official_match": "Tabacalera House",
+            "source_number": 13,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 14,
+            "name": "Hizon-Ocampo House",
+            "official_match": "Hizon-Ocampo House",
+            "source_number": 14,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 15,
+            "name": "Hizon-Singian House",
+            "official_match": "Hizon-Singian House",
+            "source_number": 15,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 16,
+            "name": "Augusto P. Hizon House",
+            "official_match": "Augusto P. Hizon House",
+            "source_number": 16,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 17,
+            "name": "Pampanga Hotel",
+            "official_match": "Pampanga Hotel",
+            "source_number": 17,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 18,
+            "name": "Metropolitan Cathedral of San Fernando",
+            "official_match": "Metropolitan Cathedral of San Fernando, Pampanga",
+            "source_number": 18,
+            "status": "DUPLICATE",
+            "recommended_action": "Manual duplicate review; preserve IDs and all relationships. Do not merge or delete automatically."
+        },
+        {
+            "id": 19,
+            "name": "City Hall of San Fernando",
+            "official_match": "City Hall of San Fernando",
+            "source_number": 19,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 20,
+            "name": "City Market Plaza",
+            "official_match": "City Market Plaza",
+            "source_number": 20,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 21,
+            "name": "Baluyut Bridge",
+            "official_match": "Baluyut Bridge",
+            "source_number": 21,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 22,
+            "name": "Dayrit-Galang House",
+            "official_match": "Dayrit-Galang Residence",
+            "source_number": 23,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": 23,
+            "name": "Hizon-Paras House",
+            "official_match": "Hizon-Paras House",
+            "source_number": 24,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 24,
+            "name": "Henson-Hizon House",
+            "official_match": "Henson-Hizon House",
+            "source_number": 25,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 25,
+            "name": "Datu-Bundalian House",
+            "official_match": "Datu-Bundalian Residence",
+            "source_number": 26,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": 26,
+            "name": "San Fernando Leaning Water Tower",
+            "official_match": "San Fernando Leaning Water Tower",
+            "source_number": 27,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 27,
+            "name": "Pampanga High School",
+            "official_match": "Pampanga High School",
+            "source_number": 28,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 28,
+            "name": "San Fernando Elementary School",
+            "official_match": "San Fernando Elementary School",
+            "source_number": 29,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 29,
+            "name": "Arzobispado de Pampanga",
+            "official_match": "Arzobispado de Pampanga",
+            "source_number": 30,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 30,
+            "name": "Dayrit-Cuyugan House",
+            "official_match": "Dayrit-Cuyugan Residence",
+            "source_number": 31,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": 31,
+            "name": "Monumento Fernandino",
+            "official_match": "Monumento Fernandino",
+            "source_number": 32,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 32,
+            "name": "Everybody's Cafe",
+            "official_match": "Everybody's Cafe",
+            "source_number": 33,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 33,
+            "name": "Mother of Good Counsel Seminary",
+            "official_match": "Mother of Good Counsel Seminary",
+            "source_number": 34,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 34,
+            "name": "Archdiocesan Museum and Archives",
+            "official_match": "Archdiocesan Museum and Archives",
+            "source_number": 35,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 35,
+            "name": "Heritage Parochial Church, Complex of San Vicente Ferrer",
+            "official_match": "Heritage Parochial Church, Complex of San Vicente Ferrer",
+            "source_number": 36,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": 36,
+            "name": "City of San Fernando Giant Lantern and Tourist Information Center",
+            "official_match": "City of San Fernando Giant Lantern Center",
+            "source_number": 37,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": 37,
+            "name": "Test",
+            "official_match": null,
+            "source_number": null,
+            "status": "NOT_IN_OFFICIAL_SOURCE",
+            "recommended_action": "Already archived; preserve record and relationships. Never delete."
+        },
+        {
+            "id": 38,
+            "name": "Test",
+            "official_match": null,
+            "source_number": null,
+            "status": "NOT_IN_OFFICIAL_SOURCE",
+            "recommended_action": "Review then archive; preserve images, contributions, visits and itinerary history. Never delete."
+        },
+        {
+            "id": null,
+            "name": "",
+            "official_match": "Cuyugan House",
+            "source_number": 22,
+            "status": "MISSING_FROM_DATABASE",
+            "recommended_action": "Manual Cuyugan house/monument review before creating any location."
+        }
+    ],
+    "metadata": [
+        {
+            "id": null,
+            "name": "Heroes Hall and Heroes Park",
+            "official_match": "Heroes Hall and Heroes Park",
+            "source_number": 1,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Pampanga Provincial Capitol",
+            "official_match": "Pampanga Provincial Capitol",
+            "source_number": 4,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Arnedo Park",
+            "official_match": "Arnedo Park",
+            "source_number": 5,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Megaworld Capital Town",
+            "official_match": "Megaworld Capital Town",
+            "source_number": 6,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Presidio (Pampanga Provincial Jail)",
+            "official_match": "Presidio (Pampanga Provincial Jail)",
+            "source_number": 7,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Santungan ning Kulturang Kapampangan",
+            "official_match": "Santungan ning Kulturang Kapampangan",
+            "source_number": 8,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Death March Marker",
+            "official_match": "Death March Marker",
+            "source_number": 9,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "San Fernando Train Station",
+            "official_match": "San Fernando Train Station",
+            "source_number": 10,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Lazatin House",
+            "official_match": "Lazatin House",
+            "source_number": 11,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Consunji House",
+            "official_match": "Consunji House",
+            "source_number": 12,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Tabacalera House",
+            "official_match": "Tabacalera House",
+            "source_number": 13,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Hizon-Ocampo House",
+            "official_match": "Hizon-Ocampo House",
+            "source_number": 14,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Hizon-Singian House",
+            "official_match": "Hizon-Singian House",
+            "source_number": 15,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Augusto P. Hizon House",
+            "official_match": "Augusto P. Hizon House",
+            "source_number": 16,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Pampanga Hotel",
+            "official_match": "Pampanga Hotel",
+            "source_number": 17,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Metropolitan Cathedral of San Fernando",
+            "official_match": "Metropolitan Cathedral of San Fernando, Pampanga",
+            "source_number": 18,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": null,
+            "name": "City Hall of San Fernando",
+            "official_match": "City Hall of San Fernando",
+            "source_number": 19,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "City Market Plaza",
+            "official_match": "City Market Plaza",
+            "source_number": 20,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Baluyut Bridge",
+            "official_match": "Baluyut Bridge",
+            "source_number": 21,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Baron-Cuyugan House",
+            "official_match": "Cuyugan House",
+            "source_number": 22,
+            "status": "REVIEW_REQUIRED",
+            "recommended_action": "Manual PDF/identity/coordinate review; Cuyugan house and monument must not be combined."
+        },
+        {
+            "id": null,
+            "name": "Dayrit-Galang House",
+            "official_match": "Dayrit-Galang Residence",
+            "source_number": 23,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": null,
+            "name": "Hizon-Paras House",
+            "official_match": "Hizon-Paras House",
+            "source_number": 24,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Henson-Hizon House",
+            "official_match": "Henson-Hizon House",
+            "source_number": 25,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Datu-Bundalian House",
+            "official_match": "Datu-Bundalian Residence",
+            "source_number": 26,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": null,
+            "name": "San Fernando Leaning Water Tower",
+            "official_match": "San Fernando Leaning Water Tower",
+            "source_number": 27,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Pampanga High School",
+            "official_match": "Pampanga High School",
+            "source_number": 28,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "San Fernando Elementary School",
+            "official_match": "San Fernando Elementary School",
+            "source_number": 29,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Arzobispado de Pampanga",
+            "official_match": "Arzobispado de Pampanga",
+            "source_number": 30,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Dayrit-Cuyugan House",
+            "official_match": "Dayrit-Cuyugan Residence",
+            "source_number": 31,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        },
+        {
+            "id": null,
+            "name": "Monumento Fernandino",
+            "official_match": "Monumento Fernandino",
+            "source_number": 32,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Everybody's Cafe",
+            "official_match": "Everybody's Cafe",
+            "source_number": 33,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Mother of Good Counsel Seminary",
+            "official_match": "Mother of Good Counsel Seminary",
+            "source_number": 34,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Archdiocesan Museum and Archives",
+            "official_match": "Archdiocesan Museum and Archives",
+            "source_number": 35,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "Heritage Parochial Church, Complex of San Vicente Ferrer",
+            "official_match": "Heritage Parochial Church, Complex of San Vicente Ferrer",
+            "source_number": 36,
+            "status": "OFFICIAL_MATCH",
+            "recommended_action": "Preserve; compare detail fields with supplied replacement PDF before changes."
+        },
+        {
+            "id": null,
+            "name": "City of San Fernando Giant Lantern and Tourist Information Center",
+            "official_match": "City of San Fernando Giant Lantern Center",
+            "source_number": 37,
+            "status": "OFFICIAL_ALIAS",
+            "recommended_action": "Review canonical name correction; preserve record ID and relationships."
+        }
+    ],
+    "itinerary_stops": [
+        {
+            "id": 1,
+            "itinerary_id": 1,
+            "heritage_site_id": 18
+        },
+        {
+            "id": 2,
+            "itinerary_id": 1,
+            "heritage_site_id": 19
+        },
+        {
+            "id": 3,
+            "itinerary_id": 1,
+            "heritage_site_id": 17
+        },
+        {
+            "id": 4,
+            "itinerary_id": 1,
+            "heritage_site_id": 21
+        },
+        {
+            "id": 5,
+            "itinerary_id": 1,
+            "heritage_site_id": 11
+        },
+        {
+            "id": 6,
+            "itinerary_id": 1,
+            "heritage_site_id": 12
+        },
+        {
+            "id": 7,
+            "itinerary_id": 1,
+            "heritage_site_id": 15
+        },
+        {
+            "id": 8,
+            "itinerary_id": 2,
+            "heritage_site_id": 4
+        },
+        {
+            "id": 9,
+            "itinerary_id": 2,
+            "heritage_site_id": 5
+        },
+        {
+            "id": 10,
+            "itinerary_id": 2,
+            "heritage_site_id": 7
+        },
+        {
+            "id": 11,
+            "itinerary_id": 2,
+            "heritage_site_id": 9
+        },
+        {
+            "id": 12,
+            "itinerary_id": 2,
+            "heritage_site_id": 10
+        },
+        {
+            "id": 13,
+            "itinerary_id": 2,
+            "heritage_site_id": 8
+        },
+        {
+            "id": 14,
+            "itinerary_id": 3,
+            "heritage_site_id": 31
+        },
+        {
+            "id": 15,
+            "itinerary_id": 3,
+            "heritage_site_id": 34
+        },
+        {
+            "id": 16,
+            "itinerary_id": 3,
+            "heritage_site_id": 33
+        },
+        {
+            "id": 17,
+            "itinerary_id": 3,
+            "heritage_site_id": 36
+        },
+        {
+            "id": 18,
+            "itinerary_id": 3,
+            "heritage_site_id": 35
+        }
+    ],
+    "detail_review": [
+        {
+            "id": 1,
+            "name": "San Fernando Cathedral",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "City of San Fernando, Pampanga",
+                "description": "A historic church located in the City of San Fernando, Pampanga.",
+                "history": "San Fernando Cathedral is an important religious and historical landmark in the city.",
+                "year_built": "1755"
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02860000",
+                "longitude": "120.68950000"
+            }
+        },
+        {
+            "id": 2,
+            "name": "Test",
+            "status": "archived",
+            "fields_requiring_pdf_comparison": {
+                "address": "Test",
+                "description": "asd",
+                "history": "asd",
+                "year_built": "1990"
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 3,
+            "name": "Heroes Hall and Heroes Park",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Lazatin Blvd., City of San Fernando, Pampanga",
+                "description": "The building has a mini theater, the Mayor's Executive House, the Sangguniang Panlungsod Offices and the Session Hall.\n\nThe Heroes Park, meanwhile, houses monuments and markers of Filipino and Fernandino heroes, several of which are listed in the National Historical Commission of the Philippines such as Tiburcio Hilario, Pedro Abad Santos and Jose Abad Santos, among others.",
+                "history": "Formerly an abandoned warehouse owned by the Technology and Livelihood Resource Center, the property was purchased in 2005 by the City Government of San Fernando, Pampanga during the term of City Mayor Oscar Rodriguez."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02855000",
+                "longitude": "120.67683000"
+            }
+        },
+        {
+            "id": 4,
+            "name": "Pampanga Provincial Capitol",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Capitol Blvd., Brgy. Sto. Niño, City of San Fernando, Pampanga",
+                "description": "This serves as the seat of the government of the Province of Pampanga.",
+                "history": "The original building was constructed after the provincial capital of Pampanga was transfered from Bacolor to San Fernando in 1904. It was the site of the major battle between guerilla forces and the Japanese Imperial Army during World War II. The current building dates back to the 1930's."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02402000",
+                "longitude": "120.68729000"
+            }
+        },
+        {
+            "id": 5,
+            "name": "Arnedo Park",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Capitol Blvd., Brgy. Sto. Niño, City of San Fernando, Pampanga",
+                "description": "Named after former provincial governor Macario Arnedo, it is an important historical landmark and serves as a public venue for relaxation, walking, and civic gatherings. It is most recognized for featuring the monument of revolutionary hero General Maximino Hizon."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02478000",
+                "longitude": "120.68705000"
+            }
+        },
+        {
+            "id": 6,
+            "name": "Megaworld Capital Town",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "A 35.6-hectare, integrated urban township in the heart of San Fernando, Pampanga. It is designed to be the newest Central Business District of Northern and Central Luzon.",
+                "history": "The township is built on the historic grounds of the former Pampanga Sugar Development Company (PASUDECO), and its master plan integrates residential, commercial, and office components with a focus on preserving the area's rich history and heritage."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 7,
+            "name": "Presidio (Pampanga Provincial Jail)",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Artemio Macalino St., Brgy. Sto Niño, City of San Fernando, Pampanga",
+                "history": "This structure was among the buildings built in 1907 when the property of the current Provincial Capitol was acquired. It used to house the courts of Pampanga before serving as the Pampanga Provincial Jail."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02340100",
+                "longitude": "120.68581400"
+            }
+        },
+        {
+            "id": 8,
+            "name": "Santungan ning Kulturang Kapampangan",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "The Santungan Ning Kulturang Kapampangan is dedicated to the preservation, promotion, and celebration of the rich history and vibrant heritage of the Kapampangan people. It serves as a comprehensive resource for cultural education and a key driver for heritage tourism in the province."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 9,
+            "name": "Death March Marker",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "history": "This site served as the ending point of the Death march where Filipino and American prisoners-of-war were forced to march from Bataan to San Fernando. This is considered as one of the ghastliest forced marches in history."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02646000",
+                "longitude": "120.68672000"
+            }
+        },
+        {
+            "id": 10,
+            "name": "San Fernando Train Station",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Brgy. Santo Niño, City of San Fernando, Pampanga",
+                "history": "Listed in the National Historical Commission of the Philippines on April 5, 2005\n\nInaugurated on February 23, 1892 as part of the Bagbag-Mabalacat stretch of the Manila - Dagupan Railway System by Governor General Eulogio Despujol and Archbishop Bernardino Nozaleda.\n\nJose Rizal had disembarked from this station on June 27, 1892 to visit his friends in San Fernando and Bacolor, possibly to recruit them as members of the La Liga Filipina.\n\nDuring the World War II Death March in April 1942, it was the ending point of the 102-kilometer long walk from Bataan to San Fernando by Filipino and American Prisoners of War. From here, the POWs were stuffed into box carts and transported to Capas, Tarlac en route to their final destination, Camp O Donnell."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02683300",
+                "longitude": "120.68670800"
+            }
+        },
+        {
+            "id": 11,
+            "name": "Lazatin House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "A. Consunji St., Brgy. Sto. Rosario, City of San Fernando, Pampanga",
+                "description": "A perfect example of the architecture prevalent during the American colonial period.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nListed in the National Historical Commission of the Philippines on January 26, 2003.\n\nBuilt by the couple Serafin Lazatin and Encarnacion Singian in 1926, it served as the residence of Japanese General Masaharu Homma during the Japanese occupation of San Fernando. The Lazatins are among the pioneers of the Pampanga Sugar Development Company (PASUDECO) and San Fernando Electric Light and Power Company (SELAPCO)."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02565000",
+                "longitude": "120.69046000"
+            }
+        },
+        {
+            "id": 12,
+            "name": "Consunji House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "A. Consunji St., Brgy. Sto. Rosario, City of San Fernando, Pampanga",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nServed as residence of Don Antonio Consunji, Gobernadorcillo of San Fernando, who was removed from office by Spanish authorities as a result of his presence during the visit to San Fernando of Dr. Jose Rizal in June 1892. He became the Presidente Municipal of San Fernando during the Philippine Revolution from 1898-1899."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02582000",
+                "longitude": "120.69072000"
+            }
+        },
+        {
+            "id": 13,
+            "name": "Tabacalera House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "This ancestral house, exemplifying the architecture prevalent during the American Colonial Period, is an important heritage edifice of the City.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nThe house was designed by Architect Fernando Ocampo and rented to the Tabacalera Company. During the 2nd World War it was appropriated by the Japanese Imperial Army to serve as headquarters of the Kempeitai from 1943-1944."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 14,
+            "name": "Hizon-Ocampo House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nOriginally owned by the couple Victoria Singan and Don Anacleto Hizon, the house was inherited by their daughter, Leoncia Hizon when she married Dr. Basilio Ocampo.\n\nAmong the children of the latter born in the residence were Aurea Ocampo Escaler, mother of well-known businessman Ernesto Escaler and Bishop Federico Escaler, SJ.; Arch. Fernando Ocampo, the Father of Modern Filipino Architecture; Sr. Maria Asuncion, RGS, the first Filipina nun of the Religious of the Good Shepherd; twins Pilar Ocampo Feliciano and Rosario Ocampo; Ricardo Ocampo; and Purita Ocampo Gamboa, to whom the house was finally passed on."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 15,
+            "name": "Hizon-Singian House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nListed in the National Historical Commission of the Philippines on January 26, 2003.\n\nBuilt in 1870 by Capitan Anacleto Hizon, Gobernadorcillo of San Fernando, and Victoria Singian de Miranda y de Ocampo, it served as headquarters of Spanish General Antonio Ruiz Serralde during the 1896 Philippine Revolution, as military hospital and barracks of the Japanese Imperial Army in 1943-1944, and as headquarters of American General Walter Krueger of the 6th American Army in 1945."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02670000",
+                "longitude": "120.69190000"
+            }
+        },
+        {
+            "id": 16,
+            "name": "Augusto P. Hizon House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "This ancestral house exemplifying the architecture prevalent during the American Colonial Period.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nListed in the National Historical Commission of the Philippines on December 2010.\n\nBuilt at the turn of the century by the couple, Teodoro Santos and Africa Ventura. Purchased by Maria Singian Hizon, a nurse of the Pampanga Chapter of the Philippine Red Cross during the Philippine Revolution. The house was inherited by her nephew Augusto Hizon and is currently owned by his heirs."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02677000",
+                "longitude": "120.69229000"
+            }
+        },
+        {
+            "id": 17,
+            "name": "Pampanga Hotel",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "One of the oldest structures in the City, it was once the residence of Andres Eusebio and Asuncion Santos.",
+                "history": "One of the oldest structures in the City, it was once the residence of Andres Eusebio and Asuncion Santos. Being strategically located near the church and casa municipal, it played host to various illustrious personalities including Gen. Douglas Mc Arthur who is said to have stayed overnight in this place.\n\nThere are accounts which say that this edifice served as an embarking area, even when it was still a private residence, for many illustrious people especially when there were important events in San Fernando. Being at the crossroad and very close to Baluyut Bridge, the only gateway to the North in the early days, it was a witness to many clashes between the Filipino liberation fighters and the invading enemies. It is said to be the first site of the Pampanga High School and it in this site where the first telephone line was installed in 1910."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02784000",
+                "longitude": "120.69314000"
+            }
+        },
+        {
+            "id": 18,
+            "name": "Metropolitan Cathedral of San Fernando",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "A. Consunji St., Brgy. Sto. Rosario, City of San Fernando, Pampanga",
+                "description": "Declared as an Important Cultural Property by the National Museum of the Philippines.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2018.\n\nDeclared as an Important Cultural Property by the National Museum of the Philippines.\n\nFounded by the Augustinians in 1754 and placed under the advocation of the Nuestra Senora de la Asuncion while the town was under the patronage of San Fernando III. Fr. Sebastian was named Prior Vicar in 1756.\n\nThe stone-church is approximated to have been built in the 18th century. In 1899, both the church and convent were burned by the Philippine Revolutionary Army on order of Gen. Antonio Luna on May 5, 1899. Some 49 years later, in 1948, it was restored through the initiative of Kapampangan Architect Fernando Hizon Ocampo.\n\nElevated to a Cathedral on December 11, 1948 as the Seat of the newly created Diocese; and on October 1, 1981 it was established as Metropolitan Cathedral under the Titularship of St. Ferdinand and the Patronage of Our Lady of the Assumption."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02839000",
+                "longitude": "120.69314000"
+            }
+        },
+        {
+            "id": 19,
+            "name": "City Hall of San Fernando",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "A. Consunji St., Brgy. Sto. Rosario, City of San Fernando, Pampanga",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nThe building was built during the Spanish Period in 1874. It was burned by General Antonio Luna during the Philippine American War when the Filipino Revolutionaries retreated amidst the advance of the American forces. It was reconstructed during the American Colonial Period and was completed in 1917 during the administration of Mayor Antonio Abad Santos, under the supervision of District Engineer Eusebius Julius Halsema of the Bureau of Public Works. Restored in 2003 to approximate the design of the century at the time it was built"
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02779000",
+                "longitude": "120.69391000"
+            }
+        },
+        {
+            "id": 20,
+            "name": "City Market Plaza",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "Also known as the \"new\" public market, is a large, two-story Commercial Center in Downtown San Fernando, Pampanga. As a recent redevelopment of the old public market, it serves as a central hub for commerce and a key component of the city's economic and cultural life."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 21,
+            "name": "Baluyut Bridge",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "General Hizon Avenue, City of San Fernando, Pampanga",
+                "description": "The bridge used to serve as the only link of Manila with the rest of Northern Luzon and is recognized as the first concrete pavement in the country.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nFormerly known as Puente Colgante, it was reconstructed in 1696 using iron and stone. It was replaced in 1928 by a reinforced concrete arch bridge design by tormer Philippine Senator and Engineer Sotero Baluyut for his bachelor thesis at the University of lowa in 1909. The bridge used to serve as the only link of Manila with the rest of Northern Luzon and is recognized as the first concrete pavement in the country. The monument of Sotero Baluyut was unveiled on March 30, 2019."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02731000",
+                "longitude": "120.69370000"
+            }
+        },
+        {
+            "id": 22,
+            "name": "Dayrit-Galang House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "history": "Amando Dayrit Galang, columnist and literary genius was born in this house on February 6, 1912 to Florentino Dayrit Singian and Juana Galang Y Gatchalian, as a writer his name was synonymous with his tribune column \"Good Morning Judge,\" a pre-war series of political criticism which he handled with an equaled wit and humor. Cited as Outstanding Young Man in Literature in February 1941 by Kislap-Graphic. Contributed to the cause of \"Free Philippines,\" a notable underground resistance movement. Due to the rigors of his Journalistic work, he contracted tuberculosis, and while in the hospital, was put under house arrest by the Japanese Imperial Army. Realizing that he had no chance against a worsening illness, he voiced out the wish that if he had to die, he would want to die in his hometown. He was allowed to return to San Fernando, where he died in this house on August 16, 1944."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 23,
+            "name": "Hizon-Paras House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2014.\n\nThe original century-old Bahay na Bato owned by Don Pedro Paras, married to Raymunda Mendoza, was inherited by their daughter, Maria Paras, who married Don Ramon Singian Hizon. It was renovated in the 1930s, was razed in a fire in 1950 and immediately rebuilt by Don Ramon Hizon that same year. Rodolfo Hizon, the first Mayor of San Fernando after World War II and later Vice-Governor of Pampanga lived in this house. Eloisa Paras Hizon, married to Domingo M. Gomez, inherited the house. General Maximino Hizon, the Philippine Revolutionary hero, belongs to the same Hizon family tree.\n\nPhilippine presidents have been hosted in this ancestral home known as BALE MATUA during their visits to Central Luzon, including Elpidio Quirino, Ramon Magsaysay and Diosdado Macapagal. The young Benigno \"Ninoy\" Aquino was also an occasional visitor."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 24,
+            "name": "Henson-Hizon House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "The Henson-Hizon House is a Spanish Colonial period bahay-na-bato built by the couple Don Saturnino Henson y David and Maria Lacson.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003.\n\nListed in the National Historical Commission of the Philippines on January 26, 2003.\n\nThe Henson-Hizon House is a Spanish Colonial period bahay-na-bato built by the couple Don Saturnino Henson y David and Maria Lacson. Don Saturnino David was gobernadorcillo (mayor) of San Fernando from 1881-1882 and 1896 and the first tesorero municipal (municipal treasurer) from 1900-1902.\n\nNext to the house is a monument dedicated to the heroic efforts of Nicolasa Dayrit-Panilio who helped the sick and wounded Filipino fighters during the Filipino-American War in 1898. She also became instrumental in neutralizing the dispute between Generals Antonio Luna and Tomas Mascardo, when she led a group of female Kapampangans who knelt before General Antonio Luna."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.02620000",
+                "longitude": "120.69013000"
+            }
+        },
+        {
+            "id": 25,
+            "name": "Datu-Bundalian House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "The architecture features straight-cut design of the colonial period with the year 1938 marked visibly on its façade.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2013.\n\nThe two-storey semi-concrete structure owned by couple Angel Y. Datu and Jovita Y. Bundalian was constructed in 1938.\n\nThe house was commandeered and occupied by top ranking officers of the Japanese Imperial Army during World War II. It was home to several people such as students and teachers who opted to stay during the school year due its proximity to several educational facilities. Many families who rented the 1st floor had memories to cherish including visits of UNESCO and educational officials."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 26,
+            "name": "San Fernando Leaning Water Tower",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "description": "The cylindrical structure is reinforced concrete with an approximate height of 95 feet.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2015.\n\nBuilt during the American Colonial regime in 1921. The structure was erected during the time of Mayor Jose Valencia as part of the first water district in San Fernando."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 27,
+            "name": "Pampanga High School",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Pampanga High School Boulevard, Brgy. Lourdes, City of San Fernando",
+                "history": "Listed in the National Historical Commission of the Philippines in August 2018.\n\nPampanga High School, formerly known as the Jose Abad Santos High School, was founded in 1902 with John W. Osborn as the first principal. It started operations at the Pampanga Hotel. In 1912, the school had its first batch of graduates. In 1935, Demetrio Andres was appointed Principal thereby becoming the first Filipino in that post and the current main building was completed in the same year, following the Standard Plan No. 20 of Gabaldon school houses designed by Architect William E. Parsons.\n\nAmong its notable alumni and luminaries are Diosdado Macapagal, former president of the Republic of the Philippines and World War I martyr Jose Abad Santos. The school was named after Jose Abad Santos in 1964 but was reverted back to Pampanga High School in 1992."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.03112000",
+                "longitude": "120.68733000"
+            }
+        },
+        {
+            "id": 28,
+            "name": "San Fernando Elementary School",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "B. Mendoza St., Brgy. Sto. Rosario, City of San Fernando",
+                "history": "Built in 1907, the main building of the San Fernando Elementary School followed the Standard Plan No. 20 of Gabaldon school houses designed by American Architect William E. Parsons."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 29,
+            "name": "Arzobispado de Pampanga",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Brgy. San Jose, City of San Fernando, Pampanga",
+                "description": "Designed by Fernando Hizon Ocampo, this former residence of Luis Wenceslao Dizon now houses the residence of the Archbishop of San Fernando and several offices of the Curia of the Archdiocese of San Fernando as well as the Repository Chapel of the canonically crowned image of the Virgen de los Remedios, Patroness of Pampanga and the Santo Cristo del Perdon."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.03428000",
+                "longitude": "120.69389000"
+            }
+        },
+        {
+            "id": 30,
+            "name": "Dayrit-Cuyugan House",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "MacArthur Highway, Dolores, City of San Fernando, Pampanga",
+                "description": "Built by the couple Joaquin Dayrit and Maria Paz Cuyugan in 1920, it is a perfect example of the architecture prevalent during the American colonial period.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2003\n\nListed in the National Historical Commission of the Philippines on January 26, 2003.\n\nBuilt by the couple Joaquin Dayrit and Maria Paz Cuyugan in 1920, it is a perfect example of the architecture prevalent during the American colonial period."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.03630000",
+                "longitude": "120.68440000"
+            }
+        },
+        {
+            "id": 31,
+            "name": "Monumento Fernandino",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "B. Mendoza St., Brgy. Dolores, City of San Fernando, Pampanga",
+                "description": "The entire sculptural tribute to the people of San Fernando pays homage to the town's colourful history and cultural heritage, as conceptualized by Kapampangan sculptor and Fullbright scholar Abdulmari Toym Imao.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in August 2004.\n\nThe iconic monument shows a four-fold aspect of the \"Fernandino\" story. The Penitent and the Girl with a lantern depicts the unique cultural contributions of the City. The Lady with the Torch reminds us of our freedom and the role of women during the Philippine Revolution. The early settlers are reminiscent of the Kapampangan ancestors who are the people of the river. The boatman who holds an oar and shovel symbolizes the perseverance and resilience of the Fernandino people to cope and triumph over struggles.\n\nUnveiled on February 4, 2004 on the occasion of 3rd City Charter Anniversary of San Fernando."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.03346000",
+                "longitude": "120.68759000"
+            }
+        },
+        {
+            "id": 32,
+            "name": "Everybody's Cafe",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Brgy. Del Pilar, City of San Fernando, Pampanga",
+                "description": "The restaurant is now owned and operated by the founder's daughter, Petronila S. Jorolan. The establishment which just started with Pancit Luglog and Pancit may sabaw (mami) is also popular for their betute (stuffed frog), adobong camaru (mole cricket), their family's version of the moron, paksiw na bangus with an inch thick of fat, tsokolate batirol and leche flan made with duck eggs.",
+                "history": "An institution in Kapampangan cuisine founded by Benito and Carmen Santos. They opened their first store in Poblacion San Fernando during the liberation period in the 1940's where everybody can dine, thus the name Everbody's Cafe. In 1967, they opened their branch in Del Pilar."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 33,
+            "name": "Mother of Good Counsel Seminary",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Del Pilar Street, City of San Fernando, Pampanga",
+                "description": "It is dedicated to the formation of young men for the diocesan priesthood, rooted in the values of human, spiritual, intellectual, and pastoral development. Often referred to by its Latin name, Mater Boni Consilii, it is considered the heart of the archdiocese and has produced a majority of the local clergy, including several bishops.",
+                "history": "Founded in 1950 by the first bishop, César María Guerrero, D.D.\n\nCardinal Pablo Virgilio Siongco David is a prominent figure in the Catholic Church in the Philippines, currently serving as the Bishop of Caloocan. An alumnus of the Mater Boni Consilii Seminary (as it was known during his time, now Mother of Good Counsel Seminary), he served as the President of the Catholic Bishops' Conference of the Philippines (CBCP) until November 2025. He was elevated to the College of Cardinals by Pope Francis on December 7, 2024."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.03458000",
+                "longitude": "120.69690000"
+            }
+        },
+        {
+            "id": 34,
+            "name": "Archdiocesan Museum and Archives",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "2nd Floor, University of the Assumption, Brgy. San Jose, City of San Fernando, Pampanga",
+                "description": "Housed in the University of the Assumption, the museum contains the cultural heritage of the Roman Catholic Church in Pampanga, such as church vessels and vestments, along with exquisite saints and works of art. Reservations with the Archdiocese of San Fernando are required before visiting the museum."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 35,
+            "name": "Heritage Parochial Church, Complex of San Vicente Ferrer",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Fatima Street, Calulut, City of San Fernando, Pampanga",
+                "description": "The complex includes not just the old church structure but also a cemetery, a plaza, century-old artifacts like the 1891 silver reliquary, and intangible heritage such as community devotions and processions.",
+                "history": "Listed in the Local Government Unit Registry of Cultural Properties in 2023.\n\nOriginally a chapel from the Spanish colonial period, the church was elevated to the first non-town parish in Pampanga in 1915. It has served as a sanctuary during the Japanese colonial period, a witness to pivotal community events like the assassination of Mayor Levi Panlilio, and a central hub for the religious and cultural life of Calulut and its surrounding areas.\n\nIts history is tied to the lives of many, including prominent figures like Archbishop Pedro Santos and the assassinated Mayor Levi Panlilio."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "15.09509000",
+                "longitude": "120.64853000"
+            }
+        },
+        {
+            "id": 36,
+            "name": "City of San Fernando Giant Lantern and Tourist Information Center",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Former Paskuhan Village Site, Jose Abad Santos Avenue, Brgy. San Jose, City of San Fernando, Pampanga",
+                "description": "On May 27, 2022, the City Government of San Fernando, Pampanga during the leadership of Mayor Edwin D. Santiago, inaugurated the City of San Fernando Giant Lantern and Tourist Information Center at this site as a testament to the enduring Kapampangan cultural heritage and a realization of the City's vision as the Home of the Giant Lanterns.",
+                "history": "On this site, the Paskuhan Village, officially known as the Philippine Christmas Village, opened in the City of San Fernando, Pampanga on December 11, 1990 as a tribute to the city's lantern industry and the Giant Lantern Festival. At that time, it was the first theme park in Asia where Christmas was being celebrated the all-year round.\n\nFrom 1990 to 1998, it served as the official venue for the annual Giant Lantern Festival (Ligligan Parul).\n\nIn 1998, Paskuhan became the venue of the Philippine International Garden Festival (FLORIKULTURA'98) and the Gardens of the World\n\nIn 2003, Paskuhan was transformed into the North Philippines Cultural and Historical Village known as \"WOW Hilaga\" and showcased the culture of the locos, Cagayan Valley Central Luzon, and Cordillera Regions.\n\nIn 2015, Paskuhan Village was privatized by the Tourism Infrastructure and Enterprise Zone Authority and was acquired by the SM Development Corporation.\n\nOn January 20, 2020, following a compromise agreement between the City Government of San Fernando, Pampanga and SMDC, the latter donated 5000 square meters of the property and a two-storey building with an outdoor events area.\n\nOn May 27, 2022, the City Government of San Fernando, Pampanga during the leadership of Mayor Edwin D. Santiago, inaugurated the City of San Fernando Giant Lantern and Tourist Information Center at this site as a testament to the enduring Kapampangan cultural heritage and a realization of the City's vision as the Home of the Giant Lanterns."
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": null,
+                "longitude": null
+            }
+        },
+        {
+            "id": 37,
+            "name": "Test",
+            "status": "archived",
+            "fields_requiring_pdf_comparison": {
+                "address": "test",
+                "description": "Test",
+                "history": "Test",
+                "year_built": "2000"
+            },
+            "visitor_fields_preserved_for_admin_review": [],
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "0.00000000",
+                "longitude": "0.00000000"
+            }
+        },
+        {
+            "id": 38,
+            "name": "Test",
+            "status": "active",
+            "fields_requiring_pdf_comparison": {
+                "address": "Test",
+                "description": "Test",
+                "history": "Test"
+            },
+            "visitor_fields_preserved_for_admin_review": {
+                "opening_hours": "10",
+                "entrance_fee": "10",
+                "accessibility_notes": "10",
+                "visit_notes": "10",
+                "contact_information": "10"
+            },
+            "coordinates_preserved_not_pdf_verified": {
+                "latitude": "10.00000000",
+                "longitude": "10.00000000"
+            }
+        }
+    ]
+}

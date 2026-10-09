@@ -5,6 +5,7 @@ import { MapView } from './MapView';
 interface ExploreViewProps {
   sites: HeritageSite[];
   onSelectSite: (site: HeritageSite) => void;
+  onOpenDirections?: (site: HeritageSite) => void;
   savedSiteIds: string[];
   onToggleSaveSite: (siteId: string) => void;
   selectedCategory: CategoryType | 'All';
@@ -19,6 +20,7 @@ interface ExploreViewProps {
 export const ExploreView: React.FC<ExploreViewProps> = ({
   sites,
   onSelectSite,
+  onOpenDirections,
   savedSiteIds,
   onToggleSaveSite,
   selectedCategory,
@@ -29,6 +31,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     <MapView
       sites={sites}
       onSelectSite={onSelectSite}
+      onOpenDirections={onOpenDirections}
       onPlanRoute={onPlanRoute}
       savedSiteIds={savedSiteIds}
       onToggleSaveSite={onToggleSaveSite}

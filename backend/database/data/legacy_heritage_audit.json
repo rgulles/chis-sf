@@ -1,0 +1,65 @@
+[
+  {
+    "legacy_id": "metropolitan-cathedral",
+    "name": "Metropolitan Cathedral of San Fernando",
+    "official_match": "Metropolitan Cathedral of San Fernando, Pampanga",
+    "status": "OFFICIAL_ALIAS",
+    "action": "Quarantined outside frontend runtime. All legacy detail content remains unverified."
+  },
+  {
+    "legacy_id": "san-fernando-train-station",
+    "name": "San Fernando Heritage Train Station",
+    "official_match": "Possible: San Fernando Train Station",
+    "status": "REVIEW_REQUIRED",
+    "action": "Possible renamed/embellished identity; details and coordinates unverified. Quarantined outside frontend runtime; never auto-import."
+  },
+  {
+    "legacy_id": "lazatin-heritage-house",
+    "name": "Lazatin Heritage Ancestral House",
+    "official_match": "Possible: Lazatin House",
+    "status": "REVIEW_REQUIRED",
+    "action": "Possible renamed/embellished identity; details and coordinates unverified. Quarantined outside frontend runtime; never auto-import."
+  },
+  {
+    "legacy_id": "hizon-singian-house",
+    "name": "Hizon-Singian Heritage Ancestral House",
+    "official_match": "Possible: Hizon-Singian House",
+    "status": "REVIEW_REQUIRED",
+    "action": "Possible renamed/embellished identity; details and coordinates unverified. Quarantined outside frontend runtime; never auto-import."
+  },
+  {
+    "legacy_id": "giant-lantern-center",
+    "name": "Giant Lantern Center & Parul Museum",
+    "official_match": "Possible: City of San Fernando Giant Lantern Center",
+    "status": "REVIEW_REQUIRED",
+    "action": "Possible renamed/embellished identity; details and coordinates unverified. Quarantined outside frontend runtime; never auto-import."
+  },
+  {
+    "legacy_id": "henson-hizon-house",
+    "name": "Henson-Hizon Heritage House",
+    "official_match": "Possible: Henson-Hizon House",
+    "status": "REVIEW_REQUIRED",
+    "action": "Possible renamed/embellished identity; details and coordinates unverified. Quarantined outside frontend runtime; never auto-import."
+  },
+  {
+    "legacy_id": "pampanga-provincial-capitol",
+    "name": "Pampanga Provincial Capitol",
+    "official_match": "Pampanga Provincial Capitol",
+    "status": "OFFICIAL_MATCH",
+    "action": "Quarantined outside frontend runtime. All legacy detail content remains unverified."
+  },
+  {
+    "legacy_id": "death-march-marker-102",
+    "name": "Death March Kilometric Marker 102 & Shrine",
+    "official_match": "Possible: Death March Marker",
+    "status": "REVIEW_REQUIRED",
+    "action": "Possible renamed/embellished identity; details and coordinates unverified. Quarantined outside frontend runtime; never auto-import."
+  },
+  {
+    "legacy_id": "pasudeco-sugar-mill",
+    "name": "PASUDECO Sugar Central Heritage Landmark",
+    "official_match": null,
+    "status": "NOT_IN_OFFICIAL_SOURCE",
+    "action": "Quarantined outside frontend runtime. All legacy detail content remains unverified."
+  }
+]

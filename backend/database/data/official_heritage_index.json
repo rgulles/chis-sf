@@ -1,0 +1,265 @@
+{
+  "source": "User-supplied Heritage District list for CHIS-SF(1).pdf. Names only; replacement PDF not yet available locally. Does not authorize details or coordinates.",
+  "sites": [
+    {
+      "source_number": 1,
+      "name": "Heroes Hall and Heroes Park",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 4,
+      "name": "Pampanga Provincial Capitol",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 5,
+      "name": "Arnedo Park",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 6,
+      "name": "Megaworld Capital Town",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 7,
+      "name": "Presidio (Pampanga Provincial Jail)",
+      "aliases": [
+        "Presidio",
+        "Pampanga Provincial Jail"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 8,
+      "name": "Santungan ning Kulturang Kapampangan",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 9,
+      "name": "Death March Marker",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 10,
+      "name": "San Fernando Train Station",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 11,
+      "name": "Lazatin House",
+      "aliases": [
+        "Lazatin Residence"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 12,
+      "name": "Consunji House",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 13,
+      "name": "Tabacalera House",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 14,
+      "name": "Hizon-Ocampo House",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 15,
+      "name": "Hizon-Singian House",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 16,
+      "name": "Augusto P. Hizon House",
+      "aliases": [
+        "Augusto Paras Hizon House"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 17,
+      "name": "Pampanga Hotel",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 18,
+      "name": "Metropolitan Cathedral of San Fernando, Pampanga",
+      "aliases": [
+        "Metropolitan Cathedral of San Fernando",
+        "San Fernando Cathedral",
+        "Metropolitan Cathedral"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 19,
+      "name": "City Hall of San Fernando",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 20,
+      "name": "City Market Plaza",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 21,
+      "name": "Baluyut Bridge",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 22,
+      "name": "Cuyugan House",
+      "aliases": [
+        "Baron-Cuyugan House",
+        "Vivencio Cuyugan Monument",
+        "Baron Cuyugan House",
+        "Baron / Cuyugan House and Vivencio Cuyugan Monument",
+        "Cuyugan House and Vivencio Cuyugan Monument"
+      ],
+      "review_required": true
+    },
+    {
+      "source_number": 23,
+      "name": "Dayrit-Galang Residence",
+      "aliases": [
+        "Dayrit-Galang House"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 24,
+      "name": "Hizon-Paras House",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 25,
+      "name": "Henson-Hizon House",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 26,
+      "name": "Datu-Bundalian Residence",
+      "aliases": [
+        "Datu-Bundalian House"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 27,
+      "name": "San Fernando Leaning Water Tower",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 28,
+      "name": "Pampanga High School",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 29,
+      "name": "San Fernando Elementary School",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 30,
+      "name": "Arzobispado de Pampanga",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 31,
+      "name": "Dayrit-Cuyugan Residence",
+      "aliases": [
+        "Dayrit-Cuyugan House"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 32,
+      "name": "Monumento Fernandino",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 33,
+      "name": "Everybody's Cafe",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 34,
+      "name": "Mother of Good Counsel Seminary",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 35,
+      "name": "Archdiocesan Museum and Archives",
+      "aliases": [],
+      "review_required": false
+    },
+    {
+      "source_number": 36,
+      "name": "Heritage Parochial Church, Complex of San Vicente Ferrer",
+      "aliases": [
+        "Heritage Parochial Church / San Vicente Ferrer Complex"
+      ],
+      "review_required": false
+    },
+    {
+      "source_number": 37,
+      "name": "City of San Fernando Giant Lantern Center",
+      "aliases": [
+        "Giant Lantern and Tourist Information Office",
+        "City of San Fernando Giant Lantern and Tourist Information Center"
+      ],
+      "review_required": false
+    }
+  ],
+  "excluded_entries": [
+    {
+      "source_number": 2,
+      "name": "National Heroes",
+      "reason": "Content/experience concept; no standalone physical venue supplied."
+    },
+    {
+      "source_number": 3,
+      "name": "Local Heroes",
+      "reason": "Content/experience concept; no standalone physical venue supplied."
+    },
+    {
+      "source_number": 38,
+      "name": "Kalesa Tour",
+      "reason": "Content/experience concept; no standalone physical venue supplied."
+    },
+    {
+      "source_number": 39,
+      "name": "Lantern Making",
+      "reason": "Content/experience concept; no standalone physical venue supplied."
+    }
+  ]
+}

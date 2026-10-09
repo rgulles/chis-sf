@@ -465,3 +465,22 @@ mark,
 
 @keyframes fadeSlideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 .animate-fade-slide-in { animation: fadeSlideIn 0.4s ease-out forwards; }
+/* Shared internal directions and catalogue guide panels. */
+.map-route-workspace { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.map-route-workspace .map-route-canvas { height: 400px; padding-top: 0; min-width: 0; }
+.map-directions-panel { display: flex; flex-direction: column; min-width: 0; max-height: 420px; overflow: hidden; border: 1px solid #e8dfd5; border-radius: 16px; background: #fffdf9; overflow-wrap: anywhere; }
+.routing-start-marker { color: #176ba0; font-size: 24px; text-shadow: 0 0 3px white; }
+@media (min-width: 768px) {
+  .map-route-workspace { flex-direction: row; align-items: stretch; }
+  .map-route-workspace .map-route-canvas { flex: 1; height: 620px; }
+  .map-directions-panel { width: 320px; flex-shrink: 0; max-height: 620px; }
+}
+#heritage-chatbot-window { max-width: 420px; }
+#heritage-chatbot-window > div:first-child, #heritage-chatbot-window > div:last-child { flex-shrink: 0; }
+#heritage-chatbot-window p { overflow-wrap: anywhere; }
+@media (max-width: 639px) {
+  #heritage-chatbot-window { inset: auto 0 0; width: 100%; max-width: none; height: 92dvh; max-height: 92dvh; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #heritage-chatbot-window, #heritage-chatbot-window *, #heritage-chatbot-trigger-btn, #heritage-chatbot-trigger-btn * { animation: none !important; transition: none !important; }
+}

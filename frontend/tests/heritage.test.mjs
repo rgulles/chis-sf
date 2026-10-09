@@ -595,7 +595,7 @@ function harness(path, exportName, initialProps = {}, modules = {}) {
   const exports = {}, stubs = new Map();
   vm.runInNewContext(compile(read(path)), {
     exports, console, Error, localStorage, sessionStorage, setTimeout: callback => { timers.push(callback); return timers.length; }, clearTimeout() {},
-    window: modules.__window || { scrollTo() {} }, navigator: modules.__navigator || {}, URL, document: modules.__document || {},
+    AbortController, window: modules.__window || { scrollTo() {} }, navigator: modules.__navigator || {}, URL, document: modules.__document || {},
     require(name) {
       if (name === imageModuleUrl) return imageHelpers;
       if (name.endsWith('/utils/osrm')) return modules[name] || osrm;
@@ -983,7 +983,8 @@ test('chatbot fetches full recorded details only after a question selects a summ
   const input = find(view.render(), node => node.type === 'input'); input.props.onChange({ target: { value: site.name } });
   find(view.render(), node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await tick();
   assert.deepEqual(requests, ['/api/heritage-sites/1']);
-  assert.ok(allText(view.render()).includes('Complete recorded history') && allText(view.render()).includes('Recorded hours'));
+  assert.ok(allText(view.render()).includes('Complete recorded overview'));
+  assert.equal(allText(view.render()).includes('Recorded hours'), false);
 });
 
 test('Map never sends missing, NaN or out-of-range site coordinates to Leaflet; filtered card clears', async () => {
@@ -1010,12 +1011,12 @@ test('Map never sends missing, NaN or out-of-range site coordinates to Leaflet; 
   assert.equal(find(view.render(), node => node.props?.id === 'map-floating-site-card'), undefined);
 });
 
-test('Site Detail disables directions and DirectionsModal refuses unknown location', async () => {
+test('Site Detail and main-map Directions panel disable routing for unknown location', async () => {
   const site = { ...await mappedSite(), coordinates: null };
   const view = harness('../src/views/SiteDetailView.tsx', 'SiteDetailView', { site });
   assert.equal(find(view.render(), node => node.props?.id === 'directions-btn').props.disabled, true);
-  const modal = harness('../src/components/DirectionsModal.tsx', 'DirectionsModal', { isOpen: true, site });
-  assert.equal(modal.render(), null);
+  const panel = directionsHarness(site, async () => { throw new Error('No GPS request expected'); });
+  assert.equal(find(panel.render(), node => node.props?.id === 'use-current-location').props.disabled, true);
 });
 
 function renderedText(node) {
@@ -1148,6 +1149,7 @@ function browserAt(hash = '') {
     history: {
       get state() { return entries[index].state; },
       pushState(state, unused, hash) { entries.splice(index + 1); entries.push({ hash, state }); index++; sync(); },
+      replaceState(state, unused, hash) { entries[index] = { hash, state }; sync(); },
       back() { if (index > 0) { index--; sync(); emit(); } },
       forward() { if (index < entries.length - 1) { index++; sync(); emit(); } },
     },
@@ -1299,7 +1301,7 @@ test('live mapper has no fabricated tourism fields and unknown textual informati
   assert.deepEqual(Object.keys((await api.apiFetchSites())[0].coordinates), ['lat', 'lng']);
 });
 
-const motionModule = { motion: new Proxy({}, { get: (_, key) => key }), AnimatePresence: 'div' };
+const motionModule = { motion: new Proxy({}, { get: (_, key) => key }), AnimatePresence: 'div', useReducedMotion: () => false };
 
 test('Home uses each real cover and matching highlight copy without fetching global images', async () => {
   const first = { ...await mappedSite(), heroImage: '/images/first.jpg', name: 'First live site', shortDescription: 'First saved overview', address: 'First address', yearBuilt: '' };
@@ -1385,7 +1387,8 @@ test('chatbot returns only recorded live history/timeline/visitor data and no le
     timeline: [{ year: 'circa 2000', title: 'Saved timeline title', description: 'Saved timeline detail' }], visitInfo: { entranceFee: 'Saved admission' } };
   const result = chatEngine.getLocalHeritageResponse('History of the train station', [site]);
   assert.equal(result.matchedSiteId, '17');
-  for (const value of ['Saved address', 'Saved description', 'Saved history', 'Saved timeline title', 'Saved admission']) assert.ok(result.text.includes(value));
+  assert.equal(result.text, 'Saved history');
+  for (const value of ['Saved address', 'Saved description', 'Saved timeline title', 'Saved admission']) assert.equal(result.text.includes(value), false);
   for (const value of ['1892', 'Jose Rizal', '102-kilometer', 'Free', 'Unknown', '8:30']) assert.equal(result.text.includes(value), false);
   const none = chatEngine.getLocalHeritageResponse('train station', []); assert.equal(none.matchedSiteId, undefined); assert.equal(none.text.includes('1892'), false);
   assert.equal(chatEngine.getLocalHeritageResponse('train station', [{ ...site, status: 'archived' }]).matchedSiteId, undefined);
@@ -1484,8 +1487,8 @@ function mapRuntime() {
 test('marker switching, dismissal, live card actions and shared list/map filters', async () => {
   const first = { ...await mappedSite(), name: 'Recorded Church', coordinates: { lat: 15.03, lng: 120.68 }, heroImage: '/saved-cover.jpg', yearBuilt: 'circa 1900', address: 'Actual address', shortDescription: 'Not needed in compact card', distanceKm: 99, audioStory: {}, qrCodeId: 'fake', scanCount: 999 };
   const second = { ...first, id: '2', name: 'Recorded Museum', category: 'Museums', coordinates: { lat: 15.04, lng: 120.69 } };
-  const runtime = mapRuntime(); let opened, saved;
-  const props = { sites: [first, second], initialViewMode: 'map', savedSiteIds: [], onSelectSite(site) { opened = site; }, onToggleSaveSite(id) { saved = id; } };
+  const runtime = mapRuntime(); let opened, saved, directions;
+  const props = { sites: [first, second], initialViewMode: 'map', savedSiteIds: [], onSelectSite(site) { opened = site; }, onToggleSaveSite(id) { saved = id; }, onOpenDirections(site) { directions = site; } };
   const view = harness('../src/views/MapView.tsx', 'MapView', props, { leaflet: runtime.leaflet, 'motion/react': motionModule });
   await settleMap(view); assert.equal(runtime.markers[0].config.zIndexOffset, 1000);
   runtime.markers[1].click(); let tree = view.render(); view.flush();
@@ -1497,7 +1500,7 @@ test('marker switching, dismissal, live card actions and shared list/map filters
   for (const text of [second.name, second.yearBuilt, second.address]) assert.ok(allText(card).includes(text));
   assert.equal(find(card, node => node.type === 'img').props.src, second.heroImage);
   for (const text of [' km', 'Audio', 'QR', '999', 'Not needed in compact card']) assert.equal(allText(card).includes(text), false);
-  assert.equal(find(card, node => node.props?.id === 'map-card-directions-link').props.href, 'https://www.google.com/maps/dir/?api=1&destination=15.04,120.69');
+  find(card, node => node.props?.id === 'map-card-directions-link').props.onClick(); assert.equal(directions, second);
   find(card, node => node.props?.id === 'map-floating-explore-btn').props.onClick(); assert.equal(opened, second);
   assert.ok(allText(card).includes('View Site'));
   find(card, node => node.props?.id === 'map-card-save-2').props.onClick(); assert.equal(saved, '2');
@@ -1878,7 +1881,7 @@ test('OSRM uses ordered public lon,lat coordinates, omits private data and cache
   fetch = async (url, options) => { requests.push({ url, options }); return reply(roadFixture); };
   const [a, b] = await Promise.all([osrm.fetchRoadRoute(key), osrm.fetchRoadRoute(key)]);
   assert.equal(a, b); assert.equal(requests.length, 1);
-  assert.ok(requests[0].url.endsWith('/route/v1/driving/' + key + '?overview=full&geometries=geojson&steps=false'));
+  assert.ok(requests[0].url.endsWith('/route/v1/driving/' + key + '?overview=full&geometries=geojson&steps=true'));
   assert.equal(requests[0].options.credentials, 'omit'); assert.equal(requests[0].options.headers, undefined);
   assert.equal(a.distance, 12400); assert.equal(a.duration, 1680);
   await osrm.fetchRoadRoute(key); assert.equal(requests.length, 1);
@@ -2021,4 +2024,147 @@ test('itinerary summary sits below description, requests no route until opened a
   finish(); await tick(); assert.ok(visibleText(view.render()).includes('12.4 km')); assert.ok(visibleText(view.render()).includes('28 min'));
   find(view.render(), node => node.props?.id === 'itinerary-map-toggle').props.onClick(); view.render(); view.flush();
   assert.ok(visibleText(view.render()).includes('12.4 km')); assert.equal(find(view.render(), node => node.type?.displayName === 'MapView'), undefined); assert.equal(count, 1);
+});
+const routing = await load('../src/utils/routingLocation.ts');
+function directionsHarness(site, location, routeFetcher = async () => ({ coordinates: [[120.67,15],[120.69,15.03]], distance: 4800, duration: 720, steps: [{ name: 'Recorded road', distance: 650, maneuver: { type: 'turn', modifier: 'right' } }, { name: '', distance: 0, maneuver: { type: 'arrive' } }] }), onRouteChange = () => {}) {
+  const document = { body: { style: { overflow: '' } }, activeElement: { focus() {} } };
+  return harness('../src/components/DirectionsPanel.tsx', 'default', { site, onClose() {}, onRouteChange }, {
+    __document: document, '../utils/routingLocation': { ...routing, currentRoutingLocation: location }, '../utils/osrm': { ...osrm, fetchRoadRoute: routeFetcher },
+  });
+}
+test('Katulung matches aliases and unique partial names; history/location/hours/fee are intent-specific', async () => {
+  const base = await mappedSite();
+  const cathedral = { ...base, id: '18', name: 'Metropolitan Cathedral of San Fernando, Pampanga', address: 'Recorded cathedral address', story: 'Recorded history', fullDescription: 'Recorded about', visitInfo: {} };
+  const lazatin = { ...base, id: '11', name: 'Lazatin House', address: 'A. Consunji St., recorded address' };
+  const station = { ...base, id: '10', name: 'San Fernando Train Station', fullDescription: 'Recorded station description' };
+  const sites = [cathedral, lazatin, station];
+  for (const alias of ['cathedral', 'Metropolitan Cathedral', 'San Fernando Cathedral']) assert.equal(chatEngine.getLocalHeritageResponse('history of ' + alias, sites).text, 'Recorded history');
+  assert.equal(chatEngine.getLocalHeritageResponse('Where is Lazatin?', sites).text, 'Lazatin House is located at A. Consunji St., recorded address.');
+  assert.equal(chatEngine.getLocalHeritageResponse('Tell me about the train station', sites).text, 'Recorded station description');
+  assert.equal(chatEngine.getLocalHeritageResponse('What time does the cathedral open?', sites).text, 'Opening hours are not currently listed in the City Tourism heritage record.');
+  assert.equal(chatEngine.getLocalHeritageResponse('Entrance fee for cathedral', sites).text, 'Entrance fees are not currently listed in the City Tourism heritage record.');
+  assert.equal(chatEngine.getLocalHeritageResponse('Where is the cathedral?', sites).text.includes('Recorded history'), false);
+  assert.ok(chatEngine.getLocalHeritageResponse('How do I get to cathedral?', sites).text.includes('Directions'));
+});
+test('Katulung offers choices for ambiguous names, category lists use active records, and unknown questions invent nothing', async () => {
+  const base = await mappedSite();
+  const sites = [{ ...base, id: '1', name: 'Hizon-Singian House', category: 'Historical Buildings' }, { ...base, id: '2', name: 'Hizon-Paras House', category: 'Historical Buildings' }, { ...base, id: '3', name: 'Recorded Museum', category: 'Museums' }, { ...base, id: '4', name: 'Archived Museum', category: 'Museums', status: 'archived' }];
+  assert.deepEqual(chatEngine.getLocalHeritageResponse('Hizon', sites).choiceSiteIds, ['1','2']);
+  assert.deepEqual(chatEngine.getLocalHeritageResponse('Show museums', sites).choiceSiteIds, ['3']);
+  for (const query of ['house', 'city', 'san', 'fernando', 'heritage', 'Who lived in the invented castle?']) assert.equal(chatEngine.getLocalHeritageResponse(query, sites).matchedSiteId, undefined);
+  assert.ok(chatEngine.getLocalHeritageResponse('Who lived in the invented castle?', sites).text.includes('could not find'));
+});
+test('Directions makes no location or routing call on open; actual result and steps follow explicit click', async () => {
+  let locations = 0, requests = 0, key;
+  const site = await mappedSite();
+  const view = directionsHarness(site, async () => { locations++; return { lat: 15.031234, lng: 120.671234 }; }, async value => { requests++; key = value; return { coordinates: [[120.67,15],[120,15]], distance: 4800, duration: 720, steps: [{ name: 'Saved road', distance: 100, maneuver: { type: 'turn', modifier: 'right' } }] }; });
+  view.render(); view.flush(); assert.equal(locations, 0); assert.equal(requests, 0);
+  await find(view.render(), node => node.props?.id === 'use-current-location').props.onClick();
+  assert.equal(key, '120.67123,15.03123;120,15');
+  const text = visibleText(view.render()); assert.ok(text.includes('4.8 km') && text.includes('12 min') && text.includes('Turn right onto Saved road'));
+  assert.ok(text.includes('Estimated driving time')); assert.equal(text.includes('Live travel time'), false);
+  view.unmount();
+});
+for (const message of ['Location permission was denied.', 'Location request timed out.']) test('Directions displays ' + message + ' without OSRM', async () => {
+  let requests = 0;
+  const view = directionsHarness(await mappedSite(), async () => { throw new Error(message); }, async () => { requests++; });
+  view.render(); view.flush(); await find(view.render(), node => node.props?.id === 'use-current-location').props.onClick();
+  assert.ok(visibleText(view.render()).includes(message)); assert.equal(requests, 0); view.unmount();
+});
+test('Directions OSRM failure keeps marker inputs and omits fabricated distance and duration', async () => {
+  let display;
+  const view = directionsHarness(await mappedSite(), async () => ({ lat: 15.03, lng: 120.67 }), async () => { throw new Error(osrm.ROAD_ROUTE_UNAVAILABLE); }, (start, route) => { display = { start, route }; });
+  view.render(); view.flush(); await find(view.render(), node => node.props?.id === 'use-current-location').props.onClick();
+  const tree = view.render(); assert.ok(visibleText(tree).includes('Road directions are temporarily unavailable.'));
+  assert.equal(visibleText(tree).includes('Estimated driving time:'), false);
+  view.flush(); assert.ok(display.start); assert.equal(display.route, null); view.unmount();
+});
+test('Directions close discards late location callbacks and aborts in-flight routing', async () => {
+  let finish, routes = 0;
+  const view = directionsHarness(await mappedSite(), () => new Promise(resolve => { finish = resolve; }), async () => { routes++; });
+  view.render(); view.flush(); const pending = find(view.render(), node => node.props?.id === 'use-current-location').props.onClick();
+  view.unmount(); finish({ lat: 15, lng: 120 }); await pending; assert.equal(routes, 0);
+  let signal, resolveRoute;
+  const running = directionsHarness(await mappedSite(), async () => ({ lat: 15, lng: 120 }), (key, base, value) => { signal = value; return new Promise(resolve => { resolveRoute = resolve; }); });
+  running.render(); running.flush(); const work = find(running.render(), node => node.props?.id === 'use-current-location').props.onClick(); await tick();
+  running.unmount(); assert.equal(signal.aborted, true); resolveRoute({ coordinates: [[120,15],[121,16]], distance: 1, duration: 1 }); await work;
+  assert.equal(visibleText(running.render()).includes('Estimated driving time:'), false);
+});
+test('new Directions request supersedes an earlier location request', async () => {
+  const fixes = []; let requests = 0;
+  const view = directionsHarness(await mappedSite(), () => new Promise(resolve => fixes.push(resolve)), async () => { requests++; return { coordinates: [[120,15],[121,16]], distance: 650, duration: 4500 }; });
+  view.render(); view.flush(); const click = () => find(view.render(), node => node.props?.id === 'use-current-location').props.onClick();
+  const first = click(), second = click(); fixes[1]({ lat: 15, lng: 120 }); await second; fixes[0]({ lat: 16, lng: 121 }); await first;
+  assert.equal(requests, 1); assert.ok(visibleText(view.render()).includes('650 m')); assert.ok(visibleText(view.render()).includes('1 hr 15 min')); view.unmount();
+});
+test('OSRM parses returned geometry and steps; missing road names use neutral guidance; transient requests bypass global cache', async () => {
+  const fixture = { ...roadFixture, routes: [{ ...roadFixture.routes[0], legs: [{ steps: [{ name: 'Road from response', distance: 650, maneuver: { type: 'turn', modifier: 'left' } }, { name: '', distance: 350, maneuver: { type: 'roundabout' } }, { name: '', distance: 0, maneuver: { type: 'arrive' } }] }] }] };
+  let calls = 0; fetch = async () => { calls++; return reply(fixture); };
+  const first = await osrm.fetchRoadRoute('120,15;121,16', 'https://fixture.test', new AbortController().signal);
+  await osrm.fetchRoadRoute('120,15;121,16', 'https://fixture.test', new AbortController().signal);
+  assert.equal(calls, 2); assert.deepEqual(first.coordinates, fixture.routes[0].geometry.coordinates);
+  assert.equal(first.steps.length, 3); assert.equal(osrm.stepInstruction(first.steps[0], 'Destination'), 'Turn left onto Road from response');
+  assert.equal(osrm.stepInstruction(first.steps[1], 'Destination'), 'Continue for 350 m');
+  assert.equal(osrm.stepInstruction(first.steps[2], 'Destination'), 'Arrive at Destination');
+  assert.equal(osrm.formatDuration(4500), '1 hr 15 min'); assert.equal(osrm.formatDistance(650), '650 m'); assert.equal(osrm.formatDistance(4800), '4.8 km');
+});
+test('Katulung uses current detail only for explicit this-site questions and lists singular categories', async () => {
+  const site = { ...await mappedSite(), name: 'Metropolitan Cathedral', visitInfo: { openingHours: 'Saved hours' } };
+  assert.equal(chatEngine.getLocalHeritageResponse('What time does this site open?', [site], site.id).text, 'Saved hours');
+  assert.equal(chatEngine.getLocalHeritageResponse('Where is this site?', [site]).matchedSiteId, undefined);
+  assert.deepEqual(chatEngine.getLocalHeritageResponse('Show church', [site]).choiceSiteIds, [site.id]);
+});
+
+
+test('Site Detail, main Map, and Katulung share destination-only navigation with browser Back', async () => {
+  const site = await mappedSite(), browser = browserAt('#/heritage/1');
+  const view = appFor(browser, async () => site, [site]);
+  view.render(); view.flush(); await tick();
+  detailNode(view.render()).props.onOpenDirections(site);
+  assert.equal(browser.location.hash, '#/map?destination=1');
+  let map = find(view.render(), node => node.type?.displayName === 'MapView');
+  assert.equal(map.props.destinationId, '1');
+  assert.equal(find(view.render(), node => node.type?.displayName === 'DirectionsModal'), undefined);
+  map.props.onCloseDirections();
+  assert.equal(browser.location.hash, '#/map');
+  assert.equal(find(view.render(), node => node.type?.displayName === 'MapView').props.destinationId, null);
+  map.props.onOpenDirections(site);
+  browser.history.back(); view.render(); view.flush(); await tick();
+  assert.equal(find(view.render(), node => node.type?.displayName === 'MapView').props.destinationId, null);
+  find(view.render(), node => node.type?.displayName === 'HeritageChatbot').props.onOpenDirections(site);
+  assert.equal(browser.location.hash, '#/map?destination=1');
+  browser.history.back(); browser.history.back(); view.render(); view.flush(); await tick();
+  assert.ok(detailNode(view.render()));
+  const deepLink = appFor(browserAt('#/map?destination=1'), async () => site, [site]);
+  deepLink.render(); deepLink.flush(); await tick();
+  assert.equal(find(deepLink.render(), node => node.type?.displayName === 'MapView').props.destinationId, '1');
+  assert.deepEqual(navigation.parseHeritageRoute('#/map?destination=1'), { view: 'map', siteId: null });
+  assert.equal(navigation.mapDestinationId('#/map?destination=1&lat=15'), null);
+});
+
+test('main Map route mode highlights destination and renders road geometry; close and destination change clear visitor layers', async () => {
+  const first = { ...await mappedSite(), coordinates: { lat: 15.03, lng: 120.69 } };
+  const second = { ...first, id: '2', coordinates: { lat: 15.04, lng: 120.70 } };
+  const runtime = mapRuntime(); let closed = 0;
+  const props = { sites: [first, second], destinationId: '1', onCloseDirections() { closed++; }, initialViewMode: 'map', savedSiteIds: [] };
+  const view = harness('../src/views/MapView.tsx', 'MapView', props, { leaflet: runtime.leaflet, 'motion/react': motionModule });
+  await settleMap(view);
+  const panel = () => find(view.render(), node => node.props?.onRouteChange);
+  assert.equal(panel().props.site.id, '1');
+  assert.equal(find(view.render(), node => node.props?.id === 'map-floating-site-card'), undefined);
+  assert.equal(runtime.lines.length, 0);
+  const route = { coordinates: [[120.67,15.01],[120.68,15.02],[120.69,15.03]], distance: 4800, duration: 720 };
+  panel().props.onRouteChange({ lat: 15.01, lng: 120.67 }, route); view.render(); view.flush();
+  const line = runtime.lines.at(-1), marker = runtime.markers.find(marker => marker.config.title === 'Your current location' && !marker.removed);
+  assert.deepEqual(Array.from(line.points, point => Array.from(point)), [[15.01,120.67],[15.02,120.68],[15.03,120.69]]);
+  assert.ok(marker);
+  view.render({ ...props, destinationId: '2' }); view.render(); view.flush();
+  assert.equal(line.removed, true); assert.equal(marker.removed, true);
+  assert.equal(panel().props.site.id, '2');
+  panel().props.onClose(); assert.equal(closed, 1);
+  view.render({ ...props, destinationId: null }); view.render(); view.flush();
+  assert.equal(runtime.markers.some(marker => marker.config.title === 'Your current location' && !marker.removed), false);
+  assert.equal(runtime.lines.some(line => !line.removed), false);
+  assert.ok(find(view.render(), node => node.props?.id === 'map-floating-site-card'));
+  view.unmount();
 });
