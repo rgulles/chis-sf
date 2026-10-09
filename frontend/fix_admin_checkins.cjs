@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Search, Edit3, ChevronLeft, ChevronRight, RefreshCw, X, MapPin } from "lucide-react";
+const fs = require("fs");
+const file = "c:/Users/PC/Desktop/San-Fernando/frontend/src/components/AdminCheckins.tsx";
+
+const content = `import React, { useEffect, useState } from "react";
+import { Search, Edit3, ChevronLeft, ChevronRight, Filter, RefreshCw, X, MapPin } from "lucide-react";
 import type { CheckinConfig } from "../types";
 import { apiFetchCheckinConfigs, apiSaveCheckinConfig } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -8,7 +11,7 @@ const ITEMS_PER_PAGE = 10;
 
 interface Props { onManageHeritage?: () => void; }
 
-export const AdminCheckins = (_props: Props) => {
+export const AdminCheckins = ({ onManageHeritage }: Props) => {
   const { addToast } = useToast();
   const [configs, setConfigs] = useState<CheckinConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +100,7 @@ export const AdminCheckins = (_props: Props) => {
         </div>
         <div className="flex flex-wrap gap-2">
           {["All", "Enabled", "Disabled", "Missing Coordinates"].map((f) => (
-            <button key={f} onClick={() => { setFilter(f as any); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === f ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>{f}</button>
+            <button key={f} onClick={() => { setFilter(f as any); setPage(1); }} className={\`px-4 py-2 rounded-xl text-sm font-semibold transition-colors \${filter === f ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}\`}>{f}</button>
           ))}
         </div>
       </div>
@@ -127,14 +130,14 @@ export const AdminCheckins = (_props: Props) => {
                       <div className="text-xs text-gray-500 truncate max-w-xs">{c.category}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.has_coordinates ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                      <span className={\`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold \${c.has_coordinates ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}\`}>
                         <MapPin className="w-3 h-3" />
                         {c.has_coordinates ? "Available" : "Missing"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.enabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}`}>
-                        {c.enabled ? `Enabled (${c.radius_meters}m)` : "Disabled"}
+                      <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold \${c.enabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}\`}>
+                        {c.enabled ? \`Enabled (\${c.radius_meters}m)\` : "Disabled"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-700">
@@ -175,7 +178,7 @@ export const AdminCheckins = (_props: Props) => {
                   <span>Enable Geofenced Check-ins</span>
                   <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
                     <input type="checkbox" checked={draft.enabled} onChange={e => setDraft({ ...draft, enabled: e.target.checked })} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 checked:border-[#7A1C30] checked:bg-white checked:right-0 transition-all duration-300" style={{ right: draft.enabled ? "0" : "1.25rem", zIndex: 1, borderColor: draft.enabled ? "#7A1C30" : "#d1d5db" }} />
-                    <label className={`toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer ${draft.enabled ? "!bg-[#7A1C30]" : ""}`}></label>
+                    <label className={\`toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer \${draft.enabled ? "!bg-[#7A1C30]" : ""}\`}></label>
                   </div>
                 </label>
                 {!configs.find(c => String(c.heritage_site_id) === editingId)?.has_coordinates && (
@@ -200,3 +203,6 @@ export const AdminCheckins = (_props: Props) => {
     </div>
   );
 };
+`;
+
+fs.writeFileSync(file, content);

@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HeritageSiteController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SiteImageController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\AuthController;
@@ -17,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/heritage-sites/{heritageSite}/contributions', [HeritageContributionController::class, 'store'])->middleware('throttle:5,1');
 });
 Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+    Route::get('/admin/dashboard', [DashboardController::class, 'index']);
     Route::get('/admin/contributions', [HeritageContributionController::class, 'adminIndex']);
     Route::patch('/admin/contributions/{contribution}', [HeritageContributionController::class, 'moderate']);
     Route::delete('/admin/contributions/{contribution}', [HeritageContributionController::class, 'destroy']);

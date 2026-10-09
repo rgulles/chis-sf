@@ -4,8 +4,17 @@ import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
+import { ToastProvider } from './hooks/useToast'
+import { ConfirmProvider } from './hooks/useConfirm'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary><App /></ErrorBoundary>
+    <ErrorBoundary>
+      <ToastProvider>
+        <ConfirmProvider>
+          <App />
+        </ConfirmProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

@@ -67,6 +67,7 @@ class HeritageSiteController extends Controller
         $data['created_by'] = $request->user()->id;
 
         $heritageSite = HeritageSite::create($data);
+        \App\Models\AdminActivity::log("created", "HeritageSite", $heritageSite->name);
 
         return response()->json($heritageSite, 201);
     }
@@ -87,6 +88,7 @@ class HeritageSiteController extends Controller
         ]);
 
         $heritageSite->update($data);
+        \App\Models\AdminActivity::log(isset($data["status"]) && $data["status"] === "archived" ? "archived" : "updated", "HeritageSite", $heritageSite->name);
 
         return response()->json($heritageSite);
     }

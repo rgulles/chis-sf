@@ -11,6 +11,7 @@ import type {
 
 import { apiFetchSites, apiFetchSiteById, apiFetchEvents, apiFetchCurrentUser, apiLogout, getJwtToken, apiFetchItineraries } from './api/client';
 import { parseHeritageRoute, mapDestinationId, mapDirectionsUrl } from './utils/heritageNavigation';
+import { useToast } from './hooks/useToast';
 
 // Components
 import { Header } from './components/Header';
@@ -37,6 +38,7 @@ const AdminView = lazy(() => import('./views/AdminView').then(module => ({ defau
 const PassportView = lazy(() => import('./views/PassportView').then(module => ({ default: module.PassportView })));
 
 export default function App() {
+  const { addToast } = useToast();
   // Navigation & View State
   const [currentView, setCurrentView] = useState<ViewType>(() => parseHeritageRoute(window.location?.hash || '').view === 'passport' ? 'home' : parseHeritageRoute(window.location?.hash || '').view);
   const [passportOpen, setPassportOpen] = useState(false);
@@ -59,7 +61,6 @@ export default function App() {
   const [sessionRevision, setSessionRevision] = useState(0);
   const [eventsError, setEventsError] = useState('');
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [sessionExpired, setSessionExpired] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [events, setEvents] = useState<EventItem[]>([]);
 
@@ -106,7 +107,6 @@ export default function App() {
     setPassportState(null);
     authRevision.current += 1;
     setUser(authenticatedUser);
-    setSessionExpired(false);
   };
 
   // Modals Visibility State
@@ -116,7 +116,15 @@ export default function App() {
   const [sitesLoading, setSitesLoading] = useState(true);
 
   useEffect(() => {
-    const expire = () => { authRevision.current++; passportVersion.current = ''; setPassportOpen(false); setUser(null); setPassportState(null); setSessionExpired(true); };
+    const expire = () => { 
+      authRevision.current++; 
+      passportVersion.current = ''; 
+      setPassportOpen(false); 
+      setUser(null); 
+      setPassportState(null); 
+      setIsAuthOpen(true);
+      addToast('error', 'Your session has expired. Please log in again.');
+    };
     const syncSession = (event: StorageEvent) => {
       if (event.key !== 'chis_jwt_token' && event.key !== null) return;
       authRevision.current++; passportVersion.current = ''; setPassportOpen(false); setUser(null); setPassportState(null); setSessionRevision(value => value + 1);
@@ -257,6 +265,7 @@ export default function App() {
     setPassportState(null);
     setIsAuthOpen(false);
     navigateTo('home');
+    addToast('info', 'You have been logged out.');
   };
 
   // Toggle Save Site
@@ -359,7 +368,6 @@ export default function App() {
       {/* MAIN VIEW CONTENT CONTAINER */}
       <main id="main-content-viewport" className="flex-1">
         <Suspense fallback={<p role="status" className="p-6">Loading page…</p>}>
-        {sessionExpired && <ErrorState kind="authentication" onRetry={() => setIsAuthOpen(true)} retryLabel="Sign in" />}
         {currentView === 'not-found' && <ErrorState kind="not-found" title="Page not found" onHome={() => navigateTo('home')} />}
         {sitesError && currentView !== 'site-detail' && <ErrorState message={sitesError} onRetry={() => setDataRetry(value => value + 1)} />}
         {sitesLoading && ['explore', 'map'].includes(currentView) && <p role="status" className="p-6">Loading heritage sites…</p>}

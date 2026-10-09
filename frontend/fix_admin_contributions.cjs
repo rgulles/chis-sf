@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+const fs = require("fs");
+const file = "c:/Users/PC/Desktop/San-Fernando/frontend/src/components/AdminContributions.tsx";
+
+const content = `import React, { useEffect, useState } from "react";
 import { Search, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Eye, Image as ImageIcon } from "lucide-react";
 import type { AdminContribution, ContributionStatus } from "../types";
 import { apiFetchAdminContributions, apiModerateContribution, apiRemoveContribution } from "../api/client";
@@ -62,7 +65,7 @@ export function AdminContributions() {
     setBusy(true);
     try {
       await apiModerateContribution(item.id, action);
-      addToast("success", `Contribution ${action === "approved" ? "approved" : "rejected"}.`);
+      addToast("success", \`Contribution \${action === "approved" ? "approved" : "rejected"}.\`);
       if (viewingItem?.id === item.id) {
         setViewingItem({ ...viewingItem, status: action });
       }
@@ -103,7 +106,7 @@ export function AdminContributions() {
         </div>
         <div className="flex flex-wrap gap-2">
           {["pending", "approved", "rejected"].map((f) => (
-            <button key={f} onClick={() => { setStatusFilter(f as any); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors capitalize ${statusFilter === f ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>{f}</button>
+            <button key={f} onClick={() => { setStatusFilter(f as any); setPage(1); }} className={\`px-4 py-2 rounded-xl text-sm font-semibold transition-colors capitalize \${statusFilter === f ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}\`}>{f}</button>
           ))}
         </div>
       </div>
@@ -155,11 +158,11 @@ export function AdminContributions() {
                       {new Date(c.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                      <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize \${
                         c.status === "approved" ? "bg-emerald-100 text-emerald-800" :
                         c.status === "rejected" ? "bg-red-100 text-red-800" :
                         "bg-yellow-100 text-yellow-800"
-                      }`}>
+                      }\`}>
                         {c.status}
                       </span>
                     </td>
@@ -237,11 +240,11 @@ export function AdminContributions() {
             </div>
             
             <div className="p-5 bg-gray-50 border-t border-[#e8dfd5] flex items-center justify-between shrink-0">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold capitalize ${
+              <span className={\`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold capitalize \${
                 viewingItem.status === "approved" ? "bg-emerald-100 text-emerald-800" :
                 viewingItem.status === "rejected" ? "bg-red-100 text-red-800" :
                 "bg-yellow-100 text-yellow-800"
-              }`}>
+              }\`}>
                 Status: {viewingItem.status}
               </span>
               <div className="flex gap-2">
@@ -260,3 +263,6 @@ export function AdminContributions() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync(file, content);

@@ -61,6 +61,7 @@ class EventController extends Controller
             unset($data['schedules']);
 
             $event = Event::create($data);
+        \App\Models\AdminActivity::log("created", "Event", $event->title);
 
             if (!empty($schedules)) {
                 foreach ($schedules as $item) {
@@ -125,6 +126,7 @@ class EventController extends Controller
             unset($data['schedules']);
 
             $event->update($data);
+        \App\Models\AdminActivity::log("updated", "Event", $event->title);
 
             if ($hasSchedules) {
                 $event->schedules()->delete();

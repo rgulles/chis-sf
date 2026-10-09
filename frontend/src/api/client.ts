@@ -922,3 +922,5 @@ export async function apiSendChatMessage(messages: Array<{ role: string; content
   });
   return await res.json();
 }
+
+export async function apiFetchDashboard(): Promise<any> { return adminRequest("/admin/dashboard", "GET"); }

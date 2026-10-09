@@ -175,7 +175,7 @@
 }
 
 /* Small shared UI vocabulary; editorial type is always an explicit choice. */
-:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+:where(button, a, input, select, textarea, [tabindex]):not(.outline-none):focus-visible {
   outline: 3px solid #b45309;
   outline-offset: 3px;
 }
@@ -220,11 +220,18 @@
 .admin-shell :where(h1, h2, h3, h4, label, input, select, textarea, button, table) { font-family: var(--font-sans); }
 .admin-shell :where(label) { font-size: 0.875rem; font-weight: 500; }
 .admin-shell :where(button) { min-height: 2.75rem; }
+.admin-shell select { padding-right: 4rem !important; background-position: right 1.5rem center !important; }
 .admin-shell :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
   min-height: 2.75rem;
   border-color: #e8dfd5;
   border-radius: 0.5rem;
   font-size: 0.875rem;
+}
+.admin-shell :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  border-color: #7A1C30 !important;
+  border-width: 1px !important;
+  box-shadow: 0 0 0 2px rgba(122, 28, 48, 0.2) !important;
+  outline: none !important;
 }
 .admin-shell :where(th, td) { padding: 0.875rem 1rem; line-height: 1.5; }
 .admin-shell :where(th) { font-weight: 600; }

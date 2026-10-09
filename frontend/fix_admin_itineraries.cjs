@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Search, Plus, Edit3, Trash2, ChevronLeft, ChevronRight, RefreshCw, X, ArrowUp, ArrowDown } from "lucide-react";
+const fs = require("fs");
+const file = "c:/Users/PC/Desktop/San-Fernando/frontend/src/components/AdminItineraries.tsx";
+
+const content = `import React, { useEffect, useState } from "react";
+import { Search, Plus, Edit3, Trash2, ChevronLeft, ChevronRight, Filter, RefreshCw, X, ArrowUp, ArrowDown } from "lucide-react";
 import type { Itinerary, ItineraryInput } from "../types";
 import { apiFetchAdminItineraries, apiSaveItinerary, apiArchiveItinerary, apiRestoreItinerary } from "../api/client";
 import { moveItineraryStop } from "../utils/customItinerary";
@@ -62,14 +65,14 @@ export const AdminItineraries = ({ sites }: Props) => {
   const toggleStatus = async (route: Itinerary) => {
     confirm({
       title: route.status === "active" ? "Archive Itinerary" : "Restore Itinerary",
-      message: `Are you sure you want to ${route.status === "active" ? "archive" : "restore"} "${route.name}"?`,
+      message: \`Are you sure you want to \${route.status === "active" ? "archive" : "restore"} "\${route.name}"?\`,
       confirmText: route.status === "active" ? "Archive" : "Restore",
       onConfirm: async () => {
         setBusy(true);
         try {
           if (route.status === "active") await apiArchiveItinerary(route.id);
           else await apiRestoreItinerary(route.id);
-          addToast("success", `Itinerary ${route.status === "active" ? "archived" : "restored"}.`);
+          addToast("success", \`Itinerary \${route.status === "active" ? "archived" : "restored"}.\`);
           refresh();
         } catch (err) {
           addToast("error", "Failed to update status.");
@@ -80,7 +83,7 @@ export const AdminItineraries = ({ sites }: Props) => {
     });
   };
 
-  const stopName = (id: string) => sites.find(s => String(s.id) === id)?.name || routes.flatMap(r => r.stops).find(s => s.siteId === id)?.site?.name || `Site #${id}`;
+  const stopName = (id: string) => sites.find(s => String(s.id) === id)?.name || routes.flatMap(r => r.stops).find(s => s.siteId === id)?.site?.name || \`Site #\${id}\`;
 
   const filtered = routes.filter(r => {
     if (filter !== "all" && r.status !== filter) return false;
@@ -176,9 +179,9 @@ export const AdminItineraries = ({ sites }: Props) => {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => { setFilter("all"); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === "all" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>All</button>
-              <button onClick={() => { setFilter("active"); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === "active" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>Active</button>
-              <button onClick={() => { setFilter("archived"); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === "archived" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>Archived</button>
+              <button onClick={() => { setFilter("all"); setPage(1); }} className={\`px-4 py-2 rounded-xl text-sm font-semibold transition-colors \${filter === "all" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}\`}>All</button>
+              <button onClick={() => { setFilter("active"); setPage(1); }} className={\`px-4 py-2 rounded-xl text-sm font-semibold transition-colors \${filter === "active" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}\`}>Active</button>
+              <button onClick={() => { setFilter("archived"); setPage(1); }} className={\`px-4 py-2 rounded-xl text-sm font-semibold transition-colors \${filter === "archived" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}\`}>Archived</button>
             </div>
           </div>
 
@@ -207,14 +210,14 @@ export const AdminItineraries = ({ sites }: Props) => {
                         </td>
                         <td className="px-6 py-4 text-sm font-medium text-gray-700">{r.stops.length} stops</td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}`}>
+                          <span className={\`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold \${r.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}\`}>
                             {r.status === "active" ? "Active" : "Archived"}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <button onClick={() => openDraft(r)} className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
-                            <button onClick={() => toggleStatus(r)} className={`p-1.5 rounded-md transition-colors ${r.status === "active" ? "text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100" : "text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100"}`} title={r.status === "active" ? "Archive" : "Restore"}>
+                            <button onClick={() => toggleStatus(r)} className={\`p-1.5 rounded-md transition-colors \${r.status === "active" ? "text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100" : "text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100"}\`} title={r.status === "active" ? "Archive" : "Restore"}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -240,3 +243,6 @@ export const AdminItineraries = ({ sites }: Props) => {
     </div>
   );
 };
+`;
+
+fs.writeFileSync(file, content);
