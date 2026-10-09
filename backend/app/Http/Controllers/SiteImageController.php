@@ -88,7 +88,7 @@ class SiteImageController extends Controller
     {
         $newPath = null;
         if ($request->hasFile('image')) {
-            $newPath = $request->file('image')->store('heritage-sites', 'public');
+            $newPath = $request->file('image')->store('heritage-sites', 's3');
             abort_unless($newPath, 500, 'Unable to store image.');
             $data['image_path'] = $newPath;
         }
@@ -113,8 +113,10 @@ class SiteImageController extends Controller
         $aliases = [$relative, 'storage/'.$relative, '/storage/'.$relative];
         if (SiteImage::whereIn('image_path', $aliases)->exists()) return;
         try {
-            if (!Storage::disk('public')->delete($relative)) {
-                Log::warning('Heritage image file cleanup failed.', ['path' => $relative]);
+            $deletedS3 = Storage::disk('s3')->delete($relative);
+            $deletedPublic = Storage::disk('public')->delete($relative);
+            if (!$deletedS3 && !$deletedPublic) {
+                Log::warning('Heritage image file cleanup failed (not found on S3 or local).', ['path' => $relative]);
             }
         } catch (\Throwable $error) {
             Log::warning('Heritage image file cleanup failed.', ['path' => $relative]);

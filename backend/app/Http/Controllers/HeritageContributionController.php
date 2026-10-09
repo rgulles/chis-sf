@@ -23,7 +23,7 @@ class HeritageContributionController extends Controller
             'caption' => $contribution->caption,
             'created_at' => $contribution->created_at?->toISOString(),
             'visitor_name' => $contribution->user?->name ?? 'Visitor',
-            'images' => $contribution->images->map(fn ($image) => Storage::disk('public')->url($image->image_path))->values(),
+            'images' => $contribution->images->map(fn ($image) => $image->image_url ?? $image->image_path)->values(),
         ];
     }
 
@@ -90,7 +90,7 @@ class HeritageContributionController extends Controller
                         'caption' => $data['caption'] ?? null, 'status' => 'pending']);
                 }
                 foreach (array_values($request->file('images')) as $order => $file) {
-                    $path = $file->store('visitor-contributions', 'public');
+                    $path = $file->store('visitor-contributions', 's3');
                     abort_unless($path, 500);
                     $newPaths[] = $path;
                     $item->images()->create(['image_path' => $path, 'sort_order' => $order]);
@@ -166,9 +166,8 @@ class HeritageContributionController extends Controller
             return;
         }
         try {
-            if (! Storage::disk('public')->delete($path)) {
-                Log::warning('Unable to clean up a contribution image.');
-            }
+            Storage::disk('s3')->delete($path);
+            Storage::disk('public')->delete($path);
         } catch (\Throwable $error) {
             report($error);
         }

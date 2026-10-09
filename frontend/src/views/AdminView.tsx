@@ -414,7 +414,7 @@ function parseYearNumber(yearStr: string): number {
       });
       setIsDateRange(hasRange);
       setImageFile(null);
-      setImagePreview(e.image_path ? storageImageUrl(e.image_path) : (e.bannerImage || null));
+      setImagePreview(e.image_url || e.image_path ? storageImageUrl(e.image_url || e.image_path) : (e.bannerImage || null));
       setTagInput('');
       setEventModalOpen(true);
     });
@@ -716,11 +716,12 @@ function parseYearNumber(yearStr: string): number {
                       <h3 className="section-title text-gray-900 mb-4">Recent Heritage Sites</h3>
                       <div className="space-y-4">
                         {sites.slice(-5).reverse().map(s => {
-                          const mainImg = (s.images?.find((image: any) => image.is_cover) || s.images?.[0])?.image_path;
+                          const mainImg = (s.images?.find((image: any) => image.is_cover) || s.images?.[0]);
+                          const mainImgPath = mainImg ? (mainImg.image_url || mainImg.image_path) : undefined;
                           return (
                           <div key={s.id} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
                             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-[#e8dfd5]">
-                              <img src={mainImg ? storageImageUrl(mainImg) : HERITAGE_IMAGE_PLACEHOLDER} onError={handleHeritageImageError} alt="" className="w-full h-full object-cover" />
+                              <img src={mainImgPath ? storageImageUrl(mainImgPath) : HERITAGE_IMAGE_PLACEHOLDER} onError={handleHeritageImageError} alt="" className="w-full h-full object-cover" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold text-gray-900 truncate">{s.name}</p>
@@ -795,7 +796,7 @@ function parseYearNumber(yearStr: string): number {
                       const site = sites.find(s => s.id === img.heritage_site_id);
                       return (
                         <div key={img.id} className="bg-white border border-[#e8dfd5] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                          <img src={storageImageUrl(img.image_path)} onError={handleHeritageImageError} alt={img.caption || 'Site image'} className="w-full h-44 object-cover" />
+                          <img src={storageImageUrl(img.image_url || img.image_path)} onError={handleHeritageImageError} alt={img.caption || 'Site image'} className="w-full h-44 object-cover" />
                           <div className="p-4 flex-1 flex flex-col">
                             <p className="text-sm font-bold text-gray-900 truncate mb-1">{img.caption || 'No Caption'}</p>
                             <p className="text-xs text-gray-500 mb-2">{img.is_cover ? 'Cover image · ' : ''}Order: {img.sort_order ?? 0}</p>
@@ -1708,8 +1709,8 @@ function parseYearNumber(yearStr: string): number {
                   onChange={e => setSiteImageFile(e.target.files?.[0] || null)} />
                 <p className="text-xs text-gray-500">JPEG, PNG, WEBP or GIF. Maximum 5 MB.</p>
                 {siteImageFile && <p className="text-xs text-gray-700">Selected: {siteImageFile.name}</p>}
-                {((siteImageFile && siteImagePreview) || imageForm.image_path) && <img id="admin-site-image-preview"
-                  src={(siteImageFile && siteImagePreview) || storageImageUrl(imageForm.image_path)} onError={handleHeritageImageError}
+                {((siteImageFile && siteImagePreview) || imageForm.image_path || imageForm.image_url) && <img id="admin-site-image-preview"
+                  src={(siteImageFile && siteImagePreview) || storageImageUrl(imageForm.image_url || imageForm.image_path)} onError={handleHeritageImageError}
                   alt="Image preview" className="w-full h-40 object-contain rounded border border-[#e8dfd5]" />}
               </div>
               <div className="space-y-1.5">

@@ -359,7 +359,7 @@ function mapBackendSite(raw: any): HeritageSite {
   const isSummary = Object.prototype.hasOwnProperty.call(raw, 'short_description');
   const images = (Array.isArray(raw.images) ? raw.images : raw.cover_image ? [raw.cover_image] : []).map((image: any) => ({
     id: String(image.id),
-    imageUrl: heritageImageUrl(typeof image.image_path === 'string' ? image.image_path : ''),
+    imageUrl: heritageImageUrl(typeof (image as any).image_url === 'string' ? (image as any).image_url : (typeof image.image_path === 'string' ? image.image_path : '')),
     caption: typeof image.caption === 'string' ? image.caption.trim() || null : null,
     isCover: image.is_cover === true || image.is_cover === 1 || image.is_cover === '1',
     sortOrder: Number.isInteger(Number(image.sort_order)) ? Number(image.sort_order) : 0,
@@ -765,7 +765,7 @@ export function mapBackendEvent(raw: any): EventItem {
     timeFormatted = 'TBA';
   }
 
-  const bannerImage = heritageImageUrl(typeof raw.image_path === 'string' ? raw.image_path : '');
+  const bannerImage = heritageImageUrl(typeof (raw as any).image_url === 'string' ? (raw as any).image_url : (typeof raw.image_path === 'string' ? raw.image_path : ''));
 
   const rawSchedules = Array.isArray(raw.schedules) ? raw.schedules : [];
   const schedule = rawSchedules.map((item: any) => ({

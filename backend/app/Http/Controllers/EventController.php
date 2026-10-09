@@ -49,7 +49,7 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('events', 'public');
+            $path = $request->file('image')->store('events', 's3');
             $data['image_path'] = $path;
         }
         unset($data['image']);
@@ -110,9 +110,11 @@ class EventController extends Controller
 
         if ($request->hasFile('image')) {
             if ($event->image_path && !str_starts_with($event->image_path, 'http') && !str_starts_with($event->image_path, '/images/')) {
-                Storage::disk('public')->delete(str_replace('storage/', '', $event->image_path));
+                $cleanPath = str_replace('storage/', '', $event->image_path);
+                Storage::disk('s3')->delete($cleanPath);
+                Storage::disk('public')->delete($cleanPath);
             }
-            $path = $request->file('image')->store('events', 'public');
+            $path = $request->file('image')->store('events', 's3');
             $data['image_path'] = $path;
         }
         unset($data['image']);
@@ -142,7 +144,9 @@ class EventController extends Controller
     public function destroy(Event $event)
     {
         if ($event->image_path && !str_starts_with($event->image_path, 'http') && !str_starts_with($event->image_path, '/images/')) {
-            Storage::disk('public')->delete(str_replace('storage/', '', $event->image_path));
+            $cleanPath = str_replace('storage/', '', $event->image_path);
+            Storage::disk('s3')->delete($cleanPath);
+            Storage::disk('public')->delete($cleanPath);
         }
 
         $event->delete();

@@ -40,6 +40,7 @@ class HeritageContributionsTest extends TestCase
     private function fixtures(bool $verified = true): array
     {
         Storage::fake('public');
+        Storage::fake('s3');
         $admin = User::factory()->create(['role' => 'admin']);
         $visitor = User::factory()->create(['role' => 'traveler']);
         $site = HeritageSite::create(['created_by' => $admin->id, 'name' => 'Official landmark', 'status' => 'active',
@@ -99,7 +100,7 @@ class HeritageContributionsTest extends TestCase
         $this->assertSame([0, 1, 2], $item->images->pluck('sort_order')->all());
         foreach ($item->images as $image) {
             $this->assertStringStartsWith('visitor-contributions/', $image->image_path);
-            Storage::disk('public')->assertExists($image->image_path);
+            Storage::disk('s3')->assertExists($image->image_path);
         }
         $this->assertSame($before, $site->fresh()->toArray());
         $this->assertSame($visit, HeritageVisit::first()->toArray());
@@ -116,7 +117,7 @@ class HeritageContributionsTest extends TestCase
         $this->getJson('/api/heritage-sites/'.$site->id.'/contributions/mine', $this->headers($visitor))
             ->assertOk()->assertJsonPath('verified', false)->assertJsonPath('can_submit', false);
         $this->assertDatabaseCount('heritage_contributions', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('s3')->allFiles());
     }
 
     public function test_archived_site_cannot_accept_submission_and_route_site_is_authoritative(): void
@@ -142,7 +143,7 @@ class HeritageContributionsTest extends TestCase
             $this->submit($site, $visitor, ['images' => [$image]])->assertUnprocessable()->assertJsonValidationErrors('images.0');
         }
         $this->assertDatabaseCount('heritage_contributions', 0);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk('s3')->allFiles());
     }
 
     public function test_image_count_and_caption_plain_text_length_are_enforced(): void
@@ -172,7 +173,7 @@ class HeritageContributionsTest extends TestCase
         $public = $this->getJson('/api/heritage-sites/'.$site->id.'/contributions', $this->headers())->assertOk()->json('0');
         $this->assertSame(['id', 'caption', 'created_at', 'visitor_name', 'images'], array_keys($public));
         $this->assertSame($visitor->name, $public['visitor_name']);
-        $this->assertStringContainsString('/storage/visitor-contributions/', $public['images'][0]);
+        $this->assertStringContainsString('visitor-contributions/', $public['images'][0]);
         $this->assertStringNotContainsString($visitor->email, json_encode($public));
         $this->getJson('/api/admin/contributions?status=approved', $this->headers($admin))->assertJsonCount(1);
         $this->patchJson('/api/admin/contributions/'.$id, ['status' => 'rejected'], $this->headers($admin))->assertOk();
@@ -197,7 +198,7 @@ class HeritageContributionsTest extends TestCase
         $this->patchJson('/api/admin/contributions/'.$id, ['status' => 'rejected'], $this->headers($admin))->assertOk();
         $this->getJson('/api/heritage-sites/'.$site->id.'/contributions/mine', $this->headers($visitor))->assertJsonPath('can_submit', true);
         $this->submit($site, $visitor, ['caption' => 'Replacement'])->assertCreated()->assertJsonPath('id', $id)->assertJsonPath('status', 'pending');
-        Storage::disk('public')->assertMissing($old);
+        Storage::disk('s3')->assertMissing($old);
         $this->assertDatabaseCount('heritage_contributions', 1);
         $this->assertDatabaseCount('heritage_contribution_images', 1);
         $this->assertDatabaseHas('heritage_contributions', ['id' => $id, 'caption' => 'Replacement', 'approved_by' => null, 'approved_at' => null, 'rejected_at' => null]);
@@ -216,7 +217,7 @@ class HeritageContributionsTest extends TestCase
         }
         $this->deleteJson('/api/admin/contributions/'.$id, [], $this->headers($visitor))->assertForbidden();
         $this->deleteJson('/api/admin/contributions/'.$id, [], $this->headers($admin))->assertNoContent();
-        Storage::disk('public')->assertMissing($path);
+        Storage::disk('s3')->assertMissing($path);
         Storage::disk('public')->assertExists('heritage-sites/official.jpg');
         Storage::disk('public')->assertExists('unrelated.jpg');
         $this->assertDatabaseCount('heritage_contribution_images', 0);
@@ -225,7 +226,7 @@ class HeritageContributionsTest extends TestCase
         $path = $item->images->first()->image_path;
         SiteImage::create(['heritage_site_id' => $site->id, 'image_path' => $path]);
         $this->deleteJson('/api/admin/contributions/'.$id, [], $this->headers($admin))->assertNoContent();
-        Storage::disk('public')->assertExists($path);
+        Storage::disk('s3')->assertExists($path);
     }
 
     public function test_failed_replacement_preserves_old_files_and_removes_new_uploads(): void
@@ -240,7 +241,7 @@ class HeritageContributionsTest extends TestCase
         } finally {
             HeritageContributionImage::flushEventListeners();
         }
-        $this->assertSame([$path], Storage::disk('public')->allFiles());
+        $this->assertSame([$path], Storage::disk('s3')->allFiles());
         $this->assertDatabaseHas('heritage_contributions', ['id' => $id, 'status' => 'rejected']);
         $this->assertDatabaseHas('heritage_contribution_images', ['image_path' => $path]);
     }
