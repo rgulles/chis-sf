@@ -27,10 +27,10 @@ export function PassportModal({ children, onClose }: { children: ReactNode; onCl
       requestAnimationFrame(() => { if (window.location.hash === position.hash) window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' }); });
     };
   }, []);
-  return <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-2 sm:p-6" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="passport-title" tabIndex={-1} className="passport-shell relative w-full max-w-[680px] max-h-[90dvh] flex flex-col border border-[#927440] bg-[#1e1b19] text-[#fffdf9] shadow-xl">
-      <div className="shrink-0 flex justify-end px-3 pt-2"><button id="passport-close" aria-label="Close Heritage Passport" onClick={onClose} className="min-h-11 min-w-11 flex items-center justify-center text-[#e8cf9f] hover:bg-white/10"><X aria-hidden="true" size={22} /></button></div>
-      <div className="overflow-y-auto overscroll-contain min-h-0">{children}</div>
+  return <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center sm:p-6" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <button id="passport-close" aria-label="Close Heritage Passport" onClick={onClose} className="absolute top-4 right-4 z-[110] min-h-12 min-w-12 flex items-center justify-center text-white/70 hover:text-white bg-black/20 hover:bg-black/50 rounded-full transition-colors backdrop-blur-sm"><X aria-hidden="true" size={28} /></button>
+    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="passport-title" tabIndex={-1} className="relative w-full h-full sm:h-auto sm:max-h-[95dvh] max-w-5xl flex flex-col items-center justify-center">
+      <div className="w-full h-full flex flex-col items-center justify-center">{children}</div>
     </div>
   </div>;
 }
