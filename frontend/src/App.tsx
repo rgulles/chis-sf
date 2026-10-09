@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+﻿import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import type {
   ViewType,
   HeritageSite,
@@ -116,12 +116,12 @@ export default function App() {
   const [sitesLoading, setSitesLoading] = useState(true);
 
   useEffect(() => {
-    const expire = () => { 
-      authRevision.current++; 
-      passportVersion.current = ''; 
-      setPassportOpen(false); 
-      setUser(null); 
-      setPassportState(null); 
+    const expire = () => {
+      authRevision.current++;
+      passportVersion.current = '';
+      setPassportOpen(false);
+      setUser(null);
+      setPassportState(null);
       setIsAuthOpen(true);
       addToast('error', 'Your session has expired. Please log in again.');
     };
@@ -145,19 +145,19 @@ export default function App() {
     setSitesLoading(true);
     setSitesError(null);
     apiFetchSites().then(fetchedSites => {
-        if (!cancelled) {
-          setSites(fetchedSites);
-          setSitesError(null);
-        }
-      }).catch(err => {
-        if (!cancelled) {
-          setSites([]);
-          setDirectionsDestinationId(null);
-          setSitesError(err instanceof Error ? err.message : 'Unable to load heritage sites. Please try again.');
-        }
-      }).finally(() => {
-        if (!cancelled) setSitesLoading(false);
-      });
+      if (!cancelled) {
+        setSites(fetchedSites);
+        setSitesError(null);
+      }
+    }).catch(err => {
+      if (!cancelled) {
+        setSites([]);
+        setDirectionsDestinationId(null);
+        setSitesError(err instanceof Error ? err.message : 'Unable to load heritage sites. Please try again.');
+      }
+    }).finally(() => {
+      if (!cancelled) setSitesLoading(false);
+    });
     return () => { cancelled = true; };
   }, [dataRetry]);
 
@@ -165,12 +165,12 @@ export default function App() {
     let cancelled = false;
     setEventsLoading(true); setEventsError('');
     apiFetchEvents().then(fetchedEvents => {
-        if (!cancelled) { setEvents(fetchedEvents); setEventsError(''); }
-      }).catch(err => {
-        if (!cancelled) { setEvents([]); setEventsError(err instanceof Error ? err.message : 'Unable to load events. Please try again.'); }
-      }).finally(() => {
-        if (!cancelled) setEventsLoading(false);
-      });
+      if (!cancelled) { setEvents(fetchedEvents); setEventsError(''); }
+    }).catch(err => {
+      if (!cancelled) { setEvents([]); setEventsError(err instanceof Error ? err.message : 'Unable to load events. Please try again.'); }
+    }).finally(() => {
+      if (!cancelled) setEventsLoading(false);
+    });
     return () => { cancelled = true; };
   }, [eventsRetry]);
 
@@ -343,7 +343,7 @@ export default function App() {
     }
 
     return (
-      <Suspense fallback={<p role="status" className="p-6">Loading Admin…</p>}><AdminView
+      <Suspense fallback={<p role="status" className="p-6">Loading Adminâ€¦</p>}><AdminView
         user={user}
         onLogout={handleLogout}
         onPublicDataChanged={kind => kind === 'events' ? setEventsRetry(value => value + 1) : setDataRetry(value => value + 1)}
@@ -367,143 +367,143 @@ export default function App() {
 
       {/* MAIN VIEW CONTENT CONTAINER */}
       <main id="main-content-viewport" className="flex-1">
-        <Suspense fallback={<p role="status" className="p-6">Loading page…</p>}>
-        {currentView === 'not-found' && <ErrorState kind="not-found" title="Page not found" onHome={() => navigateTo('home')} />}
-        {sitesError && currentView !== 'site-detail' && <ErrorState message={sitesError} onRetry={() => setDataRetry(value => value + 1)} />}
-        {sitesLoading && ['explore', 'map'].includes(currentView) && <p role="status" className="p-6">Loading heritage sites…</p>}
-        {/* PAGE 1: HOME */}
-        {currentView === 'home' && (
-          <HomeView
-            onExploreClick={() => navigateTo('explore')}
-            onMapClick={() => navigateTo('map')}
-            onSelectSite={handleSelectSite}
-            onSelectCategory={handleSelectCategory}
-            onSelectEvent={(evt) => {
-              setSelectedEvent(evt);
-              navigateTo('events');
-            }}
-            featuredSites={sites.slice(0, 3)}
-            upcomingEvents={events}
-            savedSiteIds={savedSiteIds}
-            onToggleSaveSite={handleToggleSaveSite}
-          />
-        )}
+        <Suspense fallback={<p role="status" className="p-6">Loading pageâ€¦</p>}>
+          {currentView === 'not-found' && <ErrorState kind="not-found" title="Page not found" onHome={() => navigateTo('home')} />}
+          {sitesError && currentView !== 'site-detail' && <ErrorState message={sitesError} onRetry={() => setDataRetry(value => value + 1)} />}
+          {sitesLoading && ['explore', 'map'].includes(currentView) && <p role="status" className="p-6">Loading heritage sitesâ€¦</p>}
+          {/* PAGE 1: HOME */}
+          {currentView === 'home' && (
+            <HomeView
+              onExploreClick={() => navigateTo('explore')}
+              onMapClick={() => navigateTo('map')}
+              onSelectSite={handleSelectSite}
+              onSelectCategory={handleSelectCategory}
+              onSelectEvent={(evt) => {
+                setSelectedEvent(evt);
+                navigateTo('events');
+              }}
+              featuredSites={sites.slice(0, 3)}
+              upcomingEvents={events}
+              savedSiteIds={savedSiteIds}
+              onToggleSaveSite={handleToggleSaveSite}
+            />
+          )}
 
-        {/* COMBINED EXPLORE HERITAGE & MAP */}
-        {currentView === 'explore' && !sitesLoading && !sitesError && (
-          <ExploreView
-            onOpenDirections={openDirections}
-            sites={sites}
-            onSelectSite={handleSelectSite}
-            savedSiteIds={savedSiteIds}
-            onToggleSaveSite={handleToggleSaveSite}
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-            onPlanRoute={() => navigateTo('plan')}
-          />
-        )}
+          {/* COMBINED EXPLORE HERITAGE & MAP */}
+          {currentView === 'explore' && !sitesLoading && !sitesError && (
+            <ExploreView
+              onOpenDirections={openDirections}
+              sites={sites}
+              onSelectSite={handleSelectSite}
+              savedSiteIds={savedSiteIds}
+              onToggleSaveSite={handleToggleSaveSite}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+              onPlanRoute={() => navigateTo('plan')}
+            />
+          )}
 
-        {currentView === 'map' && !sitesLoading && !sitesError && (
-          <MapView
-            destinationId={directionsDestinationId}
-            onCloseDirections={closeDirections}
-            onOpenDirections={openDirections}
-            sites={sites}
-            onSelectSite={handleSelectSite}
-            onPlanRoute={() => navigateTo('plan')}
-            savedSiteIds={savedSiteIds}
-            onToggleSaveSite={handleToggleSaveSite}
-            initialViewMode="map"
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-          />
-        )}
+          {currentView === 'map' && !sitesLoading && !sitesError && (
+            <MapView
+              destinationId={directionsDestinationId}
+              onCloseDirections={closeDirections}
+              onOpenDirections={openDirections}
+              sites={sites}
+              onSelectSite={handleSelectSite}
+              onPlanRoute={() => navigateTo('plan')}
+              savedSiteIds={savedSiteIds}
+              onToggleSaveSite={handleToggleSaveSite}
+              initialViewMode="map"
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+            />
+          )}
 
-        {/* PAGE 4: HERITAGE SITE DETAILS */}
-        {currentView === 'site-detail' && detailStatus !== 'ready' && (
-          <section className="max-w-5xl mx-auto p-8 space-y-4" role={detailStatus === 'loading' ? 'status' : 'alert'}>
-            <h1 className="headline-md">{detailStatus === 'loading' ? 'Loading heritage site…' : detailStatus === 'not-found' ? 'Heritage site not found' : 'Unable to load this heritage site'}</h1>
-            {detailStatus === 'not-found' && <p>This site is unavailable or no longer public.</p>}
-            {detailStatus === 'error' && <ErrorState message={detailError} onRetry={() => setDetailRetry(value => value + 1)} />}
-            {detailStatus !== 'loading' && <button onClick={() => navigateTo('explore')}>Return to Explore</button>}
-          </section>
-        )}
-        {currentView === 'site-detail' && detailStatus === 'ready' && selectedSite && selectedSite.id === routeSiteId && (
-          <SiteDetailView
-            site={selectedSite}
-            user={user}
-            onLogin={() => setIsAuthOpen(true)}
-            onPassport={() => setIsAuthOpen(true)}
-            onExplore={() => navigateTo('explore')}
-            onVerified={() => { setPassportState(null); setPassportRevision(value => value + 1); }}
-            onBack={() => window.history?.state?.chisNavigation ? window.history.back() : navigateTo('explore')}
-            onOpenDirections={openDirections}
-            isSaved={savedSiteIds.includes(selectedSite.id)}
-            onToggleSave={handleToggleSaveSite}
-            onAddToPlan={(siteId) => {
-              if (!savedSiteIds.includes(siteId)) handleToggleSaveSite(siteId);
-              navigateTo('plan');
-            }}
-          />
-        )}
+          {/* PAGE 4: HERITAGE SITE DETAILS */}
+          {currentView === 'site-detail' && detailStatus !== 'ready' && (
+            <section className="max-w-5xl mx-auto p-8 space-y-4" role={detailStatus === 'loading' ? 'status' : 'alert'}>
+              <h1 className="headline-md">{detailStatus === 'loading' ? 'Loading heritage siteâ€¦' : detailStatus === 'not-found' ? 'Heritage site not found' : 'Unable to load this heritage site'}</h1>
+              {detailStatus === 'not-found' && <p>This site is unavailable or no longer public.</p>}
+              {detailStatus === 'error' && <ErrorState message={detailError} onRetry={() => setDetailRetry(value => value + 1)} />}
+              {detailStatus !== 'loading' && <button onClick={() => navigateTo('explore')}>Return to Explore</button>}
+            </section>
+          )}
+          {currentView === 'site-detail' && detailStatus === 'ready' && selectedSite && selectedSite.id === routeSiteId && (
+            <SiteDetailView
+              site={selectedSite}
+              user={user}
+              onLogin={() => setIsAuthOpen(true)}
+              onPassport={() => setIsAuthOpen(true)}
+              onExplore={() => navigateTo('explore')}
+              onVerified={() => { setPassportState(null); setPassportRevision(value => value + 1); }}
+              onBack={() => window.history?.state?.chisNavigation ? window.history.back() : navigateTo('explore')}
+              onOpenDirections={openDirections}
+              isSaved={savedSiteIds.includes(selectedSite.id)}
+              onToggleSave={handleToggleSaveSite}
+              onAddToPlan={(siteId) => {
+                if (!savedSiteIds.includes(siteId)) handleToggleSaveSite(siteId);
+                navigateTo('plan');
+              }}
+            />
+          )}
 
-        {/* PAGE 7 & 8: EVENTS & EVENT DETAILS */}
-        {currentView === 'events' && eventsLoading && <p role="status" className="p-6">Loading events…</p>}
-        {eventsError && ['home', 'events', 'saved'].includes(currentView) && <ErrorState message={eventsError} onRetry={() => setEventsRetry(value => value + 1)} />}
-        {currentView === 'events' && !eventsLoading && !eventsError && !events.length && <p role="status" className="p-6">No events are currently available.</p>}
-        {currentView === 'events' && !eventsLoading && !eventsError && (
-          <EventsView
-            events={events}
-            sites={sites}
-            selectedEvent={selectedEvent}
-            onSelectEvent={setSelectedEvent}
-            onSelectSite={handleSelectSite}
-            savedEventIds={savedEventIds}
-            onToggleSaveEvent={handleToggleSaveEvent}
-          />
-        )}
+          {/* PAGE 7 & 8: EVENTS & EVENT DETAILS */}
+          {currentView === 'events' && eventsLoading && <p role="status" className="p-6">Loading eventsâ€¦</p>}
+          {eventsError && ['home', 'events', 'saved'].includes(currentView) && <ErrorState message={eventsError} onRetry={() => setEventsRetry(value => value + 1)} />}
+          {currentView === 'events' && !eventsLoading && !eventsError && !events.length && <p role="status" className="p-6">No events are currently available.</p>}
+          {currentView === 'events' && !eventsLoading && !eventsError && (
+            <EventsView
+              events={events}
+              sites={sites}
+              selectedEvent={selectedEvent}
+              onSelectEvent={setSelectedEvent}
+              onSelectSite={handleSelectSite}
+              savedEventIds={savedEventIds}
+              onToggleSaveEvent={handleToggleSaveEvent}
+            />
+          )}
 
-        {/* PAGE 9: PLAN YOUR VISIT */}
-        {currentView === 'plan' && (
-          <PlanView
-            visitedSiteIds={passport ? passport.visits.map(visit => String(visit.heritage_site_id)) : undefined}
-            sites={sites}
-            savedSiteIds={savedSiteIds}
-            catalogueReady={!sitesLoading && !sitesError}
-            catalogueError={sitesError}
-            onToggleSaveSite={handleToggleSaveSite}
-            onSelectSite={handleSelectSite}
-            onExploreClick={() => navigateTo('explore')}
-          />
-        )}
+          {/* PAGE 9: PLAN YOUR VISIT */}
+          {currentView === 'plan' && (
+            <PlanView
+              visitedSiteIds={passport ? passport.visits.map(visit => String(visit.heritage_site_id)) : undefined}
+              sites={sites}
+              savedSiteIds={savedSiteIds}
+              catalogueReady={!sitesLoading && !sitesError}
+              catalogueError={sitesError}
+              onToggleSaveSite={handleToggleSaveSite}
+              onSelectSite={handleSelectSite}
+              onExploreClick={() => navigateTo('explore')}
+            />
+          )}
 
-        {/* PAGE 10: SAVED / FAVORITES */}
-        {currentView === 'saved' && (
-          <SavedView
-            savedSites={sites.filter((s) => savedSiteIds.includes(s.id))}
-            savedEvents={events.filter((e) => savedEventIds.includes(e.id))}
-            onSelectSite={handleSelectSite}
-            onSelectEvent={(evt) => {
-              setSelectedEvent(evt);
-              navigateTo('events');
-            }}
-            onRemoveSite={handleToggleSaveSite}
-            onRemoveEvent={handleToggleSaveEvent}
-            onExploreClick={() => navigateTo('explore')}
-            onPlanTrip={() => navigateTo('plan')}
-          />
-        )}
+          {/* PAGE 10: SAVED / FAVORITES */}
+          {currentView === 'saved' && (
+            <SavedView
+              savedSites={sites.filter((s) => savedSiteIds.includes(s.id))}
+              savedEvents={events.filter((e) => savedEventIds.includes(e.id))}
+              onSelectSite={handleSelectSite}
+              onSelectEvent={(evt) => {
+                setSelectedEvent(evt);
+                navigateTo('events');
+              }}
+              onRemoveSite={handleToggleSaveSite}
+              onRemoveEvent={handleToggleSaveEvent}
+              onExploreClick={() => navigateTo('explore')}
+              onPlanTrip={() => navigateTo('plan')}
+            />
+          )}
 
-        {/* PAGE 11: ABOUT */}
-        {currentView === 'about' && (
-          <AboutView
-            onExploreClick={() => navigateTo('explore')}
-            onContactClick={() => navigateTo('tourism-office')}
-          />
-        )}
+          {/* PAGE 11: ABOUT */}
+          {currentView === 'about' && (
+            <AboutView
+              onExploreClick={() => navigateTo('explore')}
+              onContactClick={() => navigateTo('tourism-office')}
+            />
+          )}
 
-        {/* PAGE 12: TOURISM OFFICE & CONTACT */}
-        {currentView === 'tourism-office' && <TourismOfficeView />}
+          {/* PAGE 12: TOURISM OFFICE & CONTACT */}
+          {currentView === 'tourism-office' && <TourismOfficeView />}
         </Suspense>
       </main>
 
@@ -527,11 +527,11 @@ export default function App() {
                 SF
               </span>
               <span className="font-serif text-lg font-bold text-white tracking-wide">
-                Sa’n Fernando
+                Saâ€™n Fernando
               </span>
             </div>
             <p className="body-sm text-[#ffeaec]/80 leading-relaxed">
-              “Saan sa San Fernando?” Discovering the living stories, heroic revolutions, and vibrant giant lantern heritage of the Provincial Capital of Pampanga, Philippines.
+              â€œSaan sa San Fernando?â€ Discovering the living stories, heroic revolutions, and vibrant giant lantern heritage of the Provincial Capital of Pampanga, Philippines.
             </p>
             <p className="label-compact text-[#ffd580] font-semibold">
               Official Tourism & Heritage Web Platform
@@ -605,7 +605,7 @@ export default function App() {
         </div>
 
         <div className="relative z-20 max-w-7xl mx-auto mt-10 pt-6 border-t border-white/15 flex flex-col sm:flex-row items-center justify-between gap-2 label-compact text-[#ffeaec]/60">
-          <span>© {new Date().getFullYear()} City Government of San Fernando, Pampanga. All Rights Reserved.</span>
+          <span>Â© {new Date().getFullYear()} City Government of San Fernando, Pampanga. All Rights Reserved.</span>
           <span>Home of the Giant Lantern Festival (Ligligan Parul).</span>
         </div>
       </footer>
@@ -654,6 +654,6 @@ export default function App() {
         onSelectSite={handleSelectSite}
         onPlanRoute={() => navigateTo('plan')}
       />
-    </div>{passportOpen && user && <PassportModal onClose={() => setPassportOpen(false)}><Suspense fallback={<p role="status" className="p-6">Loading passport…</p>}><PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => { setPassportState(null); setPassportRevision(value => value + 1); }} onSite={site => { setPassportOpen(false); handleSelectSite(site); }} /></Suspense></PassportModal>}</>
+    </div>{passportOpen && user && <PassportModal onClose={() => setPassportOpen(false)}><Suspense fallback={<p role="status" className="p-6">Loading passportâ€¦</p>}><PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => { setPassportState(null); setPassportRevision(value => value + 1); }} onSite={site => { setPassportOpen(false); handleSelectSite(site); }} /></Suspense></PassportModal>}</>
   );
 }

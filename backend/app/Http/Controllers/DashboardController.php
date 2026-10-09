@@ -17,19 +17,20 @@ class DashboardController extends Controller
         // 1. Summary Cards
         $totalHeritageSites = HeritageSite::count();
         $totalEvents = Event::count();
-        $registeredVisitors = User::where('role', 'visitor')->count();
+        $registeredVisitors = User::where('role', 'traveler')->count();
         $pendingContributions = HeritageContribution::where('status', 'pending')->count();
 
         // 2. Popular Heritage Sites
-        $popularSites = HeritageSite::select('id', 'name', 'page_views')
+        $popularSites = HeritageSite::select('id', 'name')
             ->where('status', 'active')
-            ->orderByDesc('page_views')
+            ->withCount('visits')
+            ->orderByDesc('visits_count')
             ->limit(5)
             ->get();
 
         // 3. Upcoming Events
         $now = Carbon::now();
-        $upcomingEvents = Event::where('status', 'published')
+        $upcomingEvents = Event::where('status', '!=', 'cancelled')
             ->where(function($query) use ($now) {
                 $query->whereDate('event_date', '>', $now->toDateString())
                       ->orWhere(function($q) use ($now) {

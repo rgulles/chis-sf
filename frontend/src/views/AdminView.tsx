@@ -17,6 +17,7 @@ import {
   Filter,
   Compass,
   ShieldCheck,
+  User,
 } from 'lucide-react';
 import {
   apiFetchRawSites, apiCreateSite, apiUpdateSite, apiDeleteSite,
@@ -718,7 +719,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
       {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-[#e8dfd5] z-50 transform transition-transform duration-200 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="h-16 flex items-center px-6 border-b border-[#e8dfd5] flex-shrink-0">
-          <span className="text-[#7A1C30] font-bold text-xl tracking-tight">CHIS Admin</span>
+          <span className="text-[#7A1C30] font-bold text-xl tracking-tight">SA'N FERNANDO</span>
           <button aria-label="Close admin navigation" className="ml-auto min-h-11 min-w-11 lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -751,7 +752,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                 <span className="text-sm font-bold text-gray-900 leading-none">{user.name}</span>
                 <span className="text-xs text-gray-500">{user.role || 'Administrator'}</span>
               </div>
-              <img src={user.avatar || '/images/default-avatar.png'} alt="Admin" className="w-8 h-8 rounded-full bg-gray-200 object-cover" />
+              {user.avatar ? (
+                <img src={user.avatar} alt="Admin" className="w-8 h-8 rounded-full bg-gray-200 object-cover" />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-[#7A1C30]">
+                  <User className="h-5 w-5" />
+                </div>
+              )}
             </div>
             <button aria-label="Sign out of Admin" onClick={onLogout} className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg">
               <LogOut className="w-4 h-4" />
@@ -806,7 +813,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
               {activeTab === 'sites' && (
                 <div className="space-y-6 animate-fade-slide-in">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
                     <h1 className="page-title text-gray-900">Heritage Sites</h1>
+                    <p className="text-sm text-gray-500 mt-1">Manage the city's cultural landmarks, historical places, and heritage information.</p>
+                  </div>
                     <button onClick={openCreateSiteModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
                       <Plus className="w-4 h-4" /> Add Site
                     </button>
@@ -944,7 +954,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
               {activeTab === 'events' && (
                 <div className="space-y-6 animate-fade-slide-in">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
                     <h1 className="page-title text-gray-900">Events</h1>
+                    <p className="text-sm text-gray-500 mt-1">Manage local events, cultural activities, and upcoming celebrations.</p>
+                  </div>
                     <button onClick={openEventCreateModal} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors cursor-pointer">
                       <Plus className="w-4 h-4" /> Add Event
                     </button>

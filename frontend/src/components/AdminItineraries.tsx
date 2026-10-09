@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Search, Plus, Edit3, Trash2, ChevronLeft, ChevronRight, RefreshCw, X, ArrowUp, ArrowDown } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Search, Plus, Edit3, Trash2, ChevronLeft, ChevronRight, RefreshCw, X, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import type { Itinerary, ItineraryInput } from "../types";
 import { apiFetchAdminItineraries, apiSaveItinerary, apiArchiveItinerary, apiRestoreItinerary } from "../api/client";
 import { moveItineraryStop } from "../utils/customItinerary";
@@ -25,6 +26,8 @@ export const AdminItineraries = ({ sites }: Props) => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "archived">("all");
   const [page, setPage] = useState(1);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     let cancelled = false;
@@ -82,24 +85,27 @@ export const AdminItineraries = ({ sites }: Props) => {
 
   const stopName = (id: string) => sites.find(s => String(s.id) === id)?.name || routes.flatMap(r => r.stops).find(s => s.siteId === id)?.site?.name || `Site #${id}`;
 
-  const filtered = routes.filter(r => {
+  let filtered = routes.filter(r => {
     if (filter !== "all" && r.status !== filter) return false;
     if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  filtered = filtered.sort((a, b) => sortBy === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6 animate-fade-slide-in">
-      {draft ? (
-        <div className="bg-white border border-[#e8dfd5] rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-[#e8dfd5] bg-gray-50 flex items-center justify-between">
+      {draft && createPortal(
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[#e8dfd5] bg-gray-50 flex items-center justify-between shrink-0">
             <h2 className="text-lg font-bold text-gray-900">{draft.id ? "Edit Itinerary" : "Create Itinerary"}</h2>
             <button onClick={() => setDraft(null)} className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500"><X className="w-5 h-5"/></button>
           </div>
-          <form onSubmit={handleSave} className="p-6 space-y-6">
+          <form onSubmit={handleSave} className="p-6 space-y-6 overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700">Name</label>
@@ -158,15 +164,19 @@ export const AdminItineraries = ({ sites }: Props) => {
               </button>
             </div>
           </form>
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h1 className="page-title text-gray-900">Recommended Itineraries</h1>
-            <button onClick={() => openDraft()} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-sm">
-              <Plus className="w-4 h-4" /> Create Itinerary
-            </button>
           </div>
+        </div>,
+        document.body
+      )}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="page-title text-gray-900">Recommended Itineraries</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage suggested travel routes and experiences for visitors exploring San Fernando.</p>
+        </div>
+        <button onClick={() => openDraft()} className="bg-[#7A1C30] hover:bg-[#581020] text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-sm">
+          <Plus className="w-4 h-4" /> Create Itinerary
+        </button>
+      </div>
 
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 relative">
@@ -174,11 +184,45 @@ export const AdminItineraries = ({ sites }: Props) => {
                 <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input type="text" placeholder="Search itineraries..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-10 pr-4 py-2 border border-[#e8dfd5] rounded-xl focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none transition-all bg-white text-gray-900 shadow-sm" />
               </div>
+              <div className="relative">
+                <button onClick={() => setFilterMenuOpen(!filterMenuOpen)} className="flex items-center gap-2 px-4 py-2 border border-[#e8dfd5] rounded-xl text-gray-700 bg-white hover:bg-red-50 hover:text-[#7A1C30] font-medium transition-colors">
+                  <Filter className="w-4 h-4" /> Filter
+                </button>
+                {filterMenuOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-[#e8dfd5] rounded-xl shadow-lg z-10 p-4 animate-fade-slide-in">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sort By</h4>
+                        <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="w-full border border-[#e8dfd5] rounded-lg p-2 text-sm focus:outline-none focus:border-[#7A1C30] focus:ring-1 focus:ring-[#7A1C30]" style={{ paddingRight: '2.5rem', backgroundPosition: 'right 1rem center' }}>
+                          <option value="asc">Alphabetical (A-Z)</option>
+                          <option value="desc">Alphabetical (Z-A)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => { setFilter("all"); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === "all" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>All</button>
-              <button onClick={() => { setFilter("active"); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === "active" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>Active</button>
-              <button onClick={() => { setFilter("archived"); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === "archived" ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>Archived</button>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => { setFilter('all'); setPage(1); }}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${filter === 'all' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+              >
+                All Status
+              </button>
+              <button
+                onClick={() => { setFilter('active'); setPage(1); }}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${filter === 'active' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => { setFilter('archived'); setPage(1); }}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${filter === 'archived' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+              >
+                Archive
+              </button>
             </div>
           </div>
 
@@ -235,8 +279,6 @@ export const AdminItineraries = ({ sites }: Props) => {
               </div>
             )}
           </div>
-        </>
-      )}
     </div>
   );
 };

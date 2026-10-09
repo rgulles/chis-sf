@@ -129,8 +129,10 @@ class HeritageContributionController extends Controller
             if ($data['status'] === 'approved') {
                 abort_unless($site->status === 'active' && $item->images()->count() >= 1, 409);
                 $item->update(['status' => 'approved', 'approved_by' => $request->user()->id, 'approved_at' => now(), 'rejected_at' => null]);
+                \App\Models\AdminActivity::log("approved", "HeritageContribution", "Contribution #{$item->id}");
             } else {
                 $item->update(['status' => 'rejected', 'approved_by' => null, 'approved_at' => null, 'rejected_at' => now()]);
+                \App\Models\AdminActivity::log("rejected", "HeritageContribution", "Contribution #{$item->id}");
             }
 
             return $item;

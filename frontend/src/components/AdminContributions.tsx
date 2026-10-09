@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Search, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Eye, Image as ImageIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Search, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Eye, Image as ImageIcon, Filter } from "lucide-react";
 import type { AdminContribution, ContributionStatus } from "../types";
 import { apiFetchAdminContributions, apiModerateContribution, apiRemoveContribution } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -21,6 +22,9 @@ export function AdminContributions() {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [viewingItem, setViewingItem] = useState<AdminContribution | null>(null);
+
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     let cancelled = false;
@@ -74,12 +78,18 @@ export function AdminContributions() {
     }
   };
 
-  const filtered = items.filter(c => {
+  let filtered = items.filter(c => {
     if (search) {
       const q = search.toLowerCase();
       if (!c.heritage_site.name.toLowerCase().includes(q) && !c.visitor_name.toLowerCase().includes(q) && !(c.caption || "").toLowerCase().includes(q)) return false;
     }
     return true;
+  });
+
+  filtered = filtered.sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    return sortBy === 'newest' ? timeB - timeA : timeA - timeB;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
@@ -95,16 +105,49 @@ export function AdminContributions() {
       </div>
 
       <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => { setStatusFilter('pending'); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${statusFilter === 'pending' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+          >
+            Pending
+          </button>
+          <button
+            onClick={() => { setStatusFilter('approved'); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${statusFilter === 'approved' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+          >
+            Approved
+          </button>
+          <button
+            onClick={() => { setStatusFilter('rejected'); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${statusFilter === 'rejected' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+          >
+            Rejected
+          </button>
+        </div>
         <div className="flex items-center gap-3 relative">
           <div className="relative flex-1">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input type="text" placeholder="Search by site, visitor, or caption..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-10 pr-4 py-2 border border-[#e8dfd5] rounded-xl focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none transition-all bg-white text-gray-900 shadow-sm" />
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {["pending", "approved", "rejected"].map((f) => (
-            <button key={f} onClick={() => { setStatusFilter(f as any); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors capitalize ${statusFilter === f ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>{f}</button>
-          ))}
+          <div className="relative">
+            <button onClick={() => setFilterMenuOpen(!filterMenuOpen)} className="flex items-center gap-2 px-4 py-2 border border-[#e8dfd5] rounded-xl text-gray-700 bg-white hover:bg-red-50 hover:text-[#7A1C30] font-medium transition-colors">
+              <Filter className="w-4 h-4" /> Filter
+            </button>
+            {filterMenuOpen && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-[#e8dfd5] rounded-xl shadow-lg z-10 p-4 animate-fade-slide-in">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sort By</h4>
+                    <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="w-full border border-[#e8dfd5] rounded-lg p-2 text-sm focus:outline-none focus:border-[#7A1C30] focus:ring-1 focus:ring-[#7A1C30]" style={{ paddingRight: '2.5rem', backgroundPosition: 'right 1rem center' }}>
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -200,7 +243,7 @@ export function AdminContributions() {
         )}
       </div>
 
-      {viewingItem && (
+      {viewingItem && createPortal(
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[90vh]">
             <div className="p-5 border-b border-[#e8dfd5] bg-gray-50 flex justify-between items-center shrink-0">
@@ -218,8 +261,8 @@ export function AdminContributions() {
                 {viewingItem.images.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {viewingItem.images.map((img, i) => (
-                      <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-xl overflow-hidden border border-[#e8dfd5] hover:opacity-90 transition-opacity">
-                        <img src={img} alt="Submission" className="w-full h-full object-cover" onError={handleHeritageImageError} />
+                      <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="flex justify-center items-center bg-gray-100 h-48 w-full rounded-xl overflow-hidden border border-[#e8dfd5] hover:opacity-90 transition-opacity">
+                        <img src={img} alt="Submission" className="max-w-full max-h-full object-contain" onError={handleHeritageImageError} />
                       </a>
                     ))}
                   </div>
@@ -255,7 +298,8 @@ export function AdminContributions() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

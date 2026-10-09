@@ -24,7 +24,7 @@ interface DashboardData {
   popular_sites: {
     id: number;
     name: string;
-    page_views: number;
+    visits_count: number;
   }[];
   upcoming_events: {
     id: number;
@@ -99,8 +99,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   }
 
   const { summary, popular_sites, upcoming_events, recent_activity } = data;
-
-  const maxViews = popular_sites.length > 0 ? Math.max(...popular_sites.map(s => s.page_views)) : 0;
+  const maxViews = popular_sites.length > 0 ? Math.max(...popular_sites.map(s => s.visits_count)) : 0;
 
   const formatActivityAction = (action: string, type: string) => {
     const formattedType = type.replace(/([A-Z])/g, ' $1').trim();
@@ -163,10 +162,10 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <div key={site.id}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium text-gray-700 truncate pr-4">{site.name}</span>
-                      <span className="text-gray-500 font-semibold">{site.page_views} views</span>
+                      <span className="text-gray-500 font-semibold">{site.visits_count} visits</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2.5">
-                      <div className="bg-[#7A1C30] h-2.5 rounded-full" style={{ width: `${maxViews > 0 ? (site.page_views / maxViews) * 100 : 0}%` }}></div>
+                      <div className="bg-[#7A1C30] h-2.5 rounded-full" style={{ width: `${maxViews > 0 ? (site.visits_count / maxViews) * 100 : 0}%` }}></div>
                     </div>
                   </div>
                 ))}

@@ -58,4 +58,9 @@ class HeritageSite extends Model
     {
         return $this->hasOne(HeritageCheckinConfig::class);
     }
+
+    public function visits(): HasMany
+    {
+        return $this->hasMany(HeritageVisit::class);
+    }
 }

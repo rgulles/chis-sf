@@ -174,15 +174,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               {/* Profile Card Header */}
               <div className="flex items-start gap-3.5 bg-white p-4 rounded-xl border border-[#e8dfd5] shadow-xs">
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="h-14 w-14 rounded-xl border border-[#e8dfd5] object-cover shadow-xs flex-shrink-0"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/images/characters/nicolasa-dayrit.jpg';
-                  }}
-                />
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="h-14 w-14 rounded-xl border border-[#e8dfd5] object-cover shadow-xs flex-shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#e8dfd5] bg-gray-50 flex-shrink-0 text-[#7A1C30]">
+                    <User className="h-6 w-6" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h4 className="font-sans text-lg font-bold text-[#1e1b19] truncate leading-tight">{user.name}</h4>
                   <p className="text-xs font-semibold uppercase text-[#736b66] tracking-wider truncate mt-0.5">{user.email}</p>

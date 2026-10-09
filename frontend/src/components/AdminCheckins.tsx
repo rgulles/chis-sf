@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Search, Edit3, ChevronLeft, ChevronRight, RefreshCw, X, MapPin } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Search, Edit3, ChevronLeft, ChevronRight, RefreshCw, X, MapPin, Filter } from "lucide-react";
 import type { CheckinConfig } from "../types";
 import { apiFetchCheckinConfigs, apiSaveCheckinConfig } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -17,6 +18,8 @@ export const AdminCheckins = (_props: Props) => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"All" | "Enabled" | "Disabled" | "Missing Coordinates">("All");
   const [page, setPage] = useState(1);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'asc' | 'desc'>('asc');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ enabled: boolean; radius: string } | null>(null);
@@ -64,7 +67,7 @@ export const AdminCheckins = (_props: Props) => {
     }
   };
 
-  const filtered = configs.filter(c => {
+  let filtered = configs.filter(c => {
     if (filter === "Enabled" && !c.enabled) return false;
     if (filter === "Disabled" && c.enabled) return false;
     if (filter === "Missing Coordinates" && c.has_coordinates) return false;
@@ -75,6 +78,8 @@ export const AdminCheckins = (_props: Props) => {
     }
     return true;
   });
+
+  filtered = filtered.sort((a, b) => sortBy === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -94,11 +99,51 @@ export const AdminCheckins = (_props: Props) => {
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input type="text" placeholder="Search by name, category or address..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-10 pr-4 py-2 border border-[#e8dfd5] rounded-xl focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none transition-all bg-white text-gray-900 shadow-sm" />
           </div>
+          <div className="relative">
+            <button onClick={() => setFilterMenuOpen(!filterMenuOpen)} className="flex items-center gap-2 px-4 py-2 border border-[#e8dfd5] rounded-xl text-gray-700 bg-white hover:bg-red-50 hover:text-[#7A1C30] font-medium transition-colors">
+              <Filter className="w-4 h-4" /> Filter
+            </button>
+            {filterMenuOpen && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-[#e8dfd5] rounded-xl shadow-lg z-10 p-4 animate-fade-slide-in">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sort By</h4>
+                    <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="w-full border border-[#e8dfd5] rounded-lg p-2 text-sm focus:outline-none focus:border-[#7A1C30] focus:ring-1 focus:ring-[#7A1C30]" style={{ paddingRight: '2.5rem', backgroundPosition: 'right 1rem center' }}>
+                      <option value="asc">Alphabetical (A-Z)</option>
+                      <option value="desc">Alphabetical (Z-A)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {["All", "Enabled", "Disabled", "Missing Coordinates"].map((f) => (
-            <button key={f} onClick={() => { setFilter(f as any); setPage(1); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${filter === f ? "bg-[#7A1C30] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-[#e8dfd5]"}`}>{f}</button>
-          ))}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => { setFilter('All'); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${filter === 'All' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+          >
+            All Verification Status
+          </button>
+          <button
+            onClick={() => { setFilter('Enabled'); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${filter === 'Enabled' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+          >
+            Enabled
+          </button>
+          <button
+            onClick={() => { setFilter('Disabled'); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${filter === 'Disabled' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+          >
+            Disabled
+          </button>
+          <button
+            onClick={() => { setFilter('Missing Coordinates'); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${filter === 'Missing Coordinates' ? 'bg-[#7A1C30] border-[#7A1C30] text-white shadow-sm' : 'bg-white border-[#e8dfd5] text-[#4b5563] hover:bg-red-50 hover:text-[#7A1C30]'}`}
+          >
+            Missing Coordinates
+          </button>
         </div>
       </div>
 
@@ -162,7 +207,7 @@ export const AdminCheckins = (_props: Props) => {
         )}
       </div>
 
-      {editingId && draft && (
+      {editingId && draft && createPortal(
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
             <div className="p-5 border-b border-[#e8dfd5] bg-gray-50 flex justify-between items-center">
@@ -171,11 +216,11 @@ export const AdminCheckins = (_props: Props) => {
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-5">
               <div className="space-y-3">
-                <label className="ui-label font-semibold text-gray-700 flex justify-between">
+                <label className="ui-label font-semibold text-gray-700 flex justify-between cursor-pointer">
                   <span>Enable Geofenced Check-ins</span>
-                  <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                    <input type="checkbox" checked={draft.enabled} onChange={e => setDraft({ ...draft, enabled: e.target.checked })} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 checked:border-[#7A1C30] checked:bg-white checked:right-0 transition-all duration-300" style={{ right: draft.enabled ? "0" : "1.25rem", zIndex: 1, borderColor: draft.enabled ? "#7A1C30" : "#d1d5db" }} />
-                    <label className={`toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer ${draft.enabled ? "!bg-[#7A1C30]" : ""}`}></label>
+                  <div className="relative inline-flex items-center">
+                    <input type="checkbox" checked={draft.enabled} onChange={e => setDraft({ ...draft, enabled: e.target.checked })} className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#7A1C30]"></div>
                   </div>
                 </label>
                 {!configs.find(c => String(c.heritage_site_id) === editingId)?.has_coordinates && (
@@ -195,7 +240,8 @@ export const AdminCheckins = (_props: Props) => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

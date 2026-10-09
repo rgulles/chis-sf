@@ -151,7 +151,9 @@ class EventController extends Controller
             Storage::disk('public')->delete($cleanPath);
         }
 
+        $title = $event->title;
         $event->delete();
+        \App\Models\AdminActivity::log("deleted", "Event", $title);
 
         return response()->json([
             'message' => 'Event deleted successfully.',

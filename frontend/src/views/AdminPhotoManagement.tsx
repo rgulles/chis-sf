@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, Image as ImageIcon, Star, Edit3, Trash2, UploadCloud, X } from "lucide-react";
 import { useToast } from "../hooks/useToast";
 import { useConfirm } from "../hooks/useConfirm";
@@ -206,16 +207,16 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
       )}
 
       {/* Edit Caption Modal */}
-      {editingImage && (
+      {editingImage && createPortal(
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl shrink-0">
               <h2 className="text-lg font-bold text-gray-900">Edit Photo Details</h2>
               <button onClick={() => setEditingImage(null)} className="text-gray-400 hover:text-gray-700 bg-white rounded-full p-1.5 border border-[#e8dfd5] transition-colors"><X className="w-4 h-4"/></button>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="aspect-video w-full rounded-xl overflow-hidden bg-gray-100 border border-[#e8dfd5]">
-                <img src={storageImageUrl(editingImage.image_url || editingImage.image_path)} alt="Preview" className="w-full h-full object-contain" />
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <div className="flex justify-center items-center w-full max-h-72 min-h-48 rounded-xl overflow-hidden bg-gray-100 border border-[#e8dfd5]">
+                <img src={storageImageUrl(editingImage.image_url || editingImage.image_path)} alt="Preview" className="max-w-full max-h-72 object-contain" />
               </div>
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700">Caption</label>
@@ -230,12 +231,13 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
                 />
               </div>
             </div>
-            <div className="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+            <div className="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl shrink-0">
               <button onClick={() => setEditingImage(null)} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
               <button onClick={handleSaveEdit} className="px-5 py-2 bg-[#7A1C30] hover:bg-[#581020] text-white text-sm font-bold rounded-xl transition-colors shadow-md">Save Changes</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

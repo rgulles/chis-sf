@@ -1,5 +1,6 @@
 import React from 'react';
 import { User } from 'lucide-react';
+
 import type { ViewType, UserProfile } from '../types';
 import { BrandLogo } from './BrandLogo';
 
@@ -96,9 +97,6 @@ export const Header: React.FC<HeaderProps> = ({
                 alt={user.name || 'User Profile'}
                 className="h-full w-full object-cover transition-transform group-hover:scale-105"
                 referrerPolicy="no-referrer"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/images/characters/nicolasa-dayrit.jpg';
-                }}
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-[#7e1925]">

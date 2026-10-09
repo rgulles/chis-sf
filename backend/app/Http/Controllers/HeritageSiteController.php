@@ -98,6 +98,7 @@ class HeritageSiteController extends Controller
         $heritageSite->update([
             'status' => 'archived',
         ]);
+        \App\Models\AdminActivity::log("archived", "HeritageSite", $heritageSite->name);
 
         return response()->json([
             'message' => 'Heritage site archived successfully.',
