@@ -491,6 +491,7 @@ test('Admin verification loading failure retries without exposing raw exceptions
 beforeEach(() => {
   osrm.clearRoadRouteCache();
   api.clearItineraryCache();
+  api.clearAdminReadCache();
   const storage = new Map();
   globalThis.sessionStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) };
   globalThis.localStorage = {

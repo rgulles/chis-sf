@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Search, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Eye, Image as ImageIcon, Filter } from "lucide-react";
 import type { AdminContribution, ContributionStatus } from "../types";
@@ -11,6 +11,8 @@ const ITEMS_PER_PAGE = 10;
 
 export function AdminContributions() {
   const { addToast } = useToast();
+  const toast = useRef(addToast);
+  useEffect(() => { toast.current = addToast; }, [addToast]);
   const { confirm } = useConfirm();
   
   const [statusFilter, setStatusFilter] = useState<ContributionStatus>("pending");
@@ -31,10 +33,10 @@ export function AdminContributions() {
     setLoading(true);
     apiFetchAdminContributions(statusFilter)
       .then(res => { if (!cancelled) setItems(res); })
-      .catch(() => { if (!cancelled) addToast("error", "Unable to load contributions."); })
+      .catch(() => { if (!cancelled) toast.current("error", "Unable to load contributions."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [statusFilter, revision, addToast]);
+  }, [statusFilter, revision]);
 
   const refresh = () => setRevision(v => v + 1);
 

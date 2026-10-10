@@ -1,27 +1,36 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Image as ImageIcon, Star, Edit3, Trash2, UploadCloud, X } from "lucide-react";
 import { useToast } from "../hooks/useToast";
 import { useConfirm } from "../hooks/useConfirm";
 import { apiCreateSiteImage, apiUpdateSiteImage, apiDeleteSiteImage } from "../api/client";
 import { storageImageUrl } from "../utils/adminData";
+import { handleHeritageImageError, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
 
 interface AdminPhotoManagementProps {
   site: any;
   siteImages: any[];
   onBack: () => void;
-  onRefresh: () => void;
+  onImageSaved: (image: Record<string, unknown> & { id: string | number }) => void;
+  onImageDeleted: (id: string) => void;
 }
 
-export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: AdminPhotoManagementProps) {
+export function AdminPhotoManagement({ site, siteImages, onBack, onImageSaved, onImageDeleted }: AdminPhotoManagementProps) {
   const { addToast } = useToast();
   const { confirm } = useConfirm();
   const [uploading, setUploading] = useState(false);
   const [editingImage, setEditingImage] = useState<any>(null);
   const [editCaption, setEditCaption] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const requests = useRef(new Set<string>());
+  const [pending, setPending] = useState(new Set<string>());
+  const begin = (key: string) => {
+    if (requests.current.has(key)) return false;
+    requests.current.add(key); setPending(new Set(requests.current)); return true;
+  };
+  const end = (key: string) => { requests.current.delete(key); setPending(new Set(requests.current)); };
 
-  const images = siteImages.filter((img) => img.heritage_site_id === site.id).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const images = useMemo(() => siteImages.filter(img => String(img.heritage_site_id) === String(site.id)).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)), [siteImages, site.id]);
   
 
   const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +54,7 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
       validFiles.push(file);
     }
 
-    if (validFiles.length === 0) return;
+    if (validFiles.length === 0 || !begin('upload')) return;
 
     setUploading(true);
     let successCount = 0;
@@ -53,13 +62,14 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
 
     for (const file of validFiles) {
       try {
-        await apiCreateSiteImage({
+        const saved = await apiCreateSiteImage({
           heritage_site_id: site.id,
           imageFile: file,
           caption: "",
           is_cover: false,
           sort_order: images.length + successCount,
         });
+        onImageSaved(saved as Record<string, unknown> & { id: string | number });
         successCount++;
       } catch (err) {
         console.error("Upload failed for", file.name, err);
@@ -68,11 +78,11 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
     }
 
     setUploading(false);
+    end('upload');
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     if (successCount > 0) {
       addToast("success", `Successfully uploaded ${successCount} photo(s).`);
-      onRefresh();
     }
     if (failCount > 0) {
       addToast("error", `Failed to upload ${failCount} photo(s).`);
@@ -80,15 +90,18 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
   };
 
   const handleSetCover = async (img: any) => {
+    if (!begin('cover')) return;
     try {
-      await apiUpdateSiteImage(String(img.id), {
+      const saved = await apiUpdateSiteImage(String(img.id), {
         heritage_site_id: site.id,
         is_cover: true,
       });
       addToast("success", "Cover photo updated.");
-      onRefresh();
+      onImageSaved(saved as Record<string, unknown> & { id: string | number });
     } catch (err) {
       addToast("error", "Failed to update cover photo.");
+    } finally {
+      end('cover');
     }
   };
 
@@ -98,12 +111,16 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
       message: "Are you sure you want to delete this photo? This action cannot be undone.",
       confirmText: "Delete",
       onConfirm: async () => {
+        const key = 'image:' + img.id;
+        if (!begin(key)) return;
         try {
           await apiDeleteSiteImage(String(img.id));
           addToast("success", "Photo deleted successfully.");
-          onRefresh();
+          onImageDeleted(String(img.id));
         } catch (err) {
           addToast("error", "Failed to delete photo.");
+        } finally {
+          end(key);
         }
       }
     });
@@ -111,16 +128,20 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
 
   const handleSaveEdit = async () => {
     if (!editingImage) return;
+    const key = 'image:' + editingImage.id;
+    if (!begin(key)) return;
     try {
-      await apiUpdateSiteImage(String(editingImage.id), {
+      const saved = await apiUpdateSiteImage(String(editingImage.id), {
         heritage_site_id: site.id,
         caption: editCaption.trim() || null,
       });
       addToast("success", "Caption updated.");
-      setEditingImage(null);
-      onRefresh();
+      setEditingImage((previous: typeof editingImage) => String(previous?.id) === String(editingImage.id) ? null : previous);
+      onImageSaved(saved as Record<string, unknown> & { id: string | number });
     } catch (err) {
       addToast("error", "Failed to update caption.");
+    } finally {
+      end(key);
     }
   };
 
@@ -160,7 +181,7 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
           {images.map(img => (
             <div key={img.id} className={`group relative bg-white rounded-2xl shadow-sm border ${img.is_cover ? "border-[#7A1C30] ring-1 ring-[#7A1C30]" : "border-[#e8dfd5]"} overflow-hidden transition-all hover:shadow-md`}>
               <div className="aspect-[4/3] w-full overflow-hidden bg-gray-100 relative">
-                <img src={storageImageUrl(img.image_url || img.image_path)} alt={img.caption || site.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img src={storageImageUrl(img.image_url || img.image_path) || HERITAGE_IMAGE_PLACEHOLDER} loading="lazy" decoding="async" width={320} height={240} onError={handleHeritageImageError} alt={img.caption || site.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 
                 {img.is_cover && (
@@ -169,16 +190,16 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
                   </div>
                 )}
                 
-                <div className="absolute bottom-3 left-0 right-0 px-3 flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+                <div className="absolute bottom-3 left-0 right-0 px-3 flex items-center justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   {!img.is_cover && (
-                    <button onClick={() => handleSetCover(img)} className="p-2 bg-white/90 hover:bg-white text-gray-700 hover:text-[#7A1C30] rounded-lg backdrop-blur-sm transition-colors shadow-sm" title="Set as Cover Photo">
+                    <button disabled={pending.has('cover') || pending.has('image:' + img.id)} onClick={() => handleSetCover(img)} className="min-w-10 min-h-10 p-2 bg-white/90 hover:bg-white text-gray-700 hover:text-[#7A1C30] rounded-lg backdrop-blur-sm transition-colors shadow-sm" title="Set as Cover Photo">
                       <Star className="w-4 h-4" />
                     </button>
                   )}
-                  <button onClick={() => { setEditingImage(img); setEditCaption(img.caption || ""); }} className="p-2 bg-white/90 hover:bg-white text-blue-600 rounded-lg backdrop-blur-sm transition-colors shadow-sm" title="Edit Caption">
+                  <button disabled={pending.has('image:' + img.id)} onClick={() => { setEditingImage(img); setEditCaption(img.caption || ""); }} className="min-w-10 min-h-10 p-2 bg-white/90 hover:bg-white text-blue-600 rounded-lg backdrop-blur-sm transition-colors shadow-sm" title="Edit Caption">
                     <Edit3 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(img)} className="p-2 bg-white/90 hover:bg-white text-red-600 rounded-lg backdrop-blur-sm transition-colors shadow-sm" title="Delete Photo">
+                  <button disabled={pending.has('image:' + img.id) || pending.has('cover')} onClick={() => handleDelete(img)} className="min-w-10 min-h-10 p-2 bg-white/90 hover:bg-white text-red-600 rounded-lg backdrop-blur-sm transition-colors shadow-sm" title="Delete Photo">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -233,7 +254,7 @@ export function AdminPhotoManagement({ site, siteImages, onBack, onRefresh }: Ad
             </div>
             <div className="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 rounded-b-2xl shrink-0">
               <button onClick={() => setEditingImage(null)} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-              <button onClick={handleSaveEdit} className="px-5 py-2 bg-[#7A1C30] hover:bg-[#581020] text-white text-sm font-bold rounded-xl transition-colors shadow-md">Save Changes</button>
+              <button disabled={pending.has('image:' + editingImage.id)} onClick={handleSaveEdit} className="px-5 py-2 bg-[#7A1C30] hover:bg-[#581020] text-white text-sm font-bold rounded-xl transition-colors shadow-md">{pending.has('image:' + editingImage.id) ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>,

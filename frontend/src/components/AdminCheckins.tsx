@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Search, Edit3, ChevronLeft, ChevronRight, RefreshCw, X, MapPin, Filter } from "lucide-react";
 import type { CheckinConfig } from "../types";
@@ -11,6 +11,8 @@ interface Props { onManageHeritage?: () => void; }
 
 export const AdminCheckins = (_props: Props) => {
   const { addToast } = useToast();
+  const toast = useRef(addToast);
+  useEffect(() => { toast.current = addToast; }, [addToast]);
   const [configs, setConfigs] = useState<CheckinConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
@@ -30,10 +32,10 @@ export const AdminCheckins = (_props: Props) => {
     setLoading(true);
     apiFetchCheckinConfigs()
       .then(value => { if (!cancelled) setConfigs(value); })
-      .catch(() => { if (!cancelled) addToast("error", "Unable to load visit verification config."); })
+      .catch(() => { if (!cancelled) toast.current("error", "Unable to load visit verification config."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [revision, addToast]);
+  }, [revision]);
 
   const refresh = () => setRevision(v => v + 1);
 

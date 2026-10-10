@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin and Plan performance fixture</title></head><body><div id="root"></div>
+<script type="module">
+import React, { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { AdminView } from '/src/views/AdminView.tsx';
+import { PlanView } from '/src/views/PlanView.tsx';
+import { ToastProvider } from '/src/hooks/useToast.tsx';
+import { ConfirmProvider } from '/src/hooks/useConfirm.tsx';
+import { apiFetchSites } from '/src/api/client.ts';
+import '/src/index.css';
+localStorage.clear(); localStorage.setItem('chis_jwt_token', 'performance-fixture-admin');
+const image = '/images/heritage-placeholder.svg';
+let sites = [1,2].map(id => ({ id, name: 'Recorded landmark ' + id, status: 'active', category: 'Churches', address: 'Recorded address',
+  latitude: 15.03 + (id - 1) * 0.01, longitude: 120.69 + (id - 1) * 0.01, description: 'Recorded overview', history: 'Recorded history',
+  images: [{ id: id + 10, heritage_site_id: id, image_path: image, is_cover: true, sort_order: 0, caption: '' }],
+  timelines: [{ id: id + 20, heritage_site_id: id, year: '1900', title: 'Recorded milestone', description: 'Recorded history', sort_order: 0 }] }));
+const summary = site => ({ ...site, short_description: site.description, cover_image: site.images[0], images: undefined, timelines: undefined });
+let route = { id: 7, name: 'Recorded route', description: 'Recorded ordered stops', status: 'active', stops: sites.map((site,index) => ({ id:index+1, heritage_site_id:site.id, sort_order:index, heritage_site:summary(site) })) };
+window.__requests = []; window.__errors = []; window.__failSites = false;
+window.addEventListener('error', event => window.__errors.push(event.message));
+window.addEventListener('unhandledrejection', event => window.__errors.push(String(event.reason)));
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, options = {}) => {
+  const url = String(input), method = options.method || 'GET';
+  if (!url.startsWith('/api/') && !url.includes('/route/v1/')) return nativeFetch(input, options);
+  window.__requests.push({ url, method });
+  await new Promise(resolve => setTimeout(resolve, 40));
+  if (url === '/api/admin/heritage-sites' && window.__failSites) return new Response('{}', { status:500 });
+  let data;
+  if (url.includes('/route/v1/')) data = { code:'Ok', routes:[{geometry:{type:'LineString',coordinates:[[120.69,15.03],[120.695,15.035],[120.70,15.04]]},distance:4800,duration:720}] };
+  else if (url === '/api/admin/dashboard') data = { summary:{total_heritage_sites:2,total_events:0,registered_visitors:1,pending_contributions:0},popular_sites:[],upcoming_events:[],recent_activity:[] };
+  else if (url === '/api/admin/heritage-sites') data = sites;
+  else if (url === '/api/heritage-sites') data = sites.map(summary);
+  else if (url.startsWith('/api/heritage-sites/') && method === 'PUT') { const id=Number(url.split('/').at(-1)); sites=sites.map(site=>site.id===id?{...site,...JSON.parse(options.body)}:site); data=sites.find(site=>site.id===id); }
+  else if (url === '/api/admin/site-images') data = sites.flatMap(site=>site.images);
+  else if (url === '/api/admin/itineraries' || url === '/api/itineraries') data = [route];
+  else if (url === '/api/itineraries/7' && method !== 'GET') { route={...route,...JSON.parse(options.body || '{}')}; data=route; }
+  else if (url === '/api/itineraries/7') data = route;
+  else if (url === '/api/events') data = [];
+  else return new Response('{}', { status:404 });
+  return new Response(JSON.stringify(data), { status:200, headers:{'Content-Type':'application/json'} });
+};
+let publicSites = [];
+function Demo() {
+  const [view,setView]=useState('admin');
+  window.__showPlan = async () => { if (!publicSites.length) publicSites=await apiFetchSites(); setView('plan'); };
+  window.__showAdmin = () => setView('admin');
+  return React.createElement(ToastProvider, null, React.createElement(ConfirmProvider, null,
+    view==='admin' ? React.createElement(AdminView, {user:{id:'1',name:'Demo Admin',role:'admin'},onLogout(){}})
+    : React.createElement(PlanView, {sites:publicSites,savedSiteIds:[],onSelectSite(){},onExploreClick(){}})));
+}
+createRoot(document.getElementById('root')).render(React.createElement(Demo));
+</script></body></html>

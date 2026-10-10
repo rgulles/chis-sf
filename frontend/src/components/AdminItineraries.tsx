@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Search, Plus, Edit3, Trash2, ChevronLeft, ChevronRight, RefreshCw, X, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import type { Itinerary, ItineraryInput } from "../types";
-import { apiFetchAdminItineraries, apiSaveItinerary, apiArchiveItinerary, apiRestoreItinerary } from "../api/client";
+import { apiFetchAdminItineraries, apiSaveItinerary, apiArchiveItinerary, apiRestoreItinerary, AdminApiError, clearAdminReadCache } from "../api/client";
 import { moveItineraryStop } from "../utils/customItinerary";
 import { useToast } from "../hooks/useToast";
 import { useConfirm } from "../hooks/useConfirm";
@@ -21,6 +21,13 @@ export const AdminItineraries = ({ sites }: Props) => {
   
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+  const statusRequests = useRef(new Set<string>());
+  const [pendingStatus, setPendingStatus] = useState(new Set<string>());
+  const [error, setError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const toast = useRef(addToast);
+  useEffect(() => { toast.current = addToast; }, [addToast]);
 
   // Search & Filter
   const [search, setSearch] = useState("");
@@ -31,59 +38,71 @@ export const AdminItineraries = ({ sites }: Props) => {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     apiFetchAdminItineraries()
-      .then(value => { if (!cancelled) setRoutes(value); })
-      .catch(() => { if (!cancelled) addToast("error", "Unable to load itineraries."); })
+      .then(value => { if (!cancelled) { setRoutes(value); setError(''); } })
+      .catch(() => { if (!cancelled) { setError('Unable to load itineraries.'); toast.current('error', 'Unable to load itineraries.'); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [revision, addToast]);
+  }, [revision]);
 
-  const refresh = () => setRevision(v => v + 1);
+  const refresh = () => { clearAdminReadCache(); setLoading(true); setRevision(v => v + 1); };
 
   const openDraft = (route?: Itinerary) => {
+    if (saving.current || (route && statusRequests.current.has(route.id))) return;
+    setSaveError('');
     setDraft(route ? { id: route.id, name: route.name, description: route.description || "", status: route.status, ids: route.stops.map(stop => stop.siteId) } : { name: "", description: "", status: "active", ids: [] });
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!draft) return;
+    if (!draft || saving.current) return;
+    saving.current = true;
     setBusy(true);
+    setSaveError('');
     try {
       const payload: ItineraryInput = { name: draft.name, description: draft.description.trim() || null, status: draft.status, stops: draft.ids.map((id, index) => ({ heritage_site_id: Number(id), sort_order: index })) };
-      await apiSaveItinerary(payload, draft.id);
+      const saved = await apiSaveItinerary(payload, draft.id);
+      setRoutes(previous => previous.some(route => route.id === saved.id)
+        ? previous.map(route => route.id === saved.id ? saved : route) : [...previous, saved]);
       addToast("success", "Itinerary saved.");
       setDraft(null);
-      refresh();
     } catch (err) {
-      addToast("error", "Unable to save itinerary.");
+      const message = err instanceof AdminApiError ? Object.values(err.validationErrors).flat().join(' ') || err.message : 'Unable to save itinerary.';
+      setSaveError(message);
+      addToast('error', message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
 
   const toggleStatus = async (route: Itinerary) => {
+    if (statusRequests.current.has(route.id)) return;
     confirm({
       title: route.status === "active" ? "Archive Itinerary" : "Restore Itinerary",
       message: `Are you sure you want to ${route.status === "active" ? "archive" : "restore"} "${route.name}"?`,
       confirmText: route.status === "active" ? "Archive" : "Restore",
       onConfirm: async () => {
-        setBusy(true);
+        if (statusRequests.current.has(route.id)) return;
+        statusRequests.current.add(route.id);
+        setPendingStatus(new Set(statusRequests.current));
         try {
           if (route.status === "active") await apiArchiveItinerary(route.id);
           else await apiRestoreItinerary(route.id);
           addToast("success", `Itinerary ${route.status === "active" ? "archived" : "restored"}.`);
-          refresh();
-        } catch (err) {
+          setRoutes(previous => previous.map(item => item.id === route.id ? { ...item, status: route.status === 'active' ? 'archived' : 'active' } : item));
+        } catch {
           addToast("error", "Failed to update status.");
         } finally {
-          setBusy(false);
+          statusRequests.current.delete(route.id);
+          setPendingStatus(new Set(statusRequests.current));
         }
       }
     });
   };
 
-  const stopName = (id: string) => sites.find(s => String(s.id) === id)?.name || routes.flatMap(r => r.stops).find(s => s.siteId === id)?.site?.name || `Site #${id}`;
+  const siteNames = useMemo(() => new Map([...routes.flatMap(route => route.stops.map(stop => [stop.siteId, stop.site?.name] as const)), ...sites.map(site => [String(site.id), site.name] as const)]), [sites, routes]);
+  const stopName = (id: string) => siteNames.get(id) || `Site #${id}`;
 
   let filtered = routes.filter(r => {
     if (filter !== "all" && r.status !== filter) return false;
@@ -103,9 +122,10 @@ export const AdminItineraries = ({ sites }: Props) => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-[#e8dfd5] bg-gray-50 flex items-center justify-between shrink-0">
             <h2 className="text-lg font-bold text-gray-900">{draft.id ? "Edit Itinerary" : "Create Itinerary"}</h2>
-            <button onClick={() => setDraft(null)} className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500"><X className="w-5 h-5"/></button>
+            <button disabled={busy} onClick={() => setDraft(null)} className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500"><X className="w-5 h-5"/></button>
           </div>
           <form onSubmit={handleSave} className="p-6 space-y-6 overflow-y-auto">
+            {saveError && <p role="alert" className="text-sm text-red-700">{saveError}</p>}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
                 <label className="ui-label font-semibold text-gray-700">Name</label>
@@ -142,10 +162,10 @@ export const AdminItineraries = ({ sites }: Props) => {
                           {sites.find(s => String(s.id) === id)?.status !== "active" && <p className="text-xs text-red-600">Site is unavailable or archived.</p>}
                         </div>
                         <div className="flex items-center gap-1">
-                          <button type="button" disabled={index === 0} onClick={() => setDraft({ ...draft, ids: moveItineraryStop(draft.ids, index, -1) })} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 transition-colors"><ArrowUp className="w-4 h-4"/></button>
-                          <button type="button" disabled={index === draft.ids.length - 1} onClick={() => setDraft({ ...draft, ids: moveItineraryStop(draft.ids, index, 1) })} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 transition-colors"><ArrowDown className="w-4 h-4"/></button>
+                          <button type="button" aria-label={`Move ${stopName(id)} up`} disabled={index === 0} onClick={() => setDraft({ ...draft, ids: moveItineraryStop(draft.ids, index, -1) })} className="min-w-10 min-h-10 flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 transition-colors"><ArrowUp className="w-4 h-4"/></button>
+                          <button type="button" aria-label={`Move ${stopName(id)} down`} disabled={index === draft.ids.length - 1} onClick={() => setDraft({ ...draft, ids: moveItineraryStop(draft.ids, index, 1) })} className="min-w-10 min-h-10 flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:opacity-30 transition-colors"><ArrowDown className="w-4 h-4"/></button>
                           <div className="w-px h-4 bg-gray-200 mx-1"></div>
-                          <button type="button" onClick={() => setDraft({ ...draft, ids: draft.ids.filter(v => v !== id) })} className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"><Trash2 className="w-4 h-4"/></button>
+                          <button type="button" aria-label={`Remove ${stopName(id)}`} onClick={() => setDraft({ ...draft, ids: draft.ids.filter(v => v !== id) })} className="min-w-10 min-h-10 flex items-center justify-center p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"><Trash2 className="w-4 h-4"/></button>
                         </div>
                       </div>
                     ))}
@@ -226,7 +246,9 @@ export const AdminItineraries = ({ sites }: Props) => {
             </div>
           </div>
 
-          <div className="bg-white border border-[#e8dfd5] rounded-2xl overflow-hidden shadow-sm">
+          {error && <div role="alert" className="text-sm text-red-700">{error} <button onClick={refresh} className="underline">Retry</button></div>}
+          {loading && routes.length > 0 && <p role="status" className="text-sm text-gray-500">Refreshing itineraries...</p>}
+          <div className="min-w-0 bg-white border border-[#e8dfd5] rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-[#e8dfd5]">
                 <thead className="bg-gray-50">
@@ -238,7 +260,7 @@ export const AdminItineraries = ({ sites }: Props) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {loading ? (
+                  {loading && routes.length === 0 ? (
                     <tr><td colSpan={4} className="px-6 py-8 text-center"><RefreshCw className="w-6 h-6 text-[#7A1C30] animate-spin mx-auto"/></td></tr>
                   ) : paginated.length === 0 ? (
                     <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No itineraries found.</td></tr>
@@ -257,8 +279,8 @@ export const AdminItineraries = ({ sites }: Props) => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => openDraft(r)} className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
-                            <button onClick={() => toggleStatus(r)} className={`p-1.5 rounded-md transition-colors ${r.status === "active" ? "text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100" : "text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100"}`} title={r.status === "active" ? "Archive" : "Restore"}>
+                            <button disabled={pendingStatus.has(r.id)} onClick={() => openDraft(r)} className="min-w-10 min-h-10 flex items-center justify-center text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                            <button disabled={pendingStatus.has(r.id)} aria-busy={pendingStatus.has(r.id)} onClick={() => toggleStatus(r)} className={`min-w-10 min-h-10 flex items-center justify-center p-1.5 rounded-md transition-colors ${r.status === "active" ? "text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100" : "text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100"}`} title={r.status === "active" ? "Archive" : "Restore"}>
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>

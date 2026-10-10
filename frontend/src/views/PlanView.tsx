@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
 import type { HeritageSite, Itinerary } from '../types';
 import { apiFetchItineraries, apiFetchItineraryById } from '../api/client';
 import { hasUsableCoordinates } from '../utils/heritageCoordinates';
@@ -25,7 +25,10 @@ export const PlanView = ({ sites, savedSiteIds, onSelectSite, onExploreClick, on
   const [routes, setRoutes] = useState<Itinerary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
+  const [listRetry, setListRetry] = useState(0);
+  const [detailRetry, setDetailRetry] = useState(0);
+  const listRefresh = useRef(false);
+  const detailRefresh = useRef(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Itinerary | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -34,28 +37,31 @@ export const PlanView = ({ sites, savedSiteIds, onSelectSite, onExploreClick, on
   const [storageError, setStorageError] = useState('');
   const [query, setQuery] = useState('');
   const [mapOpen, setMapOpen] = useState(false);
-  const customSites = resolveCustomItinerary(ids, sites);
-  const liveIds = customSites.map(site => site.id);
+  const customSites = useMemo(() => resolveCustomItinerary(ids, sites), [ids, sites]);
+  const liveIds = useMemo(() => customSites.map(site => site.id), [customSites]);
   const customJson = JSON.stringify(liveIds);
   if (catalogueReady && !catalogueError && JSON.stringify(ids) !== customJson) setIds(liveIds);
 
   useEffect(() => {
     let cancelled = false;
-    if (selectedId) return;
-    apiFetchItineraries(retry > 0).then(value => { if (!cancelled) { setRoutes(value); setError(''); } })
-      .catch(failure => { if (!cancelled) { setRoutes([]); setError(failure instanceof Error ? failure.message : 'Unable to load recommended itineraries.'); } })
+    const refresh = listRefresh.current;
+    listRefresh.current = false;
+    apiFetchItineraries(refresh).then(value => { if (!cancelled) { setRoutes(value); setError(''); } })
+      .catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Unable to load recommended itineraries.'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [retry, selectedId]);
+  }, [listRetry]);
 
   useEffect(() => {
     if (!selectedId) return;
     let cancelled = false;
-    apiFetchItineraryById(selectedId, retry > 0).then(value => { if (!cancelled) { setDetail(value); setDetailError(value ? '' : 'This itinerary is no longer available.'); } })
-      .catch(failure => { if (!cancelled) { setDetail(null); setDetailError(failure instanceof Error ? failure.message : 'Unable to load this itinerary.'); } })
+    const refresh = detailRefresh.current;
+    detailRefresh.current = false;
+    apiFetchItineraryById(selectedId, refresh).then(value => { if (!cancelled) { setDetail(value); setDetailError(value ? '' : 'This itinerary is no longer available.'); } })
+      .catch(failure => { if (!cancelled) setDetailError(failure instanceof Error ? failure.message : 'Unable to load this itinerary.'); })
       .finally(() => { if (!cancelled) setDetailLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedId, retry]);
+  }, [selectedId, detailRetry]);
 
   // Prune stale IDs only after a successful live catalogue load, never on failure/loading.
   useEffect(() => {
@@ -73,21 +79,31 @@ export const PlanView = ({ sites, savedSiteIds, onSelectSite, onExploreClick, on
     if (liveIds.includes(id)) return;
     changeIds([...liveIds, id]);
   };
-  const openDetail = (id: string) => { setRetry(0); setSelectedId(id); setDetail(null); setDetailError(''); setDetailLoading(true); setMapOpen(false); };
-  const retryLoad = () => { setLoading(true); if (selectedId) setDetailLoading(true); setRetry(value => value + 1); };
-  const itinerarySites = mode === 'custom' ? customSites : detail?.stops.flatMap(stop => stop.site ? [stop.site] : []) || [];
-  const unmapped = itinerarySites.filter(site => !hasUsableCoordinates(site.coordinates)).length;
-  const roadKey = routeKey(itinerarySites);
-  const [roadResult, setRoadResult] = useState<{ key: string; route?: RoadRoute; error?: string } | null>(null);
-  const road = roadResult?.key === roadKey ? roadResult : null;
+  const openDetail = (id: string) => {
+    const summary = routes.find(route => route.id === id) || null;
+    setSelectedId(id); setDetail(summary); setDetailError(''); setDetailLoading(!summary); setMapOpen(false);
+  };
+  const retryLoad = () => {
+    if (selectedId) { detailRefresh.current = true; setDetailLoading(true); setDetailRetry(value => value + 1); }
+    else { listRefresh.current = true; setLoading(true); setListRetry(value => value + 1); }
+  };
+  const detailStops = useMemo(() => detail?.stops.filter(stop => stop.site) || [], [detail]);
+  const itinerarySites = useMemo(() => mode === 'custom' ? customSites : detailStops.map(stop => stop.site!), [mode, customSites, detailStops]);
+  const unmapped = useMemo(() => itinerarySites.filter(site => !hasUsableCoordinates(site.coordinates)).length, [itinerarySites]);
+  const roadKey = useMemo(() => routeKey(itinerarySites), [itinerarySites]);
+  const [roadResults, setRoadResults] = useState<Record<string, { route?: RoadRoute; error?: string }>>({});
+  const road = roadResults[roadKey];
   useEffect(() => {
     if (!mapOpen || roadKey.split(';').length < 2) return;
     let current = true;
-    fetchRoadRoute(roadKey).then(route => { if (current) setRoadResult({ key: roadKey, route }); })
-      .catch(() => { if (current) setRoadResult({ key: roadKey, error: ROAD_ROUTE_UNAVAILABLE }); });
+    fetchRoadRoute(roadKey).then(route => { if (current) setRoadResults(previous => ({ ...previous, [roadKey]: { route } })); })
+      .catch(() => { if (current) setRoadResults(previous => ({ ...previous, [roadKey]: { error: ROAD_ROUTE_UNAVAILABLE } })); });
     return () => { current = false; };
   }, [mapOpen, roadKey]);
-  const browse = sites.filter(site => site.status === 'active' && `${site.name} ${site.category} ${site.address}`.toLowerCase().includes(query.toLowerCase()));
+  const browse = useMemo(() => {
+    const needle = query.toLowerCase();
+    return sites.filter(site => site.status === 'active' && `${site.name} ${site.category} ${site.address}`.toLowerCase().includes(needle));
+  }, [sites, query]);
 
   const renderStop = (site: HeritageSite, index: number, custom: boolean, key = site.id) => (
     <li key={key} className="grid grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)] gap-x-3 gap-y-2 border-b border-[#e8dfd5] py-3">
@@ -140,18 +156,18 @@ export const PlanView = ({ sites, savedSiteIds, onSelectSite, onExploreClick, on
     {mode === 'recommended' && <>
       {loading && !selectedId && <p role="status">Loading recommended itineraries…</p>}
       {error && !selectedId && <div role="alert"><p>{error}</p><button className={buttonStyle} onClick={retryLoad}>Retry</button></div>}
-      {!selectedId && !loading && !error && (routes.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{routes.map(route => <article key={route.id} className="rounded-xl border border-[#e8dfd5] bg-white p-4 space-y-3">
+      {!selectedId && (routes.length > 0 || (!loading && !error)) && (routes.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{routes.map(route => <article key={route.id} className="rounded-xl border border-[#e8dfd5] bg-white p-4 space-y-3 min-w-0 break-words">
         <h2 className="text-lg font-bold">{route.name}</h2>{route.description && <p className="text-sm">{route.description}</p>}<p className="text-sm">{route.stops.length} stops</p>
-        <div className="flex gap-2">{route.stops.slice(0, 3).map(stop => stop.site && <img key={stop.id} src={stop.site.heroImage} alt={stop.site.name} loading="lazy" width={56} height={56} onError={handleHeritageImageError} className="h-14 w-14 object-cover rounded-lg" />)}</div>
+        <div className="flex gap-2">{route.stops.slice(0, 3).map(stop => stop.site && <img key={stop.id} src={stop.site.heroImage || HERITAGE_IMAGE_PLACEHOLDER} alt={stop.site.name} loading="lazy" decoding="async" width={56} height={56} onError={handleHeritageImageError} className="h-14 w-14 object-cover rounded-lg" />)}</div>
         <button id={`open-itinerary-${route.id}`} className={buttonStyle} onClick={() => openDetail(route.id)}>View Itinerary</button>
       </article>)}</div> : <p>No recommended itineraries are currently available.</p>)}
       {selectedId && <div className="space-y-4">
-        <button className={buttonStyle} onClick={() => { setRetry(0); setSelectedId(null); setDetail(null); setMapOpen(false); }}>Back to recommended itineraries</button>
+        <button className={buttonStyle} onClick={() => { setSelectedId(null); setDetail(null); setMapOpen(false); }}>Back to recommended itineraries</button>
         {detailLoading && <p role="status">Loading itinerary…</p>}
         {detailError && <div role="alert"><p>{detailError}</p><button className={buttonStyle} onClick={retryLoad}>Retry</button></div>}
         {detail && <><h2 className="text-2xl font-bold">{detail.name}</h2>{detail.description && <p>{detail.description}</p>}
           {itinerarySites.length > 0 && renderRouteSummary()}
-          {itinerarySites.length ? <ol>{detail?.stops.filter(stop => stop.site).map((stop, index) => renderStop(stop.site!, index, false, stop.id))}</ol> : <p>No active stops are currently available in this itinerary.</p>}
+          {itinerarySites.length ? <ol>{detailStops.map((stop, index) => renderStop(stop.site!, index, false, stop.id))}</ol> : <p>No active stops are currently available in this itinerary.</p>}
         </>}
       </div>}
     </>}

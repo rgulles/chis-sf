@@ -60,6 +60,7 @@ export async function apiFetchAdminContributions(status: ContributionStatus): Pr
     && typeof item.visitor_name === 'string' && (item.caption === null || typeof item.caption === 'string') && typeof item.created_at === 'string'
     && item.heritage_site && typeof item.heritage_site.name === 'string' && typeof item.heritage_site.status === 'string'
     && Array.isArray(item.images) && item.images.every(url => typeof url === 'string'))) {
+    clearAdminReadCache();
     throw new AdminApiError('Unable to load contributions. Please retry.');
   }
   return data;
@@ -185,6 +186,7 @@ export function getJwtToken(): string | null {
 }
 
 export function setJwtToken(token: string | null): void {
+  clearAdminReadCache();
   try {
     if (token) localStorage.setItem('chis_jwt_token', token);
     else localStorage.removeItem('chis_jwt_token');
@@ -460,6 +462,7 @@ export class AdminApiError extends Error {
 }
 
 async function adminRequest(path: string, method = 'GET', data?: unknown): Promise<unknown> {
+  if (method !== 'GET') clearAdminReadCache();
   let res: Response;
   const token = getJwtToken();
   const headers: Record<string, string> = {
@@ -516,6 +519,10 @@ async function adminRequest(path: string, method = 'GET', data?: unknown): Promi
       : errorMessages[res.status] || 'The request failed. Please try again later.';
     throw new AdminApiError(message, res.status, errors);
   }
+  if (method !== 'GET') {
+    clearAdminReadCache();
+    if (/^\/(heritage-sites|site-images|heritage-timelines)(\/|$)/.test(path)) clearItineraryCache();
+  }
   if (method === 'DELETE' || res.status === 204) return undefined;
   try {
     return await res.json();
@@ -524,10 +531,32 @@ async function adminRequest(path: string, method = 'GET', data?: unknown): Promi
   }
 }
 
+const adminReads = new Map<string, { expires: number; request: Promise<unknown> }>();
+export function clearAdminReadCache(): void { adminReads.clear(); }
+
+function cachedAdminRead(path: string, validate: (data: unknown) => unknown = data => data): Promise<unknown> {
+  const token = getJwtToken();
+  const key = JSON.stringify([token, path]);
+  const cached = adminReads.get(key);
+  if (cached && cached.expires > Date.now()) return cached.request;
+  const entry = { expires: Infinity, request: Promise.resolve<unknown>(undefined) };
+  entry.request = adminRequest(path).then(data => {
+    data = validate(data);
+    entry.expires = Date.now() + 30000;
+    return data;
+  }).catch(error => {
+    if (adminReads.get(key) === entry) adminReads.delete(key);
+    throw error;
+  });
+  adminReads.set(key, entry);
+  return entry.request;
+}
+
 async function adminList(path: string): Promise<unknown[]> {
-  const data = await adminRequest(path);
-  if (!Array.isArray(data)) throw new AdminApiError('The server returned an invalid list. Please retry.');
-  return data;
+  return await cachedAdminRead(path, data => {
+    if (!Array.isArray(data)) throw new AdminApiError('The server returned an invalid list. Please retry.');
+    return data;
+  }) as unknown[];
 }
 
 export async function apiFetchAdminEvents(): Promise<unknown[]> {
@@ -544,8 +573,18 @@ export async function apiUpdateSite(id: string, data: any): Promise<HeritageSite
   return await adminRequest(`/heritage-sites/${id}`, 'PUT', data) as HeritageSite;
 }
 
-export async function apiDeleteSite(id: string): Promise<void> {
-  await adminRequest(`/heritage-sites/${id}`, 'DELETE');
+export async function apiDeleteSite(id: string, expectedStatus: 'active' | 'archived'): Promise<void> {
+  try {
+    await adminRequest(`/heritage-sites/${id}`, 'DELETE', {
+      expected_status: expectedStatus,
+      permanent: expectedStatus === 'archived',
+    });
+  } catch (error) {
+    if (error instanceof AdminApiError && error.status === 409) {
+      throw new AdminApiError('Site status changed. Reload the data and try again.', 409);
+    }
+    throw error;
+  }
 }
 
 // Admin: Site Images
@@ -643,7 +682,12 @@ async function fetchItineraryById(id: string): Promise<Itinerary | null> {
 }
 
 export async function apiFetchAdminItineraries(): Promise<Itinerary[]> {
-  return (await adminList('/admin/itineraries')).map(mapItinerary);
+  try {
+    return (await adminList('/admin/itineraries')).map(mapItinerary);
+  } catch (error) {
+    clearAdminReadCache();
+    throw error;
+  }
 }
 
 export async function apiSaveItinerary(data: ItineraryInput, id?: string): Promise<Itinerary> {
@@ -923,4 +967,4 @@ export async function apiSendChatMessage(messages: Array<{ role: string; content
   return await res.json();
 }
 
-export async function apiFetchDashboard(): Promise<any> { return adminRequest("/admin/dashboard", "GET"); }
+export async function apiFetchDashboard(): Promise<any> { return cachedAdminRead('/admin/dashboard'); }

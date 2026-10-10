@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminActivity;
 use App\Models\HeritageSite;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Str;
+use App\Services\HeritageSiteDeletion;
 use App\Services\HeritageVisitAvailability;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class HeritageSiteController extends Controller
 {
@@ -24,6 +27,7 @@ class HeritageSiteController extends Controller
                 }
             });
         }
+
         return $query->get()->map(fn ($site) => [...$site->only(['id', 'name', 'category', 'year_built', 'address', 'latitude', 'longitude', 'status']),
             'short_description' => Str::limit($site->description ?? '', 240),
             'cover_image' => $site->coverImage?->only(['id', 'image_path', 'caption', 'is_cover', 'sort_order'])]);
@@ -41,6 +45,7 @@ class HeritageSiteController extends Controller
         )->firstOrFail();
         $data = $site->toArray();
         unset($data['verification_config_enabled'], $data['created_by']);
+
         return [...$data, 'visit_verification_enabled' => HeritageVisitAvailability::enabled($site)];
     }
 
@@ -67,7 +72,7 @@ class HeritageSiteController extends Controller
         $data['created_by'] = $request->user()->id;
 
         $heritageSite = HeritageSite::create($data);
-        \App\Models\AdminActivity::log("created", "HeritageSite", $heritageSite->name);
+        AdminActivity::log('created', 'HeritageSite', $heritageSite->name);
 
         return response()->json($heritageSite, 201);
     }
@@ -87,22 +92,25 @@ class HeritageSiteController extends Controller
             ...$this->visitorInformationRules(),
         ]);
 
-        $heritageSite->update($data);
-        \App\Models\AdminActivity::log(isset($data["status"]) && $data["status"] === "archived" ? "archived" : "updated", "HeritageSite", $heritageSite->name);
+        $heritageSite = DB::transaction(function () use ($heritageSite, $data) {
+            $site = HeritageSite::whereKey($heritageSite->id)->lockForUpdate()->firstOrFail();
+            $site->update($data);
+            AdminActivity::log(isset($data['status']) && $data['status'] === 'archived' ? 'archived' : 'updated', 'HeritageSite', $site->name);
+
+            return $site;
+        });
 
         return response()->json($heritageSite);
     }
 
-    public function destroy(HeritageSite $heritageSite)
+    public function destroy(Request $request, HeritageSite $heritageSite, HeritageSiteDeletion $deletion)
     {
-        $heritageSite->update([
-            'status' => 'archived',
+        $data = $request->validate([
+            'expected_status' => 'sometimes|required|in:active,archived',
+            'permanent' => 'sometimes|boolean',
         ]);
-        \App\Models\AdminActivity::log("archived", "HeritageSite", $heritageSite->name);
 
-        return response()->json([
-            'message' => 'Heritage site archived successfully.',
-        ]);
+        return response()->json($deletion->delete($heritageSite->id, $data));
     }
 
     private function visitorInformationRules(): array

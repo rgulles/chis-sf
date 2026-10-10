@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   LayoutDashboard,
   Map,
@@ -23,20 +23,20 @@ import {
   apiFetchRawSites, apiCreateSite, apiUpdateSite, apiDeleteSite,
   apiFetchAdminEvents, apiCreateEvent, apiUpdateEvent, apiDeleteEvent,
   apiFetchSiteImages, apiCreateSiteImage, apiUpdateSiteImage, apiDeleteSiteImage,
-  apiCreateTimeline, apiUpdateTimeline, apiDeleteTimeline, AdminApiError
+  apiCreateTimeline, apiUpdateTimeline, apiDeleteTimeline, AdminApiError, clearAdminReadCache
 } from '../api/client';
 import type { UserProfile } from '../types';
 import { eventDateForInput, eventDateForSubmission, replaceEventDate, storageImageUrl } from '../utils/adminData';
 import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
 import { HERITAGE_IMAGE_PLACEHOLDER, handleHeritageImageError } from '../utils/heritageImages';
-import { AdminItineraries } from '../components/AdminItineraries';
-import { AdminCheckins } from '../components/AdminCheckins';
-import { AdminTravelers } from '../components/AdminTravelers';
-import { AdminContributions } from '../components/AdminContributions';
-import { AdminDashboard } from '../components/AdminDashboard';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
-import { AdminPhotoManagement } from './AdminPhotoManagement';
+const AdminItineraries = lazy(() => import('../components/AdminItineraries').then(module => ({ default: module.AdminItineraries })));
+const AdminCheckins = lazy(() => import('../components/AdminCheckins').then(module => ({ default: module.AdminCheckins })));
+const AdminTravelers = lazy(() => import('../components/AdminTravelers').then(module => ({ default: module.AdminTravelers })));
+const AdminContributions = lazy(() => import('../components/AdminContributions').then(module => ({ default: module.AdminContributions })));
+const AdminDashboard = lazy(() => import('../components/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+const AdminPhotoManagement = lazy(() => import('./AdminPhotoManagement').then(module => ({ default: module.AdminPhotoManagement })));
 
 
 
@@ -48,6 +48,11 @@ interface AdminViewProps {
 
 type TabType = 'dashboard' | 'sites' | 'images' | 'events' | 'timelines' | 'itineraries' | 'checkins' | 'travelers' | 'contributions';
 type FormType = 'site' | 'event' | 'image' | 'timeline';
+type AdminSection = 'sites' | 'events' | 'images';
+type AdminRecord = Record<string, unknown> & { id: string | number };
+const mergeRecord = <T extends { id: string | number }>(records: T[], record: T): T[] => records.some(item => String(item.id) === String(record.id))
+  ? records.map(item => String(item.id) === String(record.id) ? { ...item, ...record } : item) : [...records, record];
+const orderedRecords = (records: AdminRecord[]) => records.sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0) || Number(a.id) - Number(b.id));
 
 const computeEventStatus = (e: any) => {
   if (e.status === 'cancelled') return 'cancelled';
@@ -107,8 +112,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
   const [events, setEvents] = useState<any[]>([]);
   const [siteImages, setSiteImages] = useState<any[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingSections, setLoadingSections] = useState(new Set<AdminSection>());
+  const [sectionErrors, setSectionErrors] = useState<Partial<Record<AdminSection, string>>>({});
+  const loadedSections = useRef(new Set<AdminSection>());
+  const loadedAt = useRef({ sites: 0, events: 0, images: 0 });
+  const sectionRequests = useRef(new globalThis.Map<AdminSection, Promise<void>>());
+  const section = activeTab === 'events' ? 'events' : ['sites', 'images', 'timelines', 'itineraries'].includes(activeTab) || managingPhotosForSite ? 'sites' : null;
+  const loading = section !== null && !loadedSections.current.has(section) && !sectionErrors[section];
+  const loadError = section ? sectionErrors[section] : undefined;
 
   const [formErrors, setFormErrors] = useState<Partial<Record<FormType, AdminApiError>>>({});
 
@@ -149,32 +160,68 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
 
   const pendingRequests = useRef(new Set<string>());
   const [pending, setPending] = useState(new Set<string>());
-  const loadRevision = useRef(0);
+  const loadRevision = useRef({ sites: 0, events: 0, images: 0 });
 
-  const fetchData = useCallback(async () => {
-    const revision = ++loadRevision.current;
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const [fetchedSites, fetchedEvents, fetchedImages] = await Promise.all([
-        apiFetchRawSites(), apiFetchAdminEvents(), apiFetchSiteImages(),
-      ]);
-      if (revision !== loadRevision.current) return;
-      setSites(fetchedSites);
-      setEvents(fetchedEvents);
-      setSiteImages(fetchedImages);
-    } catch (error) {
-      if (revision === loadRevision.current) {
-        setLoadError(error instanceof AdminApiError ? error.message : 'Unable to load admin data. Please retry.');
+  const fetchData = useCallback((target: AdminSection = 'sites', force = false): Promise<void> => {
+    const existing = sectionRequests.current.get(target);
+    if (existing) return existing;
+    if (!force && loadedSections.current.has(target) && Date.now() - loadedAt.current[target] < 30000) return Promise.resolve();
+    if (force) clearAdminReadCache();
+    const revision = ++loadRevision.current[target];
+    setLoadingSections(previous => new Set(previous).add(target));
+    setSectionErrors(previous => ({ ...previous, [target]: undefined }));
+    const request = (async () => {
+      try {
+        const data = await (target === 'sites' ? apiFetchRawSites() : target === 'events' ? apiFetchAdminEvents() : apiFetchSiteImages());
+        if (revision !== loadRevision.current[target]) return;
+        if (target === 'sites') {
+          setSites(data);
+          // The existing Admin site response already includes images: don't download them twice.
+          setSiteImages(data.flatMap(site => (site as { images?: unknown[] }).images || []));
+        } else if (target === 'events') setEvents(data);
+        else setSiteImages(data);
+        loadedSections.current.add(target);
+        loadedAt.current[target] = Date.now();
+      } catch (error) {
+        if (revision === loadRevision.current[target]) setSectionErrors(previous => ({ ...previous,
+          [target]: error instanceof AdminApiError ? error.message : 'Unable to load admin data. Please retry.' }));
+      } finally {
+        sectionRequests.current.delete(target);
+        setLoadingSections(previous => { const next = new Set(previous); next.delete(target); return next; });
       }
-    } finally {
-      if (revision === loadRevision.current) setLoading(false);
-    }
+    })();
+    sectionRequests.current.set(target, request);
+    return request;
   }, []);
 
   useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+    if (section) void fetchData(section);
+  }, [section, fetchData]);
+
+  const applySite = (record: AdminRecord) => {
+    ++loadRevision.current.sites;
+    setSites(previous => mergeRecord(previous, record));
+  };
+  const applyImage = (record: AdminRecord) => {
+    ++loadRevision.current.sites;
+    ++loadRevision.current.images;
+    const updateImages = (images: AdminRecord[]) => orderedRecords(mergeRecord(images.map(image => record.is_cover
+      && String(image.heritage_site_id) === String(record.heritage_site_id) ? { ...image, is_cover: false } : image), record));
+    setSiteImages(updateImages);
+    setSites(previous => previous.map(site => ({ ...site, images: String(site.id) === String(record.heritage_site_id)
+      ? updateImages(site.images || []) : (site.images || []).filter((image: AdminRecord) => String(image.id) !== String(record.id)) })));
+  };
+  const removeImage = (id: string) => {
+    ++loadRevision.current.sites;
+    ++loadRevision.current.images;
+    setSiteImages(previous => previous.filter(image => String(image.id) !== String(id)));
+    setSites(previous => previous.map(site => ({ ...site, images: (site.images || []).filter((image: AdminRecord) => String(image.id) !== String(id)) })));
+  };
+  const applyTimeline = (record: AdminRecord) => {
+    ++loadRevision.current.sites;
+    setSites(previous => previous.map(site => ({ ...site, timelines: String(site.id) === String(record.heritage_site_id)
+      ? orderedRecords(mergeRecord(site.timelines || [], record)) : (site.timelines || []).filter((timeline: AdminRecord) => String(timeline.id) !== String(record.id)) })));
+  };
 
   const openForm = (form: FormType, open: () => void) => {
     if (pendingRequests.current.has(`save:${form}`)) return;
@@ -189,11 +236,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
     setPending(new Set(pendingRequests.current));
     if (form) setFormErrors((previous) => ({ ...previous, [form]: undefined }));
     try {
-      await request();
+      const result = await request();
+      if (form === 'image') applyImage(result as AdminRecord);
+      if (form === 'timeline') applyTimeline(result as AdminRecord);
+      if (form === 'event') {
+        ++loadRevision.current.events;
+        setEvents(previous => mergeRecord(previous, result as AdminRecord));
+      }
       onPublicDataChanged?.(key.includes('event') ? 'events' : 'heritage');
       close?.();
       addToast('success', message);
-      await fetchData();
     } catch (error) {
       // Multi-step site edits may have committed some requests before a later request failed.
       onPublicDataChanged?.(key.includes('event') ? 'events' : 'heritage');
@@ -221,12 +273,25 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
   // Handlers for deleting
   const handleDeleteSite = (id: string) => {
     if (pendingRequests.current.has(`delete:site:${id}`)) return;
+    const site = sites.find(site => String(site.id) === String(id));
+    if (!site) return;
+    const archived = site.status === 'archived';
     confirm({
-      title: 'Archive Site',
-      message: 'Are you sure you want to archive this site?',
-      confirmText: 'Archive',
+      title: archived ? `Permanently delete ${site.name}?` : 'Archive Site',
+      message: archived
+        ? 'This will permanently remove the heritage site and its related records. This action cannot be undone.'
+        : 'Archive this heritage site? It will be hidden from visitors but can still be restored from Admin.',
+      confirmText: archived ? 'Delete Permanently' : 'Archive Site',
+      cancelText: 'Cancel',
       onConfirm: async () => {
-        await runMutation(`delete:site:${id}`, () => apiDeleteSite(id), 'Heritage site archived successfully.');
+        await runMutation(`delete:site:${id}`, async () => {
+          await apiDeleteSite(id, archived ? 'archived' : 'active');
+          ++loadRevision.current.sites;
+          setSites(previous => archived
+            ? previous.filter(item => String(item.id) !== String(id))
+            : previous.map(item => String(item.id) === String(id) ? { ...item, status: 'archived' } : item));
+          if (archived) setSiteImages(previous => previous.filter(image => String(image.heritage_site_id) !== String(id)));
+        }, archived ? `${site.name} was permanently deleted.` : 'Heritage site archived successfully.');
       }
     });
   };
@@ -238,7 +303,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
       message: 'Are you sure you want to cancel this event?',
       confirmText: 'Cancel Event',
       onConfirm: async () => {
-        await runMutation(`delete:event:${id}`, () => apiDeleteEvent(id), 'Event cancelled successfully.');
+        await runMutation(`delete:event:${id}`, async () => {
+          await apiDeleteEvent(id);
+          ++loadRevision.current.events;
+          setEvents(previous => previous.map(event => String(event.id) === String(id) ? { ...event, status: 'cancelled' } : event));
+        }, 'Event cancelled successfully.');
       }
     });
   };
@@ -273,6 +342,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
   const [siteModalOpen, setSiteModalOpen] = useState(false);
   const [siteForm, setSiteForm] = useState<Record<string, string>>({});
   const [draftImages, setDraftImages] = useState<DraftImage[]>([]);
+  const draftPreviewUrls = useRef(new Set<string>());
   const [draftTimelines, setDraftTimelines] = useState<DraftTimeline[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
   const [removedTimelineIds, setRemovedTimelineIds] = useState<string[]>([]);
@@ -282,6 +352,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
 
 
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    const retained = new Set(siteModalOpen ? draftImages.filter(image => image.imageFile).map(image => image.previewUrl) : []);
+    for (const url of draftPreviewUrls.current) {
+      if (!retained.has(url)) { URL.revokeObjectURL(url); draftPreviewUrls.current.delete(url); }
+    }
+  }, [draftImages, siteModalOpen]);
+  useEffect(() => {
+    const urls = draftPreviewUrls.current;
+    return () => { for (const url of urls) URL.revokeObjectURL(url); urls.clear(); };
+  }, []);
 
   const validateBasicInfo = (): boolean => {
     const lat = siteForm.latitude?.toString().trim();
@@ -397,10 +477,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
         continue;
       }
       const currentCoverExists = draftImages.some(img => img.is_cover) || newDrafts.some(img => img.is_cover);
+      const previewUrl = URL.createObjectURL(file);
+      draftPreviewUrls.current.add(previewUrl);
       newDrafts.push({
         key: `temp_img_${Date.now()}_${Math.random()}`,
         imageFile: file,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl,
         caption: '',
         is_cover: !currentCoverExists,
       });
@@ -560,45 +642,63 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
     const sortedTimelines = [...cleanedTimelines].sort((a, b) => parseYearNumber(a.year || '') - parseYearNumber(b.year || ''));
 
     await runMutation('save:site', async () => {
+      if (!loadedSections.current.has('sites')) await fetchData('sites');
       // 1. Create or update heritage site
       let siteId: string | number;
+      let savedSite;
       if (siteForm.id) {
-        await apiUpdateSite(siteForm.id, sitePayload);
+        savedSite = await apiUpdateSite(siteForm.id, sitePayload);
         siteId = siteForm.id;
       } else {
-        const created = await apiCreateSite(sitePayload);
-        siteId = created.id;
+        savedSite = await apiCreateSite(sitePayload);
+        siteId = savedSite.id;
+        setSiteForm(previous => ({ ...previous, id: String(siteId) }));
       }
+      applySite(savedSite as unknown as AdminRecord);
+      const original = sites.find(site => String(site.id) === String(siteId));
 
       // 2. Remove deleted images
       for (const imgId of removedImageIds) {
         await apiDeleteSiteImage(imgId);
+        removeImage(imgId);
+        setRemovedImageIds(previous => previous.filter(id => id !== imgId));
       }
 
       // 3. Process draft images (create / update)
       for (let i = 0; i < draftImages.length; i++) {
         const img = draftImages[i];
         if (img.imageFile) {
-          await apiCreateSiteImage({
+          const saved = await apiCreateSiteImage({
             heritage_site_id: siteId,
             imageFile: img.imageFile,
             caption: img.caption?.trim() || null,
             is_cover: Boolean(img.is_cover),
             sort_order: i,
           });
+          applyImage(saved as AdminRecord);
+          const record = saved as AdminRecord;
+          setDraftImages(previous => previous.map(draft => draft.key === img.key
+            ? { ...draft, id: record.id, imageFile: null, image_path: String(record.image_path || ''),
+              previewUrl: storageImageUrl(String(record.image_url || record.image_path || '')) } : draft));
         } else if (img.id) {
-          await apiUpdateSiteImage(String(img.id), {
+          const old = original?.images?.find((image: AdminRecord) => String(image.id) === String(img.id));
+          if (old && (old.caption || '') === (img.caption?.trim() || '') && Boolean(old.is_cover) === Boolean(img.is_cover)
+            && Number(old.sort_order ?? 0) === i) continue;
+          const saved = await apiUpdateSiteImage(String(img.id), {
             heritage_site_id: siteId,
             caption: img.caption?.trim() || null,
             is_cover: Boolean(img.is_cover),
             sort_order: i,
           });
+          applyImage(saved as AdminRecord);
         }
       }
 
       // 4. Remove deleted timeline entries
       for (const tId of removedTimelineIds) {
         await apiDeleteTimeline(tId);
+        setSites(previous => previous.map(site => ({ ...site, timelines: (site.timelines || []).filter((timeline: AdminRecord) => String(timeline.id) !== String(tId)) })));
+        setRemovedTimelineIds(previous => previous.filter(id => id !== tId));
       }
 
       // 5. Process draft timeline items (create / update)
@@ -612,9 +712,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
           sort_order: i,
         };
         if (t.id) {
-          await apiUpdateTimeline(String(t.id), tPayload);
+          const old = original?.timelines?.find((timeline: AdminRecord) => String(timeline.id) === String(t.id));
+          if (old && old.year === t.year && old.title === t.title && old.description === t.description && Number(old.sort_order ?? 0) === i) continue;
+          applyTimeline(await apiUpdateTimeline(String(t.id), tPayload) as AdminRecord);
         } else {
-          await apiCreateTimeline(tPayload);
+          const saved = await apiCreateTimeline(tPayload) as AdminRecord;
+          applyTimeline(saved);
+          setDraftTimelines(previous => previous.map(draft => draft.key === t.key ? { ...draft, id: saved.id } : draft));
         }
       }
     }, `Heritage site ${siteForm.id ? 'updated' : 'created'} successfully.`, () => setSiteModalOpen(false), 'site');
@@ -633,8 +737,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
       imageFile: imageFile || null,
       created_by: parseInt(user.id, 10),
     };
-    await runMutation('save:event', () => eventForm.id
-      ? apiUpdateEvent(eventForm.id, payload) : apiCreateEvent(payload),
+    await runMutation('save:event', async () => {
+      const saved = await (eventForm.id ? apiUpdateEvent(eventForm.id, payload) : apiCreateEvent(payload));
+      return { ...payload, id: saved.id, image_url: saved.bannerImage };
+    },
       `Event ${eventForm.id ? 'updated' : 'created'} successfully.`, () => setEventModalOpen(false), 'event');
   };
 
@@ -768,24 +874,27 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
         </header>
 
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 relative">
-
+          {section && loadedSections.current.has(section) && loadingSections.has(section) && <p role="status" className="mb-3 text-sm text-gray-500">Refreshing this section...</p>}
+          {loadError && section && loadedSections.current.has(section) && <div role="alert" className="mb-3 text-sm text-red-800">{loadError} <button onClick={() => void fetchData(section, true)} className="underline">Retry</button></div>}
+          <Suspense fallback={<p role="status" className="py-4 text-sm text-gray-500">Loading section...</p>}>
           {loading ? (
-            <div role="status" className="flex justify-center items-center gap-3 h-full">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7A1C30]"></div>
+            <div role="status" className="flex items-center gap-3 py-4 text-sm">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#7A1C30]"></div>
               <span>Loading admin data...</span>
             </div>
-          ) : loadError ? (
+          ) : loadError && section && !loadedSections.current.has(section) ? (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-800">
               <p className="font-semibold">Unable to load admin data.</p>
               <p className="mt-1 text-sm">{loadError}</p>
-              <button type="button" onClick={() => void fetchData()} className="mt-3 rounded-lg bg-[#7A1C30] px-4 py-2 text-sm font-semibold text-white">Retry</button>
+              <button type="button" onClick={() => void fetchData(section!, true)} className="mt-3 rounded-lg bg-[#7A1C30] px-4 py-2 text-sm font-semibold text-white">Retry</button>
             </div>
           ) : managingPhotosForSite ? (
               <AdminPhotoManagement 
-                site={managingPhotosForSite} 
+                site={sites.find(site => String(site.id) === String(managingPhotosForSite.id)) || managingPhotosForSite}
                 siteImages={siteImages} 
                 onBack={() => setManagingPhotosForSite(null)} 
-                onRefresh={fetchData} 
+                onImageSaved={applyImage}
+                onImageDeleted={removeImage}
               />
           ) : (
             <div className="max-w-6xl mx-auto">
@@ -910,7 +1019,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                               <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4">
                                   <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden border border-[#e8dfd5]">
-                                    <img src={mainImgPath ? storageImageUrl(mainImgPath) : HERITAGE_IMAGE_PLACEHOLDER} onError={handleHeritageImageError} alt="" className="w-full h-full object-cover" />
+                                    <img loading="lazy" decoding="async" width={48} height={48} src={mainImgPath ? storageImageUrl(mainImgPath) : HERITAGE_IMAGE_PLACEHOLDER} onError={handleHeritageImageError} alt="" className="w-full h-full object-cover" />
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 font-bold text-gray-900">{s.name}</td>
@@ -923,9 +1032,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-2">
-                                    <button onClick={() => setManagingPhotosForSite(s)} className="text-purple-600 hover:text-purple-800 p-1.5 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors" title="Manage Photos"><ImageIcon className="w-4 h-4" /></button>
-                                    <button onClick={() => openEditSiteModal(s)} className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
-                                    <button disabled={pending.has(`delete:site:${s.id}`)} aria-busy={pending.has(`delete:site:${s.id}`)} onClick={() => handleDeleteSite(s.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Archive" aria-label="Archive">{pending.has(`delete:site:${s.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
+                                    <button onClick={() => setManagingPhotosForSite(s)} className="min-h-10 min-w-10 flex items-center justify-center text-purple-600 hover:text-purple-800 p-1.5 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors" title="Manage Photos"><ImageIcon className="w-4 h-4" /></button>
+                                    <button onClick={() => openEditSiteModal(s)} className="min-h-10 min-w-10 flex items-center justify-center text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
+                                    <button disabled={pending.has(`delete:site:${s.id}`)} aria-busy={pending.has(`delete:site:${s.id}`)} onClick={() => handleDeleteSite(s.id)} className="min-h-10 min-w-10 flex items-center justify-center text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title={s.status === 'archived' ? 'Delete Permanently' : 'Archive Site'} aria-label={s.status === 'archived' ? 'Delete Permanently' : 'Archive Site'}>{pending.has(`delete:site:${s.id}`) ? <span className="text-xs">Processing...</span> : <Trash2 className="w-4 h-4" />}</button>
                                   </div>
                                 </td>
                               </tr>
@@ -1124,6 +1233,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
 
             </div>
           )}
+          </Suspense>
         </div>
       </main>
 
@@ -1398,7 +1508,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                       {draftImages.map((img) => (
                         <div key={img.key} className="bg-gray-50 border border-[#e8dfd5] rounded-xl p-3 flex flex-col space-y-2.5">
                           <div className="relative h-36 rounded-lg overflow-hidden border border-[#e8dfd5] bg-white">
-                            <img src={img.previewUrl} onError={handleHeritageImageError} alt="Preview" className="w-full h-full object-cover" />
+                            <img loading="lazy" decoding="async" width={320} height={144} src={img.previewUrl} onError={handleHeritageImageError} alt="Preview" className="w-full h-full object-cover" />
                             {img.is_cover && (
                               <span className="absolute top-2 left-2 bg-[#7A1C30] text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shadow-sm">
                                 Cover Image
