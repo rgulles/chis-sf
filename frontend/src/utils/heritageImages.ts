@@ -6,7 +6,7 @@ export function heritageImageUrl(path?: string | null, backendBase = import.meta
   const value = (path || '').trim();
   if (!value) return HERITAGE_IMAGE_PLACEHOLDER;
   if (/^(https?:)?\/\//i.test(value) || value.startsWith('/images/')) return value;
-  const base = backendBase.replace(/\/+$/, '').replace(/\/api$/, '');
+  const base = backendBase.trim().replace(/\/+$/, '').replace(/(?:\/api)+$/, '');
   const relative = value.replace(/^\/+/, '').replace(/^storage\//, '');
   return `${base}/storage/${relative}`;
 }

@@ -14,7 +14,8 @@ import type {
 import { heritageImageUrl, HERITAGE_IMAGE_PLACEHOLDER } from '../utils/heritageImages';
 import type { VisitorContribution, MyContribution, AdminContribution, ContributionStatus } from '../types';
 
-const API_BASE = '/api';
+const backendBase = (import.meta.env?.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '').replace(/(?:\/api)+$/, '');
+const API_BASE = backendBase ? `${backendBase}/api` : '/api';
 
 export async function apiFetchContributions(id: string): Promise<VisitorContribution[]> {
   const response = await apiFetch(`${API_BASE}/heritage-sites/${encodeURIComponent(id)}/contributions`);
