@@ -3,6 +3,7 @@ import { User } from 'lucide-react';
 
 import type { ViewType, UserProfile } from '../types';
 import { BrandLogo } from './BrandLogo';
+import { AdminAvatar } from './AdminAvatar';
 
 interface HeaderProps {
   currentView: ViewType;
@@ -91,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
             title={user ? `${user.name} (Profile & Admin)` : 'Sign In / Admin Login'}
             aria-label="Profile and Admin Login"
           >
-            {user?.avatar ? (
+            {user?.role === 'admin' ? <AdminAvatar src={user.avatar} name={user.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" /> : user?.avatar ? (
               <img
                 src={user.avatar}
                 alt={user.name || 'User Profile'}

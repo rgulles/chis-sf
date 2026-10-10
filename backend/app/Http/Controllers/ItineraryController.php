@@ -22,7 +22,7 @@ class ItineraryController extends Controller
             'stops' => $itinerary->stops->map(fn ($stop) => [...$stop->only(['id', 'heritage_site_id', 'sort_order']),
                 'heritage_site' => [...$stop->heritageSite->only(['id', 'name', 'category', 'address', 'latitude', 'longitude', 'status']),
                     'short_description' => '',
-                    'cover_image' => $stop->heritageSite->coverImage?->only(['id', 'image_path', 'caption', 'is_cover', 'sort_order'])]])->values()];
+                    'cover_image' => $stop->heritageSite->coverImage?->only(['id', 'image_path', 'image_url', 'caption', 'is_cover', 'sort_order'])]])->values()];
     }
 
     public function index()

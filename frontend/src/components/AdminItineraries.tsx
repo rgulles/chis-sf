@@ -141,7 +141,7 @@ export const AdminItineraries = ({ sites }: Props) => {
             </div>
             <div className="space-y-1.5">
               <label className="ui-label font-semibold text-gray-700">Description (Optional)</label>
-              <textarea maxLength={1000} rows={3} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none" value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} />
+              <textarea maxLength={10000} rows={6} className="w-full border border-[#e8dfd5] rounded-xl p-2.5 focus:ring-2 focus:ring-[#7A1C30]/20 focus:border-[#7A1C30] outline-none" value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} />
             </div>
 
             <div className="space-y-3">
@@ -213,7 +213,7 @@ export const AdminItineraries = ({ sites }: Props) => {
                     <div className="space-y-4">
                       <div>
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sort By</h4>
-                        <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="w-full border border-[#e8dfd5] rounded-lg p-2 text-sm focus:outline-none focus:border-[#7A1C30] focus:ring-1 focus:ring-[#7A1C30]" style={{ paddingRight: '2.5rem', backgroundPosition: 'right 1rem center' }}>
+                        <select value={sortBy} onChange={e => setSortBy(e.target.value as 'asc' | 'desc')} className="w-full border border-[#e8dfd5] rounded-lg p-2 text-sm focus:outline-none focus:border-[#7A1C30] focus:ring-1 focus:ring-[#7A1C30]" style={{ paddingRight: '2.5rem', backgroundPosition: 'right 1rem center' }}>
                           <option value="asc">Alphabetical (A-Z)</option>
                           <option value="desc">Alphabetical (Z-A)</option>
                         </select>
@@ -249,14 +249,20 @@ export const AdminItineraries = ({ sites }: Props) => {
           {error && <div role="alert" className="text-sm text-red-700">{error} <button onClick={refresh} className="underline">Retry</button></div>}
           {loading && routes.length > 0 && <p role="status" className="text-sm text-gray-500">Refreshing itineraries...</p>}
           <div className="min-w-0 bg-white border border-[#e8dfd5] rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[#e8dfd5]">
+            <div className="min-w-0">
+              <table className="admin-table min-w-full divide-y divide-[#e8dfd5]">
+                <colgroup>
+                  <col style={{ width: '49%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '20%' }} />
+                </colgroup>
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Stops</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Stops</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
@@ -267,17 +273,17 @@ export const AdminItineraries = ({ sites }: Props) => {
                   ) : (
                     paginated.map(r => (
                       <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4">
+                        <td data-label="Name" className="px-6 py-4">
                           <div className="text-sm font-bold text-gray-900">{r.name}</div>
-                          <div className="text-xs text-gray-500 truncate max-w-xs">{r.description || "No description"}</div>
+                          <div className="text-xs text-gray-500 truncate max-w-xs">{r.description?.split('\n')[0] || "No description"}</div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-700">{r.stops.length} stops</td>
-                        <td className="px-6 py-4">
+                        <td data-label="Stops" className="px-6 py-4 text-sm font-medium text-gray-700">{r.stops.length} stops</td>
+                        <td data-label="Status" className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}`}>
                             {r.status === "active" ? "Active" : "Archived"}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td data-label="Actions" className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <button disabled={pendingStatus.has(r.id)} onClick={() => openDraft(r)} className="min-w-10 min-h-10 flex items-center justify-center text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
                             <button disabled={pendingStatus.has(r.id)} aria-busy={pendingStatus.has(r.id)} onClick={() => toggleStatus(r)} className={`min-w-10 min-h-10 flex items-center justify-center p-1.5 rounded-md transition-colors ${r.status === "active" ? "text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100" : "text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100"}`} title={r.status === "active" ? "Archive" : "Restore"}>

@@ -192,7 +192,7 @@ class AdminAuthorizationTest extends TestCase
 
     private function tokenHeaders(User $user): array
     {
-        return ['Authorization' => 'Bearer '.$user->createToken('admin-test')->plainTextToken];
+        return ['Authorization' => 'Bearer '.$this->jwtFor($user)];
     }
 
     private function payload(string $resource): array

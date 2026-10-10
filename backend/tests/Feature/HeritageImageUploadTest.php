@@ -37,7 +37,7 @@ class HeritageImageUploadTest extends TestCase
         Storage::fake('s3');
         $admin = User::factory()->create(['role' => 'admin']);
         $site = HeritageSite::create(['created_by' => $admin->id, 'name' => 'Site', 'description' => 'Overview', 'history' => 'History', 'address' => 'Address']);
-        return [$site, ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken]];
+        return [$site, ['Authorization' => 'Bearer '.$this->jwtFor($admin)]];
     }
 
     private function upload(): UploadedFile

@@ -42,29 +42,28 @@ class LogoutTest extends TestCase
     public function test_logout_revokes_only_the_current_token(string $role): void
     {
         $user = User::factory()->create(['role' => $role]);
-        $current = $user->createToken('current-device');
-        $other = $user->createToken('other-device');
-        $headers = ['Authorization' => 'Bearer '.$current->plainTextToken];
+        $current = $this->jwtFor($user);
+        $other = $this->jwtFor($user);
+        $headers = ['Authorization' => 'Bearer '.$current];
 
         $this->getJson('/api/auth/me', $headers)->assertOk()->assertJsonPath('user.role', $role);
         $this->app['auth']->forgetGuards();
         $this->postJson('/api/auth/logout', [], $headers)
             ->assertOk()->assertExactJson(['message' => 'Logged out successfully']);
 
-        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $current->accessToken->id]);
-        $this->assertDatabaseHas('personal_access_tokens', ['id' => $other->accessToken->id]);
         $this->app['auth']->forgetGuards();
         $this->getJson('/api/auth/me', $headers)->assertUnauthorized();
         $this->app['auth']->forgetGuards();
-        $this->getJson('/api/auth/me', ['Authorization' => 'Bearer '.$other->plainTextToken])->assertOk();
+        $this->getJson('/api/auth/me', ['Authorization' => 'Bearer '.$other])->assertOk();
     }
 
     public function test_invalid_token_logout_is_rejected_without_deleting_other_tokens(): void
     {
         $user = User::factory()->create();
-        $token = $user->createToken('other-device');
+        $token = $this->jwtFor($user);
         $this->postJson('/api/auth/logout', [], ['Authorization' => 'Bearer invalid-token'])
             ->assertUnauthorized();
-        $this->assertDatabaseHas('personal_access_tokens', ['id' => $token->accessToken->id]);
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/auth/me', ['Authorization' => 'Bearer '.$token])->assertOk();
     }
 }

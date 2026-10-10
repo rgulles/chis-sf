@@ -1,23 +1,51 @@
 .heritage-marker {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-family: inherit;
 }
 
 .heritage-marker-symbol {
-  display: grid;
-  place-items: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  width: 36px;
+  height: 36px;
   border: 2px solid white;
   border-radius: 50%;
-  color: white;
+  background: #fff8f5;
+  box-shadow: 0 0 0 1px var(--heritage-marker-color), 0 2px 6px #0004;
+  transition: width 160ms ease, height 160ms ease, transform 160ms ease;
+}
+
+.heritage-map-close-zoom .heritage-marker-symbol {
+  width: 44px;
+  height: 44px;
+}
+
+.heritage-marker[data-selected="true"] .heritage-marker-symbol {
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--heritage-marker-color);
+  box-shadow: 0 0 0 3px #fff8f5, 0 3px 10px #0005;
+}
+
+.heritage-marker-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: inherit;
 }
 
 .heritage-marker-label {
   display: none;
   position: absolute;
-  top: 44px;
+  top: calc(50% + 32px);
   left: 50%;
   transform: translateX(-50%);
   max-width: 180px;
@@ -33,6 +61,7 @@
   color: #1e1b19;
   background: #fff8f5;
   pointer-events: none;
+  font-family: inherit;
 }
 
 .heritage-map-close-zoom .heritage-marker[data-selected="true"] .heritage-marker-label,
@@ -46,6 +75,9 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .heritage-custom-marker:hover .heritage-marker-symbol {
+    transform: translateY(-3px) scale(1.04);
+  }
   .heritage-map-close-zoom .heritage-custom-marker:hover .heritage-marker-label {
     display: block;
   }
@@ -55,5 +87,12 @@
   outline: 2px solid #7e1925;
   outline-offset: 4px;
   border-radius: 50%;
+}
+.heritage-custom-marker:focus-visible .heritage-marker-symbol {
+  outline: 2px solid #7e1925;
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heritage-marker-symbol { transition: none; }
 }
 .itinerary-map-number { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border:2px solid #c6931d; border-radius:50%; background:#7e1925; color:#fffdf9; font-weight:700; }

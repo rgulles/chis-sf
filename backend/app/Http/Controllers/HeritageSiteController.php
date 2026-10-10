@@ -30,7 +30,7 @@ class HeritageSiteController extends Controller
 
         return $query->get()->map(fn ($site) => [...$site->only(['id', 'name', 'category', 'year_built', 'address', 'latitude', 'longitude', 'status']),
             'short_description' => Str::limit($site->description ?? '', 240),
-            'cover_image' => $site->coverImage?->only(['id', 'image_path', 'caption', 'is_cover', 'sort_order'])]);
+            'cover_image' => $site->coverImage?->only(['id', 'image_path', 'image_url', 'caption', 'is_cover', 'sort_order'])]);
     }
 
     public function adminIndex()

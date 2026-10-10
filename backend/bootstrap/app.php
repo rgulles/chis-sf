@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,12 +16,18 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (JWTException $exception, $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+        });
         $exceptions->shouldRenderJsonWhen(fn ($request, $exception) => $request->is('api/*') || $request->expectsJson());
         // Preserve validation responses and development diagnostics; sanitize server failures.
         $exceptions->respond(function ($response) {
             if (request()->is('api/*') && $response->getStatusCode() >= 500 && (app()->environment('production') || ! config('app.debug'))) {
                 return response()->json(['message' => 'CHIS is temporarily unavailable. Please try again later.'], $response->getStatusCode(), array_filter(['Retry-After' => $response->headers->get('Retry-After')]));
             }
+
             return $response;
         });
     })->create();

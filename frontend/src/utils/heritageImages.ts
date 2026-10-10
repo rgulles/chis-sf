@@ -11,7 +11,7 @@ export function heritageImageUrl(path?: string | null, backendBase = import.meta
   return `${base}/storage/${relative}`;
 }
 
-export function handleHeritageImageError(event: SyntheticEvent<HTMLImageElement>): void {
+export function handleHeritageImageError(event: Pick<SyntheticEvent<HTMLImageElement>, 'currentTarget'>): void {
   const img = event.currentTarget;
   img.onerror = null;
   if (img.getAttribute('src') !== HERITAGE_IMAGE_PLACEHOLDER) img.src = HERITAGE_IMAGE_PLACEHOLDER;

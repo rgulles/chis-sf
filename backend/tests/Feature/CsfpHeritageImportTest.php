@@ -334,7 +334,7 @@ class CsfpHeritageImportTest extends TestCase
         $this->getJson('/api/heritage-sites')->assertOk()->assertJsonCount(1)->assertJsonPath('0.id', $site->id);
         $this->getJson('/api/heritage-sites/'.$site->id)->assertOk()->assertJsonPath('latitude', null)
             ->assertJsonPath('longitude', null)->assertJsonCount(0, 'images');
-        $headers = ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken];
+        $headers = ['Authorization' => 'Bearer '.$this->jwtFor($admin)];
         $this->patchJson('/api/heritage-sites/'.$site->id, [
             'name' => 'Admin revised name', 'description' => 'Admin revised overview', 'history' => 'Admin revised history',
             'address' => 'Admin address', 'category' => 'Museums', 'latitude' => 15.03, 'longitude' => 120.68,

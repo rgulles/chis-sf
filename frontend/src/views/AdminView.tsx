@@ -17,7 +17,6 @@ import {
   Filter,
   Compass,
   ShieldCheck,
-  User,
 } from 'lucide-react';
 import {
   apiFetchRawSites, apiCreateSite, apiUpdateSite, apiDeleteSite,
@@ -26,6 +25,7 @@ import {
   apiCreateTimeline, apiUpdateTimeline, apiDeleteTimeline, AdminApiError, clearAdminReadCache
 } from '../api/client';
 import type { UserProfile } from '../types';
+import { AdminAvatar } from '../components/AdminAvatar';
 import { eventDateForInput, eventDateForSubmission, replaceEventDate, storageImageUrl } from '../utils/adminData';
 import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
 import { HERITAGE_IMAGE_PLACEHOLDER, handleHeritageImageError } from '../utils/heritageImages';
@@ -858,13 +858,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                 <span className="text-sm font-bold text-gray-900 leading-none">{user.name}</span>
                 <span className="text-xs text-gray-500">{user.role || 'Administrator'}</span>
               </div>
-              {user.avatar ? (
-                <img src={user.avatar} alt="Admin" className="w-8 h-8 rounded-full bg-gray-200 object-cover" />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-[#7A1C30]">
-                  <User className="h-5 w-5" />
-                </div>
-              )}
+              <AdminAvatar src={user.avatar} name={user.name} className="w-8 h-8 shrink-0 rounded-full bg-gray-200 object-cover" />
             </div>
             <button aria-label="Sign out of Admin" onClick={onLogout} className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-800 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg">
               <LogOut className="w-4 h-4" />
@@ -999,16 +993,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                   </div>
 
                   <div className="bg-white rounded-xl border border-[#e8dfd5] overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm whitespace-nowrap">
+                    <div className="min-w-0">
+                      <table className="admin-table w-full text-left text-sm">
+                        <colgroup>
+                          <col style={{ width: '9%' }} />
+                          <col style={{ width: '25%' }} />
+                          <col style={{ width: '24%' }} />
+                          <col style={{ width: '12%' }} />
+                          <col style={{ width: '14%' }} />
+                          <col style={{ width: '16%' }} />
+                        </colgroup>
                         <thead className="bg-gray-50 border-b border-[#e8dfd5] text-gray-600">
                           <tr>
-                            <th className="px-6 py-3 font-medium">Cover Page</th>
-                            <th className="px-6 py-3 font-medium">Name</th>
-                            <th className="px-6 py-3 font-medium">Category</th>
-                            <th className="px-6 py-3 font-medium">Status</th>
-                            <th className="px-6 py-3 font-medium">Last Updated</th>
-                            <th className="px-6 py-3 font-medium">Actions</th>
+                            <th scope="col" className="px-6 py-3 font-medium">Cover Page</th>
+                            <th scope="col" className="px-6 py-3 font-medium">Name</th>
+                            <th scope="col" className="px-6 py-3 font-medium">Category</th>
+                            <th scope="col" className="px-6 py-3 font-medium">Status</th>
+                            <th scope="col" className="px-6 py-3 font-medium">Last Updated</th>
+                            <th scope="col" className="px-6 py-3 font-medium">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -1017,20 +1019,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                             const mainImgPath = mainImg ? (mainImg.image_url || mainImg.image_path) : undefined;
                             return (
                               <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4">
+                                <td data-label="Cover Page" className="px-6 py-4">
                                   <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden border border-[#e8dfd5]">
                                     <img loading="lazy" decoding="async" width={48} height={48} src={mainImgPath ? storageImageUrl(mainImgPath) : HERITAGE_IMAGE_PLACEHOLDER} onError={handleHeritageImageError} alt="" className="w-full h-full object-cover" />
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 font-bold text-gray-900">{s.name}</td>
-                                <td className="px-6 py-4 text-gray-500">{s.category || 'Unspecified'}</td>
-                                <td className="px-6 py-4 text-gray-500">
+                                <td data-label="Name" className="px-6 py-4 font-bold text-gray-900">{s.name}</td>
+                                <td data-label="Category" className="px-6 py-4 text-gray-500">{s.category || 'Unspecified'}</td>
+                                <td data-label="Status" className="px-6 py-4 text-gray-500">
                                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${s.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>{s.status}</span>
                                 </td>
-                                <td className="px-6 py-4 text-gray-500">
+                                <td data-label="Last Updated" className="px-6 py-4 text-gray-500">
                                   {s.updated_at ? new Date(s.updated_at).toLocaleDateString() : 'N/A'}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td data-label="Actions" className="px-6 py-4">
                                   <div className="flex items-center gap-2">
                                     <button onClick={() => setManagingPhotosForSite(s)} className="min-h-10 min-w-10 flex items-center justify-center text-purple-600 hover:text-purple-800 p-1.5 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors" title="Manage Photos"><ImageIcon className="w-4 h-4" /></button>
                                     <button onClick={() => openEditSiteModal(s)} className="min-h-10 min-w-10 flex items-center justify-center text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
@@ -1151,16 +1153,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                     </div>
 
                     <div className="bg-white rounded-xl border border-[#e8dfd5] overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
+                      <div className="min-w-0">
+                        <table className="admin-table w-full text-left text-sm">
+                          <colgroup>
+                            <col style={{ width: '25%' }} />
+                            <col style={{ width: '16%' }} />
+                            <col style={{ width: '17%' }} />
+                            <col style={{ width: '16%' }} />
+                            <col style={{ width: '12%' }} />
+                            <col style={{ width: '14%' }} />
+                          </colgroup>
                           <thead className="bg-gray-50 border-b border-[#e8dfd5] text-gray-600">
                             <tr>
-                              <th className="px-6 py-3 font-medium">Event Title</th>
-                              <th className="px-6 py-3 font-medium">Category</th>
-                              <th className="px-6 py-3 font-medium">Date & Time</th>
-                              <th className="px-6 py-3 font-medium">Location</th>
-                              <th className="px-6 py-3 font-medium">Status</th>
-                              <th className="px-6 py-3 font-medium text-right">Actions</th>
+                              <th scope="col" className="px-6 py-3 font-medium">Event Title</th>
+                              <th scope="col" className="px-6 py-3 font-medium">Category</th>
+                              <th scope="col" className="px-6 py-3 font-medium">Date & Time</th>
+                              <th scope="col" className="px-6 py-3 font-medium">Location</th>
+                              <th scope="col" className="px-6 py-3 font-medium">Status</th>
+                              <th scope="col" className="px-6 py-3 font-medium text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
@@ -1176,25 +1186,25 @@ export const AdminView: React.FC<AdminViewProps> = ({ user, onLogout, onPublicDa
                               };
                               return (
                                 <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                                  <td className="px-6 py-4">
+                                  <td data-label="Event Title" className="px-6 py-4">
                                     <div className="flex items-center gap-3">
                                       <div className="min-w-0">
                                         <p className="font-bold text-gray-900 truncate">{e.title}</p>
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 text-gray-600">
+                                  <td data-label="Category" className="px-6 py-4 text-gray-600">
                                     <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-[#e8dfd5]">
                                       {e.category || 'Festival'}
                                     </span>
                                   </td>
-                                  <td className="px-6 py-4 text-gray-500">
+                                  <td data-label="Date & Time" className="px-6 py-4 text-gray-500">
                                     <div>{e.event_date ? String(e.event_date).split(' ')[0] : 'TBA'}</div>
                                     <div className="text-xs text-gray-400">{timeStr}</div>
                                   </td>
-                                  <td className="px-6 py-4 text-gray-500">{e.location}</td>
-                                  <td className="px-6 py-4">{getStatusBadge(computeEventStatus(e))}</td>
-                                  <td className="px-6 py-4 text-right">
+                                  <td data-label="Location" className="px-6 py-4 text-gray-500">{e.location}</td>
+                                  <td data-label="Status" className="px-6 py-4">{getStatusBadge(computeEventStatus(e))}</td>
+                                  <td data-label="Actions" className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
                                       <button onClick={() => openEventEditModal(e)} className="text-gray-400 hover:text-[#7A1C30] p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
                                       <button

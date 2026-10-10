@@ -109,7 +109,39 @@ function expireSession(requestToken: string | null): void {
 
 // Share only concurrent reads, including React's development effect replay. No response cache or auth data persists.
 const pendingReads = new Map<string, Promise<Response>>();
-async function fetchTransport(input: string, options?: RequestInit): Promise<Response> {
+let pendingRefresh: { token: string; promise: Promise<string> } | null = null;
+let lastRotation: { previous: string; current: string; generation: number } | null = null;
+
+// One rotation per concurrent group of failed requests. Never refresh a refresh/logout request.
+export async function apiRefreshToken(): Promise<string> {
+  const token = getJwtToken();
+  if (!token) throw new ApiError(errorMessages[401], 401);
+  if (pendingRefresh?.token === token) return pendingRefresh.promise;
+  const generation = authGeneration;
+  const promise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(30000),
+      });
+      const data = await response.json();
+      if (!response.ok || typeof data?.access_token !== 'string' || !data.access_token.trim()) throw new Error();
+      if (generation !== authGeneration || getJwtToken() !== token) throw new Error();
+      setJwtToken(data.access_token, true);
+      lastRotation = { previous: token, current: data.access_token, generation };
+      return data.access_token as string;
+    } catch {
+      expireSession(token);
+      throw new ApiError(errorMessages[401], 401);
+    } finally {
+      if (pendingRefresh?.token === token) pendingRefresh = null;
+    }
+  })();
+  pendingRefresh = { token, promise };
+  return promise;
+}
+
+async function fetchOnce(input: string, options?: RequestInit): Promise<Response> {
   const execute = () => fetch(input, { ...options, signal: options?.signal ?? AbortSignal.timeout(options?.body instanceof FormData ? 120000 : 30000) });
   if ((options?.method ?? 'GET') !== 'GET' || options?.signal) return execute();
   const key = JSON.stringify([input, options?.headers ?? {}]);
@@ -120,6 +152,27 @@ async function fetchTransport(input: string, options?: RequestInit): Promise<Res
     pendingReads.set(key, request);
   }
   return (await pending).clone();
+}
+
+async function fetchTransport(input: string, options?: RequestInit): Promise<Response> {
+  const generation = authGeneration;
+  const response = await fetchOnce(input, options);
+  const headers = new Headers(options?.headers);
+  const token = headers.get('Authorization')?.replace(/^Bearer /, '') || null;
+  if (response.status !== 401 || !token || input.includes('/auth/refresh') || input.includes('/auth/logout')) return response;
+  // A response for a prior login must not retry against a different account.
+  const alreadyRotated = lastRotation?.previous === token && lastRotation.current === getJwtToken()
+    && lastRotation.generation === generation ? lastRotation.current : null;
+  if (generation !== authGeneration || (token !== getJwtToken() && !alreadyRotated)) return response;
+  try {
+    const refreshed = alreadyRotated ?? await apiRefreshToken();
+    headers.set('Authorization', `Bearer ${refreshed}`);
+    const retried = await fetchOnce(input, { ...options, headers: Object.fromEntries(headers) });
+    if (retried.status === 401) expireSession(refreshed);
+    return retried;
+  } catch {
+    return response;
+  }
 }
 
 async function apiFetch(input: string, options?: RequestInit): Promise<Response> {
@@ -185,7 +238,11 @@ export function getJwtToken(): string | null {
   try { return localStorage.getItem('chis_jwt_token'); } catch { return null; }
 }
 
-export function setJwtToken(token: string | null): void {
+export function setJwtToken(token: string | null, preserveSession = false): void {
+  if (!preserveSession && token !== getJwtToken()) {
+    authGeneration++;
+    lastRotation = null;
+  }
   clearAdminReadCache();
   try {
     if (token) localStorage.setItem('chis_jwt_token', token);
@@ -228,7 +285,7 @@ function mapAuthenticatedUser(raw: unknown): UserProfile {
   }
   return {
     id: String(user.id), name: user.name, email: user.email, role: user.role,
-    avatar: typeof user.avatar === 'string' ? user.avatar : '/images/characters/nicolasa-dayrit.jpg',
+    avatar: typeof user.avatar === 'string' ? user.avatar : user.role === 'admin' ? '' : '/images/characters/nicolasa-dayrit.jpg',
     savedSites: [], scannedSites: [], badges: [], stamps: [],
   };
 }
@@ -259,13 +316,13 @@ async function authenticate(path: string, credentials: Record<string, unknown>):
   } catch {
     throw new Error('The authentication service returned an invalid response. Please try again.');
   }
-  if (!data || typeof data.token !== 'string' || !data.token.trim()) {
+  if (!data || typeof data.access_token !== 'string' || !data.access_token.trim()) {
     throw new Error('Invalid authentication response. Please try again.');
   }
   const user = mapAuthenticatedUser(data.user);
   if (generation !== authGeneration) throw new Error('Sign-in cancelled because you signed out.');
-  setJwtToken(data.token);
-  return { token: data.token, user };
+  setJwtToken(data.access_token);
+  return { token: data.access_token, user };
 }
 
 export async function apiLogin(email: string, password: string): Promise<{ token: string; user: UserProfile }> {
@@ -327,18 +384,20 @@ export async function apiFetchCurrentUser(): Promise<UserProfile | null> {
   const generation = authGeneration;
   const token = getJwtToken();
   if (!token) return null;
+  const sessionIsCurrent = () => generation === authGeneration && (getJwtToken() === token
+    || (lastRotation?.previous === token && lastRotation.current === getJwtToken() && lastRotation.generation === generation));
 
   try {
     const res = await apiFetch(`${API_BASE}/auth/me`, {
       headers: getAuthHeaders()
     });
-    if (generation !== authGeneration || getJwtToken() !== token) return null;
+    if (!sessionIsCurrent()) return null;
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) setJwtToken(null);
       return null;
     }
     const data = await res.json();
-    if (generation !== authGeneration || getJwtToken() !== token) return null;
+    if (!sessionIsCurrent()) return null;
     return mapAuthenticatedUser(data.user);
   } catch {
     return null;
@@ -359,14 +418,27 @@ export async function apiUpdateProfile(userUpdates: Partial<UserProfile>): Promi
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapBackendSite(raw: any): HeritageSite {
   const isSummary = Object.prototype.hasOwnProperty.call(raw, 'short_description');
-  const images = (Array.isArray(raw.images) ? raw.images : raw.cover_image ? [raw.cover_image] : []).map((image: any) => ({
+  type ImageRecord = { id?: unknown; image_url?: unknown; image_path?: unknown; caption?: unknown; is_cover?: unknown; sort_order?: unknown };
+  const imageRecords: ImageRecord[] = Array.isArray(raw.images) ? raw.images.filter((image: unknown) => image && typeof image === 'object') : [];
+  const cover: ImageRecord | null = raw.cover_image && typeof raw.cover_image === 'object' ? raw.cover_image : null;
+  const imageSource = (image: { image_url?: unknown; image_path?: unknown }): string => {
+    const url = typeof image.image_url === 'string' ? image.image_url.trim() : '';
+    return url || (typeof image.image_path === 'string' ? image.image_path.trim() : '');
+  };
+  if (cover) {
+    const existingCoverIndex = imageRecords.findIndex((image: { id?: unknown }) => image.id != null && String(image.id) === String(cover.id));
+    if (existingCoverIndex >= 0) imageRecords[existingCoverIndex] = { ...imageRecords[existingCoverIndex], ...cover, is_cover: true };
+    else imageRecords.unshift({ ...cover, is_cover: true });
+  }
+  const images = imageRecords.filter(image => imageSource(image)).map(image => ({
     id: String(image.id),
-    imageUrl: heritageImageUrl(typeof (image as any).image_url === 'string' ? (image as any).image_url : (typeof image.image_path === 'string' ? image.image_path : '')),
+    imageUrl: heritageImageUrl(imageSource(image)),
     caption: typeof image.caption === 'string' ? image.caption.trim() || null : null,
     isCover: image.is_cover === true || image.is_cover === 1 || image.is_cover === '1',
     sortOrder: Number.isInteger(Number(image.sort_order)) ? Number(image.sort_order) : 0,
-  })).sort((a: any, b: any) => a.sortOrder - b.sortOrder || Number(a.id) - Number(b.id));
-  const heroImg = (images.find((image: any) => image.isCover) || images[0])?.imageUrl || HERITAGE_IMAGE_PLACEHOLDER;
+  })).sort((a, b) => a.sortOrder - b.sortOrder || Number(a.id) - Number(b.id));
+  const heroImg = (cover && imageSource(cover) ? heritageImageUrl(imageSource(cover))
+    : (images.find(image => image.isCover) || images[0])?.imageUrl) || HERITAGE_IMAGE_PLACEHOLDER;
   const lat = raw.latitude == null || String(raw.latitude).trim() === '' ? NaN : Number(raw.latitude);
   const lng = raw.longitude == null || String(raw.longitude).trim() === '' ? NaN : Number(raw.longitude);
   const validCoordinates = Number.isFinite(lat) && lat >= -90 && lat <= 90

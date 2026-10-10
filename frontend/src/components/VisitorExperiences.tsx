@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ImagePlus } from 'lucide-react';
 import type { HeritageSite, UserProfile, VisitorContribution, MyContribution, VerificationAvailability } from '../types';
 import { apiFetchContributions, apiFetchMyContribution, apiSubmitContribution, AdminApiError } from '../api/client';
 import { ErrorState } from './ErrorState';
@@ -86,12 +87,16 @@ export function VisitorExperiences({ site, user, onLogin, verificationRevision =
             {mine.contribution?.status === 'rejected' && <p role="status">Your contribution was rejected. You may submit a replacement for review.</p>}
             {mine.can_submit && <form id="contribution-form" onSubmit={submit} className="space-y-3 min-w-0">
               <h3 className="font-semibold">Share Your Experience</h3>
-              <label htmlFor="contribution-photos" className="block">Photos (1–3, JPEG, PNG or WebP; maximum 5 MB each)</label>
-              <input ref={files} id="contribution-photos" type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={saving} className="block w-full min-w-0 max-w-full text-sm" onChange={event => { selectPhotos(Array.from(event.target.files || [])); event.target.value = ''; }} />
-              <p role="status">{photos.length} of 3 photos selected</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{photos.map((photo, index) => <figure key={photo.url} className="min-w-0 space-y-2">
-                <img src={photo.url} alt={`Selected visitor photo ${index + 1} from ${site.name}`} className="h-36 w-full object-cover rounded" />
-                <button type="button" className="ui-button-secondary" disabled={saving} onClick={() => removePhoto(index)}>Remove photo {index + 1}</button>
+              <div className="rounded-xl border border-[#e7e0d6] bg-[#faf2ee] p-4 space-y-3 min-w-0">
+                <label htmlFor="contribution-photos" className="block font-semibold">Photos</label>
+                <p id="contribution-photo-help" className="text-sm text-[#61564d]">1–3 images • JPEG, PNG, or WebP • Max 5 MB each</p>
+                <input ref={files} id="contribution-photos" type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={saving} tabIndex={-1} aria-describedby="contribution-photo-help contribution-photo-count" className="sr-only" onChange={event => { selectPhotos(Array.from(event.target.files || [])); event.target.value = ''; }} />
+                <button type="button" disabled={saving} aria-controls="contribution-photos" aria-describedby="contribution-photo-help" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#7A1C30] bg-white px-4 py-2 text-sm font-semibold text-[#7A1C30] transition-colors hover:bg-[#7A1C30]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7A1C30] disabled:opacity-50 w-full sm:w-auto" onClick={() => files.current?.click()}><ImagePlus className="h-5 w-5 shrink-0" aria-hidden="true" />Choose Photos</button>
+                <p id="contribution-photo-count" role="status" aria-live="polite" className="text-sm text-[#61564d]">{photos.length} of 3 photos selected</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{photos.map((photo, index) => <figure key={photo.url} className="min-w-0 space-y-2">
+                <img src={photo.url} alt={`Selected visitor photo ${index + 1} from ${site.name}`} width={160} height={112} className="h-28 w-full object-cover rounded-lg" />
+                <button type="button" className="ui-button-secondary w-full min-h-11 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7A1C30]" disabled={saving} onClick={() => removePhoto(index)}>Remove photo {index + 1}</button>
               </figure>)}</div>
               <label htmlFor="contribution-caption" className="block">Caption (optional, plain text)</label>
               <textarea id="contribution-caption" rows={3} maxLength={500} value={caption} disabled={saving} className="w-full min-w-0 rounded border border-[#e7e0d6] p-3" onChange={event => setCaption(event.target.value)} />

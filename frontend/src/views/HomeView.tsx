@@ -55,14 +55,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Center Content Container: Expanded to max-w-6xl with balanced framing */}
         <div className="relative z-20 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-start">
           {/* Home of the Giant Lanterns Badge - Fades down first */}
-          <motion.div
-            initial={{ opacity: 0, y: -24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="inline-flex items-center rounded-full bg-[#3d0309]/85 border border-[#FCBD15]/50 px-4 sm:px-5 py-1.5 label-compact text-[#fde588] backdrop-blur-md mb-4 sm:mb-5 shadow-lg"
-          >
-            <span className="font-medium tracking-wide">Home of the Giant Lanterns</span>
-          </motion.div>
+          
 
           {/* Main Title - Fades up after badge */}
           <motion.h1
@@ -240,7 +233,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 id: 'historic-places',
                 title: 'Historic Places',
                 subtitle: 'Discover ancestral houses, landmarks, churches, and historic sites.',
-                image: '/images/sites/cathedral-hero.jpg',
+                image: '/images/categories/historic-places.png',
                 fallbackImage: '/images/background/background.png',
                 onClick: () => onSelectCategory('Historical Buildings'),
               },
@@ -248,7 +241,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 id: 'culture-traditions',
                 title: 'Culture & Traditions',
                 subtitle: 'Explore traditions, festivals, crafts, and local culture.',
-                image: '/images/sites/lazatin-house-hero.jpg',
+                image: '/images/categories/culture-traditions.png',
                 fallbackImage: '/images/background/background.png',
                 onClick: () => onSelectCategory('Cultural Sites'),
               },
@@ -256,7 +249,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 id: 'giant-lanterns',
                 title: 'Giant Lanterns',
                 subtitle: "Learn about the artistry and tradition behind San Fernando's iconic lanterns.",
-                image: '/images/giant-lanterns.jpg',
+                image: '/images/categories/giant-lanterns.png',
                 fallbackImage: '/images/lanterns/1.png',
                 onClick: onExploreClick,
               },
@@ -264,7 +257,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 id: 'stories-people',
                 title: 'Stories & People',
                 subtitle: "Discover the people and stories connected to the city's heritage.",
-                image: '/images/sites/train-station-hero.jpg',
+                image: '/images/categories/stories-people.png',
                 fallbackImage: '/images/sites/cathedral-hero.jpg',
                 onClick: onExploreClick,
               },

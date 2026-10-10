@@ -50,7 +50,7 @@ class HeritageVisitorInformationTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
-        return ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken];
+        return ['Authorization' => 'Bearer '.$this->jwtFor($admin)];
     }
 
     public function test_nullable_columns_and_creation_without_visitor_information(): void
@@ -103,7 +103,7 @@ class HeritageVisitorInformationTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $site = HeritageSite::create($this->payload() + self::VALUES + ['created_by' => $admin->id]);
         $traveler = User::factory()->create(['role' => 'traveler']);
-        $headers = ['Authorization' => 'Bearer '.$traveler->createToken('test')->plainTextToken];
+        $headers = ['Authorization' => 'Bearer '.$this->jwtFor($traveler)];
         $this->postJson('/api/heritage-sites', $this->payload() + self::VALUES)->assertUnauthorized();
         $this->patchJson('/api/heritage-sites/'.$site->id, ['opening_hours' => 'Changed'])->assertUnauthorized();
         $this->postJson('/api/heritage-sites', $this->payload() + self::VALUES, $headers)->assertForbidden();

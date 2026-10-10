@@ -3,6 +3,7 @@ import { X, CheckCircle, AlertCircle, LogOut, ShieldCheck, Eye, EyeOff, ArrowRig
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import type { UserProfile, HeritageSite, HeritagePassport } from '../types';
 import { apiLogin, apiRegister, apiGoogleLogin } from '../api/client';
+import { AdminAvatar } from './AdminAvatar';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -174,7 +175,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               {/* Profile Card Header */}
               <div className="flex items-start gap-3.5 bg-white p-4 rounded-xl border border-[#e8dfd5] shadow-xs">
-                {user.avatar ? (
+                {isUserAdmin ? <AdminAvatar src={user.avatar} name={user.name} className="h-14 w-14 rounded-xl border border-[#e8dfd5] object-cover shadow-xs flex-shrink-0" /> : user.avatar ? (
                   <img
                     src={user.avatar}
                     alt={user.name}

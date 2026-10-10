@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Photo marker fixture</title></head>
+<body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MapView } from '/src/views/MapView.tsx';
+import { apiFetchSites } from '/src/api/client.ts';
+import '/src/index.css';
+window.__errors = [];
+window.__requests = [];
+window.addEventListener('error', event => { if (event.message) window.__errors.push(event.message); });
+window.addEventListener('unhandledrejection', event => window.__errors.push(String(event.reason)));
+const originalFetch = window.fetch.bind(window);
+window.fetch = async (input, options) => {
+  const url = String(input);
+  window.__requests.push(url);
+  if (url === '/api/heritage-sites') return Response.json([1, 2, 3].map(id => ({
+    id, name: 'Fixture site ' + id, status: 'active', category: 'Churches', short_description: 'Fixture overview', address: 'Fixture address',
+    latitude: 15.028 + (id - 1) * 0.001, longitude: 120.69 + (id - 1) * 0.001,
+    cover_image: { id, image_url: id === 2 ? '/images/map-broken-fixture.png' : '/images/logo-transparent.png' },
+  })));
+  if (url.startsWith('/api/')) throw new Error('Unexpected API request: ' + url);
+  return originalFetch(input, options);
+};
+const sites = await apiFetchSites();
+createRoot(document.getElementById('root')).render(React.createElement(MapView, {
+  sites, savedSiteIds: [], initialViewMode: 'map', onSelectSite() {}, onPlanRoute() {}, onToggleSaveSite() {},
+}));
+</script></body></html>

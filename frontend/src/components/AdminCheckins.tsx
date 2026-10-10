@@ -150,15 +150,22 @@ export const AdminCheckins = (_props: Props) => {
       </div>
 
       <div className="bg-white border border-[#e8dfd5] rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-[#e8dfd5]">
+        <div className="min-w-0">
+          <table className="admin-table min-w-full divide-y divide-[#e8dfd5]">
+            <colgroup>
+              <col style={{ width: '35%' }} />
+              <col style={{ width: '19%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Heritage Site</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Coordinates</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Verification</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Visitors</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Heritage Site</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Coordinates</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Verification</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Visitors</th>
+                <th scope="col" className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
@@ -169,25 +176,25 @@ export const AdminCheckins = (_props: Props) => {
               ) : (
                 paginated.map(c => (
                   <tr key={c.heritage_site_id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td data-label="Heritage Site" className="px-6 py-4">
                       <div className="text-sm font-bold text-gray-900">{c.name}</div>
                       <div className="text-xs text-gray-500 truncate max-w-xs">{c.category}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Coordinates" className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.has_coordinates ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
                         <MapPin className="w-3 h-3" />
                         {c.has_coordinates ? "Available" : "Missing"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Verification" className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.enabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}`}>
                         {c.enabled ? `Enabled (${c.radius_meters}m)` : "Disabled"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                    <td data-label="Visitors" className="px-6 py-4 text-sm font-medium text-gray-700">
                       {c.verified_visitors} 
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Actions" className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button onClick={() => { setEditingId(String(c.heritage_site_id)); setDraft({ enabled: c.enabled, radius: String(c.radius_meters) }); }} className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Edit Config"><Edit3 className="w-4 h-4" /></button>
                       </div>

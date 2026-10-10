@@ -154,15 +154,22 @@ export function AdminContributions() {
       </div>
 
       <div className="bg-white border border-[#e8dfd5] rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-[#e8dfd5]">
+        <div className="min-w-0">
+          <table className="admin-table min-w-full divide-y divide-[#e8dfd5]">
+            <colgroup>
+              <col style={{ width: '26%' }} />
+              <col style={{ width: '27%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '19%' }} />
+            </colgroup>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Site & Visitor</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Submission</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Site & Visitor</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Submission</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
@@ -173,11 +180,11 @@ export function AdminContributions() {
               ) : (
                 paginated.map(c => (
                   <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td data-label="Site & Visitor" className="px-6 py-4">
                       <div className="text-sm font-bold text-gray-900">{c.heritage_site.name}</div>
                       <div className="text-xs text-gray-500">By {c.visitor_name}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Submission" className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {c.images.length > 0 ? (
                           <div className="relative w-12 h-12 rounded bg-gray-100 border border-[#e8dfd5] overflow-hidden shrink-0">
@@ -193,13 +200,13 @@ export function AdminContributions() {
                             <ImageIcon className="w-4 h-4 text-gray-300"/>
                           </div>
                         )}
-                        <p className="text-sm text-gray-600 truncate max-w-[150px]" title={c.caption || "No caption"}>{c.caption || <span className="italic text-gray-400">No caption</span>}</p>
+                        <p className="admin-table-caption min-w-0 text-sm text-gray-600 truncate max-w-[150px]" title={c.caption || "No caption"}>{c.caption || <span className="italic text-gray-400">No caption</span>}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td data-label="Date" className="px-6 py-4 text-sm text-gray-500">
                       {new Date(c.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Status" className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
                         c.status === "approved" ? "bg-emerald-100 text-emerald-800" :
                         c.status === "rejected" ? "bg-red-100 text-red-800" :
@@ -208,7 +215,7 @@ export function AdminContributions() {
                         {c.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Actions" className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button onClick={() => setViewingItem(c)} className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors" title="Review">
                           <Eye className="w-4 h-4" />

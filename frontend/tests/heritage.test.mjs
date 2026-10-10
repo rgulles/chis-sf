@@ -23,9 +23,75 @@ const customHelpers = await load('../src/utils/customItinerary.ts');
 const cityHelpers = await load('../src/utils/cityBoundary.ts');
 const cityGeoJSON = JSON.parse(read('../public/data/san-fernando-pampanga-boundary.geojson'));
 const chatEngine = await load('../src/data/heritageChatEngine.ts');
-const categories = ['All', 'Historical Buildings', 'Churches', 'Museums', 'Monuments', 'Cultural Sites'];
+const categoryHelpers = await load('../src/data/heritageCategories.ts');
+const categories = categoryHelpers.HERITAGE_FILTER_CATEGORIES;
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status });
 const tick = () => new Promise(resolve => setImmediate(resolve));
+
+test('Admin avatar uses a local generic fallback for missing or broken photos without retry loops', () => {
+  for (const src of [undefined, null, '', '   ']) {
+    const view = harness('../src/components/AdminAvatar.tsx', 'AdminAvatar', { src, name: 'Administrator' });
+    const image = view.render();
+    assert.equal(image.props.src, '/images/default-avatar.svg');
+    assert.equal(image.props.alt, 'Administrator profile');
+  }
+  const image = harness('../src/components/AdminAvatar.tsx', 'AdminAvatar', { src: '/images/logo-transparent.png' }).render();
+  assert.equal(image.props.src, '/images/logo-transparent.png');
+  let src = '/broken.png', attempts = 0;
+  const target = { getAttribute() { return src; }, set src(value) { src = value; attempts++; } };
+  image.props.onError({ currentTarget: target });
+  assert.equal(src, '/images/default-avatar.svg');
+  image.props.onError({ currentTarget: target });
+  assert.equal(attempts, 1);
+});
+
+test('heritage filter chips use the exact requested order without changing Admin category values', () => {
+  assert.deepEqual(categories, ['All', 'Landmarks and Monuments', 'Ancestral Houses', 'Government Buildings', 'Religious Sites', 'Museums and Culture', 'Educational Institutions', 'Parks and Plazas', 'Bridges and Infrastructure', 'Commercial Heritage', 'Tourism and Activities']);
+  assert.deepEqual(categoryHelpers.HERITAGE_CATEGORIES, ['All', 'Historical Buildings', 'Churches', 'Museums', 'Monuments', 'Cultural Sites']);
+});
+
+test('heritage groups match explicit API aliases while ambiguous and missing categories remain under All', () => {
+  for (const [raw, groups] of Object.entries(categoryHelpers.HERITAGE_CATEGORY_ALIASES)) {
+    for (const filter of categories) assert.equal(categoryHelpers.matchesHeritageCategory(raw, filter), filter === 'All' || groups.includes(filter), `${raw}: ${filter}`);
+  }
+  for (const raw of [null, '', 'Historical Buildings', 'Urban Development / Industrial Heritage Site', 'Unknown category', 'constructor']) {
+    assert.equal(categoryHelpers.matchesHeritageCategory(raw, 'All'), true);
+    assert.deepEqual(categoryHelpers.heritageCategoryGroups(raw), []);
+    for (const filter of categories.slice(1)) assert.equal(categoryHelpers.matchesHeritageCategory(raw, filter), false);
+  }
+  for (const filter of categories.slice(1)) assert.equal(categoryHelpers.matchesHeritageCategory(filter, filter), true);
+});
+
+test('Explore chips immediately filter records, preserve incoming search results, and restore All after zero results', async () => {
+  const base = await mappedSite();
+  const sites = categories.slice(1).map((category, index) => ({ ...base, id: String(index + 1), name: `Recorded site ${index + 1}`, category }));
+  sites.push({ ...base, id: 'legacy', category: 'Churches' }, { ...base, id: 'unknown', category: '' }, { ...base, id: 'archived', category: 'Religious Sites', status: 'archived' });
+  const props = { sites, initialViewMode: 'list', savedSiteIds: [], onSelectSite() {}, onToggleSaveSite() {}, onPlanRoute() {} };
+  const view = harness('../src/views/MapView.tsx', 'MapView', props, { 'motion/react': motionModule });
+  const cardIds = tree => { const ids = []; walk(tree, node => { if (node.props?.id?.startsWith('view-details-')) ids.push(node.props.id.replace('view-details-', '')); }); return ids; };
+  const chipId = filter => `filter-cat-${filter.toLowerCase().replace(/\s+/g, '-')}`;
+  let tree = view.render();
+  for (const filter of categories) assert.equal(visibleText(find(tree, node => node.props?.id === chipId(filter))), filter);
+  assert.equal(cardIds(tree).length, sites.length - 1);
+  for (const filter of categories.slice(1)) {
+    find(tree, node => node.props?.id === chipId(filter)).props.onClick(); tree = view.render();
+    assert.equal(find(tree, node => node.props?.id === chipId(filter)).props['aria-pressed'], true);
+    assert.deepEqual(cardIds(tree).sort(), sites.filter(site => site.status === 'active' && categoryHelpers.matchesHeritageCategory(site.category, filter)).map(site => site.id).sort());
+  }
+  // Search belongs to the existing API. Category changes must not replace the
+  // already searched dataset or fetch the complete catalogue again.
+  const requests = [];
+  fetch = async url => { requests.push(url); return reply([{ ...rawSite, id: 90, name: 'Search hit', category: 'Religious Heritage / Historic Church Complex' }, { ...rawSite, id: 91, name: 'Search hit museum', category: 'Museums' }]); };
+  const searched = await api.apiFetchSites('Search hit');
+  tree = view.render({ ...props, sites: searched });
+  find(tree, node => node.props?.id === chipId('Religious Sites')).props.onClick(); tree = view.render();
+  assert.deepEqual(cardIds(tree), ['90']);
+  find(tree, node => node.props?.id === chipId('Ancestral Houses')).props.onClick(); tree = view.render();
+  assert.deepEqual(cardIds(tree), []); assert.ok(visibleText(tree).includes('No heritage sites matched your criteria'));
+  find(tree, node => node.props?.id === chipId('All')).props.onClick(); tree = view.render();
+  assert.deepEqual(cardIds(tree), ['90', '91']);
+  assert.deepEqual(requests, ['/api/heritage-sites?search=Search%20hit']);
+});
 
 function visibleText(tree) {
   if (Array.isArray(tree)) return tree.map(visibleText).join('');
@@ -177,6 +243,15 @@ test('verified form previews images, removes selection, validates count/type/siz
   fetch = async (url, options = {}) => { if (options.method === 'POST') uploads++; return reply(url.endsWith('/mine') ? contributionEligibility() : []); };
   const view = harness('../src/components/VisitorExperiences.tsx', 'VisitorExperiences', experienceProps);
   view.render(); view.flush(); await tick();
+  const input = find(view.render(), node => node.props?.id === 'contribution-photos');
+  assert.equal(input.props.multiple, true);
+  assert.equal(input.props.className, 'sr-only');
+  assert.ok(find(view.render(), node => node.type === 'label' && node.props.htmlFor === input.props.id));
+  let pickerOpened = 0;
+  const choose = find(view.render(), node => node.type === 'button' && visibleText(node) === 'Choose Photos');
+  input.props.ref.current = { click() { pickerOpened++; } };
+  assert.equal(choose.props.type, 'button');
+  choose.props.onClick(); assert.equal(pickerOpened, 1);
   const file = new File(['png'], 'photo.png', { type: 'image/png' });
   const select = selected => find(view.render(), node => node.props?.id === 'contribution-photos').props.onChange({ target: { files: selected } });
   select([file, file]); view.render(); view.flush();
@@ -329,8 +404,8 @@ for (const state of ['outside', 'weak_accuracy', 'verified', 'already_visited'])
     assert.deepEqual({ ...captured }, { latitude: 15.028391234, longitude: 120.693141234, accuracy: 10 });
     const text = visibleText(view.render()); assert.equal(text.includes('15.028391234'), false); assert.equal(text.includes('120.693141234'), false);
     assert.equal(localStorage.getItem('visitor_location'), null);
-    if (state === 'verified') { assert.ok(text.includes('Visit Verified') && text.includes('+100 Points') && text.includes('stamp unlocked')); assert.equal(refreshed, 1); }
-    else if (state === 'already_visited') { assert.ok(text.includes('Already Visited') && text.includes('No additional points')); assert.equal(text.includes('+100 Points'), false); }
+    if (state === 'verified') { assert.ok(text.includes('Visit Verified') && text.includes('stamp unlocked')); assert.equal(text.includes('+100 Points'), false); assert.equal(refreshed, 1); }
+    else if (state === 'already_visited') { assert.ok(text.includes('Already Visited') && text.includes('stamp was already unlocked')); assert.equal(text.includes('points'), false); }
     else {
       assert.equal(refreshed, 0); assert.ok(text.includes(state === 'outside' ? 'outside' : 'accuracy is weak'));
       assert.equal(find(view.render(), node => node.props?.id === 'verify-location').props.disabled, false);
@@ -615,7 +690,7 @@ function harness(path, exportName, initialProps = {}, modules = {}) {
       if (name.endsWith('/api/client')) return api;
       if (name.endsWith('/utils/cityBoundary')) return { ...cityHelpers, loadCityBoundary: async () => null };
       if (name.endsWith('/utils/heritageCoordinates')) return coordinates;
-      if (name.endsWith('/data/heritageCategories')) return { HERITAGE_CATEGORIES: categories };
+      if (name.endsWith('/data/heritageCategories')) return categoryHelpers;
       if (name === 'canvas-confetti') return { default() {} };
       if (!stubs.has(name)) stubs.set(name, new Proxy({}, { get: (_, key) =>
         Object.assign(() => null, { displayName: String(key) }) }));
@@ -752,6 +827,56 @@ test('lightweight catalogue maps one cover, short text and valid coordinates wit
   const [site] = await api.apiFetchSites();
   assert.equal(site.isSummary, true); assert.equal(site.shortDescription, 'Recorded summary'); assert.equal(site.fullDescription, ''); assert.equal(site.story, ''); assert.deepEqual(site.timeline, []);
   assert.equal(site.images.length, 1); assert.equal(site.heroImage, '/storage/heritage-sites/cover.jpg'); assert.deepEqual(site.coordinates, { lat: 15, lng: 120 });
+});
+
+test('summary cover URL is used with an empty gallery without fetching detail', async () => {
+  const url = 'https://example-bucket.s3.amazonaws.com/heritage-sites/cover.jpg?X-Amz-Signature=test-signature';
+  const requests = [];
+  fetch = async path => {
+    requests.push(path);
+    return reply([{ ...rawSite, short_description: 'Summary', images: [], cover_image: { id: 9, image_path: 'heritage-sites/cover.jpg', image_url: url } }]);
+  };
+  const [site] = await api.apiFetchSites();
+  assert.equal(site.heroImage, url);
+  assert.equal(site.images[0].imageUrl, url);
+  assert.deepEqual(requests, ['/api/heritage-sites']);
+});
+
+test('explicit summary cover takes priority over gallery cover and first image', async () => {
+  fetch = async () => reply([{ ...rawSite, short_description: 'Summary',
+    cover_image: { id: 9, image_url: 'https://example.test/explicit.jpg', sort_order: 9 },
+    images: [{ id: 1, image_url: 'https://example.test/first.jpg', sort_order: 0 }, { id: 2, image_url: 'https://example.test/gallery-cover.jpg', is_cover: true, sort_order: 1 }],
+  }]);
+  const [site] = await api.apiFetchSites();
+  assert.equal(site.heroImage, 'https://example.test/explicit.jpg');
+});
+
+test('blank resolved cover URL falls back to its stored path and invalid covers fall back to first usable image', async () => {
+  fetch = async () => reply([{ ...rawSite, cover_image: { id: 9, image_url: ' ', image_path: 'heritage-sites/cover.jpg' }, images: [] }]);
+  assert.equal((await api.apiFetchSites())[0].heroImage, '/storage/heritage-sites/cover.jpg');
+  fetch = async () => reply([{ ...rawSite, cover_image: { id: 9, image_url: null, image_path: null }, images: [null, { id: 1, image_path: '' }, { id: 2, image_path: 'https://example.test/first.jpg' }] }]);
+  assert.equal((await api.apiFetchSites())[0].heroImage, 'https://example.test/first.jpg');
+  fetch = async () => reply([{ ...rawSite, cover_image: null, images: [] }]);
+  assert.equal((await api.apiFetchSites())[0].heroImage, imageHelpers.HERITAGE_IMAGE_PLACEHOLDER);
+});
+
+test('itinerary summaries reuse resolved cover URLs without fetching site details', async () => {
+  api.clearItineraryCache();
+  const requests = [];
+  fetch = async path => {
+    requests.push(path);
+    return reply([{ id: 1, name: 'Walk', status: 'active', stops: [{ id: 1, heritage_site_id: 1, sort_order: 0,
+      heritage_site: { ...rawSite, short_description: '', cover_image: { id: 9, image_url: 'https://example.test/stop.jpg' } },
+    }] }]);
+  };
+  const [route] = await api.apiFetchItineraries();
+  assert.equal(route.stops[0].site.heroImage, 'https://example.test/stop.jpg');
+  assert.deepEqual(requests, ['/api/itineraries']);
+});
+
+test('frontend loading labels contain no broken UTF-8 ellipsis sequences', () => {
+  assert.equal(/â€¦|â€™|â€œ|â€|�/.test(read('../src/App.tsx')), false);
+  assert.match(read('../src/App.tsx'), /Loading heritage site\.\.\./);
 });
 
 test('search asks the summary endpoint only while open and preserves history matches through server search', async () => {
@@ -934,7 +1059,8 @@ test('shared availability keeps the real verification button clickable and does 
   assert.equal(button.props.disabled, false); button.props.onClick();
   await callback({ coords: { latitude: 15, longitude: 120, accuracy: 10 } });
   assert.equal(checks, 0); assert.equal(locations, 1); assert.equal(posts, 1); assert.equal(refreshed, 1);
-  assert.ok(allText(view.render()).includes('+100 Points'));
+  assert.ok(allText(view.render()).includes('Passport stamp unlocked'));
+  assert.equal(allText(view.render()).includes('+100 Points'), false);
 });
 
 test('detail verification metadata skips availability and already verified users do not request location', async () => {
@@ -1447,7 +1573,7 @@ test('existing Events related-heritage cards still resolve current database IDs 
 
 
 test('map category icons cover the centralized categories with safe selected labels', () => {
-  assert.deepEqual(Object.keys(mapHelpers.HERITAGE_MARKER_STYLES).sort(), categories.filter(c => c !== 'All').sort());
+  assert.deepEqual(Object.keys(mapHelpers.HERITAGE_MARKER_STYLES).sort(), categoryHelpers.HERITAGE_CATEGORIES.filter(c => c !== 'All').sort());
   const icons = { Churches: 'church', 'Historical Buildings': 'building', Museums: 'museum', Monuments: 'monument', 'Cultural Sites': 'heritage-star' };
   for (const [category, icon] of Object.entries(icons)) {
     const style = mapHelpers.heritageMarkerStyle(category);
@@ -1460,6 +1586,29 @@ test('map category icons cover the centralized categories with safe selected lab
   }
   assert.equal(mapHelpers.heritageMarkerStyle('').icon, 'pin');
   assert.equal(mapHelpers.heritageMarkerStyle('__proto__').icon, 'pin');
+});
+
+test('photo markers preserve summary cover URLs, escape attributes and fall back to first image or placeholder', () => {
+  const site = { name: 'Recorded <site>', category: 'Churches', heroImage: 'https://example.test/photo.jpg?a=1&b=2" onerror="bad' };
+  const cover = mapHelpers.heritageMarkerHtml(site, false);
+  assert.ok(cover.includes('class="heritage-marker-photo"'));
+  assert.ok(cover.includes('src="https://example.test/photo.jpg?a=1&amp;b=2&quot; onerror=&quot;bad"'));
+  assert.ok(cover.includes('loading="lazy" decoding="async" fetchpriority="low"'));
+  assert.equal(cover.includes('<svg'), false);
+  const images = [{ imageUrl: 'https://example.test/first.jpg', isCover: false }, { imageUrl: 'https://example.test/cover.jpg', isCover: true }];
+  assert.ok(mapHelpers.heritageMarkerHtml({ ...site, heroImage: '', images }, true).includes('src="https://example.test/cover.jpg"'));
+  assert.ok(mapHelpers.heritageMarkerHtml({ ...site, heroImage: '', images: images.slice(0, 1) }, false).includes('src="https://example.test/first.jpg"'));
+  assert.ok(mapHelpers.heritageMarkerHtml({ name: 'No photo', category: 'Churches' }, false).includes('src="/images/heritage-placeholder.svg"'));
+});
+
+test('photo marker sizing, hover, focus and typography use scoped CSS without changing the map zoom behavior', () => {
+  const css = read('../src/views/heritageMap.css');
+  assert.match(css, /width: 36px;\s*height: 36px;/);
+  assert.match(css, /\.heritage-map-close-zoom \.heritage-marker-symbol\s*\{\s*width: 44px;\s*height: 44px;/);
+  assert.match(css, /\[data-selected="true"\] \.heritage-marker-symbol\s*\{\s*width: 56px;\s*height: 56px;/);
+  assert.match(css, /\.heritage-custom-marker:focus-visible \.heritage-marker-symbol/);
+  assert.match(css, /font-family: inherit/);
+  assert.match(css, /prefers-reduced-motion/);
 });
 
 function mapRuntime() {
@@ -1515,14 +1664,14 @@ test('marker switching, dismissal, live card actions and shared list/map filters
   runtime.markers.filter(marker => !marker.removed).find(marker => marker.config.title === second.name).click();
   assert.ok(find(view.render(), node => node.props?.id === 'map-floating-site-card'));
   find(view.render(), node => node.props?.id === 'toggle-map-filter-btn').props.onClick();
-  find(view.render(), node => node.props?.id === 'map-filter-option-churches').props.onClick();
+  find(view.render(), node => node.props?.id === 'map-filter-option-religious-sites').props.onClick();
   tree = view.render(); view.flush(); tree = view.render();
   assert.equal(find(tree, node => node.props?.id === 'map-floating-site-card'), undefined);
   assert.deepEqual(runtime.markers.filter(marker => !marker.removed).map(marker => marker.config.title), [first.name]);
   find(tree, node => node.props?.id === 'toggle-list-view').props.onClick(); tree = view.render();
   assert.ok(find(tree, node => node.props?.id === 'view-details-1'));
   assert.equal(find(tree, node => node.props?.id === 'view-details-2'), undefined);
-  assert.equal(find(tree, node => node.props?.id === 'filter-cat-churches').props['aria-pressed'], true);
+  assert.equal(find(tree, node => node.props?.id === 'filter-cat-religious-sites').props['aria-pressed'], true);
   find(tree, node => node.props?.id === 'filter-cat-all').props.onClick(); tree = view.render();
   assert.ok(find(tree, node => node.props?.id === 'view-details-2'));
   find(tree, node => node.props?.id === 'toggle-map-view').props.onClick();
@@ -1539,7 +1688,7 @@ test('legend, empty states, mobile controls, real boundary and layer attribution
   }
   tree = view.render();
   assert.equal(find(tree, node => node.props?.id === 'toggle-legend-disclosure-btn').props['aria-expanded'], true);
-  for (const category of categories.filter(c => c !== 'All')) assert.ok(allText(tree).includes(category));
+  for (const category of categoryHelpers.HERITAGE_CATEGORIES.filter(c => c !== 'All')) assert.ok(allText(tree).includes(category));
   assert.ok(allText(tree).includes('City of San Fernando, Pampanga boundary'));
   assert.equal(allText(tree).includes('approximate'), false);
   assert.equal(runtime.options[0].maxBoundsViscosity, 0.75); assert.equal(runtime.options[0].minZoom, 10);
@@ -1708,15 +1857,15 @@ test('map labels are icons only by default, with compact selected, hover and foc
   runtime.map.zoom = 14; runtime.map.events.zoomend();
   assert.equal(view.classes.at(-1)[1], false);
   const selected = runtime.markers[0], unselected = runtime.markers[1];
-  assert.ok(selected.config.icon.html.includes('width:38px;height:38px'));
-  assert.ok(unselected.config.icon.html.includes('width:28px;height:28px'));
+  assert.ok(selected.config.icon.html.includes('width="56" height="56"'));
+  assert.ok(unselected.config.icon.html.includes('width="44" height="44"'));
   assert.ok(selected.config.icon.html.includes('A full recorded heritage name &lt;safe&gt;'));
   for (const marker of runtime.markers) {
     assert.equal(marker.config.title, site.name);
     assert.equal(marker.element.attributes['aria-label'], site.name + ', Churches');
     assert.equal(marker.config.keyboard, true); assert.equal(marker.config.riseOnHover, true);
     assert.deepEqual(Array.from(marker.position), [site.coordinates.lat, site.coordinates.lng]);
-    assert.deepEqual(Array.from(marker.config.icon.iconAnchor), [20, 20]);
+    assert.deepEqual(Array.from(marker.config.icon.iconAnchor), [22, 22]);
   }
   unselected.element.events.focus(); assert.equal(unselected.config.zIndexOffset, 600);
   unselected.element.events.blur(); assert.equal(unselected.config.zIndexOffset, 0);
@@ -1767,6 +1916,22 @@ test('Recommended Plan loads API cards and detail in backend order with safe act
   assert.ok(visibleText(view.render()).includes('1 stop has no verified map location'));
   for (const fake of [' km', 'Hours', 'difficulty', 'popularity']) assert.equal(content.includes(fake), false);
   assert.deepEqual(requests, ['/api/itineraries']);
+});
+
+test('Recommended schedule stays compact on cards and preserves complete readable detail', async () => {
+  const route = itineraryRow();
+  route.description = 'A meaningful visitor overview.\n\nDuration: Half Day\nSchedule\n8:00 AM – 8:45 AM | First stop\n9:00 AM – 10:00 AM | Second stop\n\nTravel notes\nConfirm access.';
+  fetch = async () => reply([route]);
+  const view = harness('../src/views/PlanView.tsx', 'PlanView', { sites: [], savedSiteIds: [], onSelectSite() {} });
+  view.render(); view.flush(); await tick();
+  assert.ok(allText(view.render()).includes('A meaningful visitor overview.'));
+  assert.equal(allText(view.render()).includes('8:00 AM'), false);
+  find(view.render(), node => node.props?.id === 'open-itinerary-7').props.onClick();
+  view.render(); view.flush(); await tick();
+  const description = find(view.render(), node => node.type === 'p' && node.props?.children === route.description);
+  assert.ok(description);
+  assert.ok(description.props.className.includes('whitespace-pre-line'));
+  assert.ok(allText(view.render()).includes('Confirm access.'));
 });
 
 test('Recommended load errors and archived detail have clear retry/unavailable states', async () => {

@@ -19,7 +19,7 @@ class AuthController extends Controller
         ]);
         $user = User::create([...$data, 'role' => 'traveler']);
 
-        return response()->json(['user' => $user, 'token' => $user->createToken('chis-token')->plainTextToken], 201);
+        return $this->tokenResponse(auth('api')->login($user), $user, 201);
     }
 
     public function login(Request $request)
@@ -31,18 +31,15 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password ?? '')) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password ?? '')) {
             return response()->json([
-                'error' => 'Invalid credentials'
+                'error' => 'Invalid credentials',
             ], 401);
         }
 
-        $token = $user->createToken('chis-token')->plainTextToken;
+        $token = auth('api')->login($user);
 
-        return response()->json([
-            'token' => $token,
-            'user' => $user,
-        ]);
+        return $this->tokenResponse($token, $user);
     }
 
     public function google(Request $request)
@@ -58,9 +55,9 @@ class AuthController extends Controller
             'id_token' => $credential,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return response()->json([
-                'error' => 'Invalid or expired Google credential.'
+                'error' => 'Invalid or expired Google credential.',
             ], 401);
         }
 
@@ -71,14 +68,14 @@ class AuthController extends Controller
 
         if ($expectedClientId && $aud !== $expectedClientId) {
             return response()->json([
-                'error' => 'Google credential client ID mismatch.'
+                'error' => 'Google credential client ID mismatch.',
             ], 401);
         }
 
         $emailVerified = filter_var($payload['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        if (!$emailVerified || empty($payload['sub']) || empty($payload['email'])) {
+        if (! $emailVerified || empty($payload['sub']) || empty($payload['email'])) {
             return response()->json([
-                'error' => 'Google account email is unverified or invalid.'
+                'error' => 'Google account email is unverified or invalid.',
             ], 401);
         }
 
@@ -89,7 +86,7 @@ class AuthController extends Controller
 
         $user = User::where('google_id', $googleId)->first();
 
-        if (!$user) {
+        if (! $user) {
             $user = User::where('email', $email)->first();
 
             if ($user) {
@@ -117,12 +114,9 @@ class AuthController extends Controller
             }
         }
 
-        $token = $user->createToken('chis-token')->plainTextToken;
+        $token = auth('api')->login($user);
 
-        return response()->json([
-            'token' => $token,
-            'user' => $user,
-        ]);
+        return $this->tokenResponse($token, $user);
     }
 
     public function me(Request $request)
@@ -134,11 +128,36 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        // Propagate blacklist storage failures instead of reporting false revocation.
+        auth('api')->invalidate();
 
         return response()->json([
-            'message' => 'Logged out successfully'
+            'message' => 'Logged out successfully',
         ]);
+    }
+
+    private function tokenResponse(string $token, User $user, int $status = 200)
+    {
+        return response()->json([
+            'user' => $user,
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth('api')->factory()->getTTL() * 60,
+        ], $status)->header('Cache-Control', 'no-store');
+    }
+
+    public function refresh(Request $request)
+    {
+        $guard = auth('api');
+        $token = $guard->refresh();
+        $user = $guard->setToken($token)->user();
+        if (! $user) {
+            $guard->invalidate();
+
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        return $this->tokenResponse($token, $user);
     }
 
     public function travelers(Request $request)

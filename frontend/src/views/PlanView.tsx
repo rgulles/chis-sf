@@ -157,7 +157,7 @@ export const PlanView = ({ sites, savedSiteIds, onSelectSite, onExploreClick, on
       {loading && !selectedId && <p role="status">Loading recommended itineraries…</p>}
       {error && !selectedId && <div role="alert"><p>{error}</p><button className={buttonStyle} onClick={retryLoad}>Retry</button></div>}
       {!selectedId && (routes.length > 0 || (!loading && !error)) && (routes.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{routes.map(route => <article key={route.id} className="rounded-xl border border-[#e8dfd5] bg-white p-4 space-y-3 min-w-0 break-words">
-        <h2 className="text-lg font-bold">{route.name}</h2>{route.description && <p className="text-sm">{route.description}</p>}<p className="text-sm">{route.stops.length} stops</p>
+        <h2 className="text-lg font-bold">{route.name}</h2>{route.description && <p className="text-sm">{route.description.split('\n')[0]}</p>}<p className="text-sm">{route.stops.length} stops</p>
         <div className="flex gap-2">{route.stops.slice(0, 3).map(stop => stop.site && <img key={stop.id} src={stop.site.heroImage || HERITAGE_IMAGE_PLACEHOLDER} alt={stop.site.name} loading="lazy" decoding="async" width={56} height={56} onError={handleHeritageImageError} className="h-14 w-14 object-cover rounded-lg" />)}</div>
         <button id={`open-itinerary-${route.id}`} className={buttonStyle} onClick={() => openDetail(route.id)}>View Itinerary</button>
       </article>)}</div> : <p>No recommended itineraries are currently available.</p>)}
@@ -165,7 +165,7 @@ export const PlanView = ({ sites, savedSiteIds, onSelectSite, onExploreClick, on
         <button className={buttonStyle} onClick={() => { setSelectedId(null); setDetail(null); setMapOpen(false); }}>Back to recommended itineraries</button>
         {detailLoading && <p role="status">Loading itinerary…</p>}
         {detailError && <div role="alert"><p>{detailError}</p><button className={buttonStyle} onClick={retryLoad}>Retry</button></div>}
-        {detail && <><h2 className="text-2xl font-bold">{detail.name}</h2>{detail.description && <p>{detail.description}</p>}
+        {detail && <><h2 className="text-2xl font-bold">{detail.name}</h2>{detail.description && <p className="whitespace-pre-line wrap-anywhere">{detail.description}</p>}
           {itinerarySites.length > 0 && renderRouteSummary()}
           {itinerarySites.length ? <ol>{detailStops.map((stop, index) => renderStop(stop.site!, index, false, stop.id))}</ol> : <p>No active stops are currently available in this itinerary.</p>}
         </>}

@@ -1,4 +1,4 @@
-export type CategoryType = 
+export type CategoryType = Exclude<import('./data/heritageCategories').HeritageFilterCategory, 'All'>
   | 'Historical Buildings' 
   | 'Churches' 
   | 'Museums' 

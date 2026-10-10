@@ -74,10 +74,10 @@ export function VisitVerification({ site, user, onLogin, onPassport, onExplore, 
     {error && <ErrorState message={error} onRetry={sharedAvailability?.error ? onRetryAvailability : enabled ? verify : reload} />}
     {!loading && enabled === true && (alreadyVerified && !result ? <div role="status"><p>Your visit is verified.</p><button className={button} onClick={onPassport}>View Passport</button></div> : result ? <div ref={outcome} tabIndex={-1} role="status" className="space-y-3">
       <h3 className="text-xl font-bold">{result.status === 'verified' ? 'Visit Verified' : 'Already Visited'}</h3><p>{site.name}</p>
-      {result.status === 'verified' ? <><p>+100 Points</p><p>Passport stamp unlocked</p></> : <p>Your passport stamp was already unlocked on {new Date(result.visit.verified_at).toLocaleDateString()}. No additional points were awarded.</p>}
+      {result.status === 'verified' ? <p>Passport stamp unlocked</p> : <p>Your passport stamp was already unlocked on {new Date(result.visit.verified_at).toLocaleDateString()}.</p>}
       <div className="flex flex-wrap gap-3"><button className={button} onClick={onPassport}>View Passport</button><button className={button} onClick={onExplore}>Continue Exploring</button></div>
     </div> : <>
-      <p>Verify that you are visiting this heritage site to unlock its passport stamp and earn 100 points.</p>
+      <p>Verify that you are visiting this heritage site to unlock its passport stamp.</p>
       <p className="text-sm">Your location is used only for verification. Exact visitor coordinates are not stored.</p>
       {!user && <p>Sign in or create a visitor account to verify your visit.</p>}
       {locating && <p role="status">Getting your location…</p>}

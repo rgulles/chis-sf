@@ -47,6 +47,7 @@ class HeritageCataloguePerformanceTest extends TestCase
         $cover = $site->images()->create(['image_path' => 'heritage-sites/cover.jpg', 'is_cover' => true, 'sort_order' => 9, 'caption' => 'Official cover']);
         $site->timelines()->create(['year' => '1900', 'title' => 'Recorded milestone', 'description' => 'Recorded history']);
         $response = $this->getJson('/api/heritage-sites')->assertOk()->assertJsonPath('0.cover_image.id', $cover->id);
+        $this->assertNotEmpty($response->json('0.cover_image.image_url'));
         $this->assertSame(['id', 'name', 'category', 'year_built', 'address', 'latitude', 'longitude', 'status', 'short_description', 'cover_image'], array_keys($response->json('0')));
         $this->assertLessThanOrEqual(243, mb_strlen($response->json('0.short_description')));
         $this->getJson('/api/heritage-sites/'.$site->id)->assertOk()->assertJsonCount(3, 'images')->assertJsonCount(1, 'timelines')

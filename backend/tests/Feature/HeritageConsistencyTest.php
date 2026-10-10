@@ -60,7 +60,7 @@ class HeritageConsistencyTest extends TestCase
         $this->getJson('/api/admin/heritage-sites/'.$archived->id)->assertUnauthorized();
         $this->getJson('/api/admin/site-images')->assertUnauthorized();
 
-        $headers = ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken];
+        $headers = ['Authorization' => 'Bearer '.$this->jwtFor($admin)];
         $this->getJson('/api/admin/heritage-sites', $headers)->assertOk()->assertJsonCount(2);
         $this->getJson('/api/admin/heritage-sites/'.$archived->id, $headers)->assertOk()
             ->assertJsonPath('status', 'archived')->assertJsonCount(1, 'images')->assertJsonCount(1, 'timelines');
@@ -84,7 +84,7 @@ class HeritageConsistencyTest extends TestCase
     {
         $traveler = User::factory()->create(['role' => 'traveler']);
         $site = HeritageSite::create($this->payload() + ['created_by' => $traveler->id, 'status' => 'archived']);
-        $headers = ['Authorization' => 'Bearer '.$traveler->createToken('test')->plainTextToken];
+        $headers = ['Authorization' => 'Bearer '.$this->jwtFor($traveler)];
         foreach (['admin/heritage-sites', 'admin/heritage-sites/'.$site->id, 'admin/site-images'] as $path) {
             $this->getJson('/api/'.$path, $headers)->assertForbidden();
         }
@@ -118,7 +118,7 @@ class HeritageConsistencyTest extends TestCase
     public function test_invalid_coordinate_pairs_rejected_on_create_and_update(array $coordinates, string $field): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $headers = ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken];
+        $headers = ['Authorization' => 'Bearer '.$this->jwtFor($admin)];
         $site = HeritageSite::create($this->payload() + ['created_by' => $admin->id, 'latitude' => 15, 'longitude' => 120]);
         $this->postJson('/api/heritage-sites', $this->payload() + $coordinates, $headers)
             ->assertUnprocessable()->assertJsonValidationErrors($field);
@@ -131,7 +131,7 @@ class HeritageConsistencyTest extends TestCase
     public function test_unknown_valid_and_boundary_coordinates_and_categories(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $headers = ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken];
+        $headers = ['Authorization' => 'Bearer '.$this->jwtFor($admin)];
         $response = $this->postJson('/api/heritage-sites', $this->payload() + ['latitude' => null, 'longitude' => null], $headers)->assertCreated();
         $this->postJson('/api/heritage-sites', $this->payload(), $headers)->assertCreated()
             ->assertJsonPath('latitude', null)->assertJsonPath('longitude', null);

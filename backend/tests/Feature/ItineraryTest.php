@@ -43,7 +43,7 @@ class ItineraryTest extends TestCase
 
     private function headers(User $user): array
     {
-        return ['Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken];
+        return ['Authorization' => 'Bearer '.$this->jwtFor($user)];
     }
 
     public function test_public_summaries_have_one_cover_no_gallery_timeline_or_admin_fields_and_bounded_queries(): void
@@ -64,6 +64,7 @@ class ItineraryTest extends TestCase
             $this->assertSame(['id', 'name', 'description', 'status', 'stops'], array_keys($route));
             $summary = $route['stops'][0]['heritage_site'];
             $this->assertSame('heritage-sites/cover.jpg', $summary['cover_image']['image_path']);
+            $this->assertNotEmpty($summary['cover_image']['image_url']);
             foreach (['images', 'timelines', 'history', 'description', 'opening_hours', 'created_by'] as $field) $this->assertArrayNotHasKey($field, $summary);
         }
         $this->getJson('/api/itineraries/'.$route['id'])->assertOk()->assertJsonMissingPath('stops.0.heritage_site.timelines')->assertJsonMissingPath('stops.0.heritage_site.images');

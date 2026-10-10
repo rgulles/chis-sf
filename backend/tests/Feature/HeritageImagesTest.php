@@ -39,7 +39,7 @@ class HeritageImagesTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $attributes = ['created_by' => $admin->id, 'name' => 'Site', 'description' => 'Overview', 'history' => 'History', 'address' => 'Address'];
         return [HeritageSite::create($attributes), HeritageSite::create($attributes),
-            ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken]];
+            ['Authorization' => 'Bearer '.$this->jwtFor($admin)]];
     }
 
     private function image(HeritageSite $site, array $values, array $headers): SiteImage
@@ -129,7 +129,7 @@ class HeritageImagesTest extends TestCase
         $cover = SiteImage::create(['heritage_site_id' => $site->id, 'image_path' => 'test.jpg', 'is_cover' => true]);
         $this->patchJson('/api/site-images/'.$cover->id, ['is_cover' => false])->assertUnauthorized();
         $traveler = User::factory()->create(['role' => 'traveler']);
-        $travelerHeaders = ['Authorization' => 'Bearer '.$traveler->createToken('test')->plainTextToken];
+        $travelerHeaders = ['Authorization' => 'Bearer '.$this->jwtFor($traveler)];
         $this->patchJson('/api/site-images/'.$cover->id, ['is_cover' => false], $travelerHeaders)->assertForbidden();
         $this->assertTrue($cover->fresh()->is_cover);
     }

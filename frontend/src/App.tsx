@@ -343,7 +343,7 @@ export default function App() {
     }
 
     return (
-      <Suspense fallback={<p role="status" className="p-6">Loading Adminâ€¦</p>}><AdminView
+      <Suspense fallback={<p role="status" className="p-6">Loading Admin...</p>}><AdminView
         user={user}
         onLogout={handleLogout}
         onPublicDataChanged={kind => kind === 'events' ? setEventsRetry(value => value + 1) : setDataRetry(value => value + 1)}
@@ -367,10 +367,10 @@ export default function App() {
 
       {/* MAIN VIEW CONTENT CONTAINER */}
       <main id="main-content-viewport" className="flex-1">
-        <Suspense fallback={<p role="status" className="p-6">Loading pageâ€¦</p>}>
+        <Suspense fallback={<p role="status" className="p-6">Loading page...</p>}>
           {currentView === 'not-found' && <ErrorState kind="not-found" title="Page not found" onHome={() => navigateTo('home')} />}
           {sitesError && currentView !== 'site-detail' && <ErrorState message={sitesError} onRetry={() => setDataRetry(value => value + 1)} />}
-          {sitesLoading && ['explore', 'map'].includes(currentView) && <p role="status" className="p-6">Loading heritage sitesâ€¦</p>}
+          {sitesLoading && ['explore', 'map'].includes(currentView) && <p role="status" className="p-6">Loading heritage sites...</p>}
           {/* PAGE 1: HOME */}
           {currentView === 'home' && (
             <HomeView
@@ -422,7 +422,7 @@ export default function App() {
           {/* PAGE 4: HERITAGE SITE DETAILS */}
           {currentView === 'site-detail' && detailStatus !== 'ready' && (
             <section className="max-w-5xl mx-auto p-8 space-y-4" role={detailStatus === 'loading' ? 'status' : 'alert'}>
-              <h1 className="headline-md">{detailStatus === 'loading' ? 'Loading heritage siteâ€¦' : detailStatus === 'not-found' ? 'Heritage site not found' : 'Unable to load this heritage site'}</h1>
+              <h1 className="headline-md">{detailStatus === 'loading' ? 'Loading heritage site...' : detailStatus === 'not-found' ? 'Heritage site not found' : 'Unable to load this heritage site'}</h1>
               {detailStatus === 'not-found' && <p>This site is unavailable or no longer public.</p>}
               {detailStatus === 'error' && <ErrorState message={detailError} onRetry={() => setDetailRetry(value => value + 1)} />}
               {detailStatus !== 'loading' && <button onClick={() => navigateTo('explore')}>Return to Explore</button>}
@@ -448,7 +448,7 @@ export default function App() {
           )}
 
           {/* PAGE 7 & 8: EVENTS & EVENT DETAILS */}
-          {currentView === 'events' && eventsLoading && <p role="status" className="p-6">Loading eventsâ€¦</p>}
+          {currentView === 'events' && eventsLoading && <p role="status" className="p-6">Loading events...</p>}
           {eventsError && ['home', 'events', 'saved'].includes(currentView) && <ErrorState message={eventsError} onRetry={() => setEventsRetry(value => value + 1)} />}
           {currentView === 'events' && !eventsLoading && !eventsError && !events.length && <p role="status" className="p-6">No events are currently available.</p>}
           {currentView === 'events' && !eventsLoading && !eventsError && (
@@ -512,7 +512,7 @@ export default function App() {
         {/* Low-poly background image */}
         <div className="absolute inset-0 z-0 pointer-events-none opacity-90">
           <img
-            src="/images/background/background.png"
+            src="/images/background.png"
             alt="Footer Background"
             className="h-full w-full object-cover object-bottom"
             referrerPolicy="no-referrer"
@@ -523,15 +523,13 @@ export default function App() {
         <div className="relative z-20 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f5b82a] text-[#3d0309] font-serif font-bold text-sm shadow-md">
-                SF
-              </span>
+              <img src="/images/logo-transparent.png" alt="CHIS logo" width={48} height={48} className="h-12 w-12 shrink-0 object-contain" />
               <span className="font-serif text-lg font-bold text-white tracking-wide">
-                Saâ€™n Fernando
+                Sa'n Fernando
               </span>
             </div>
             <p className="body-sm text-[#ffeaec]/80 leading-relaxed">
-              â€œSaan sa San Fernando?â€ Discovering the living stories, heroic revolutions, and vibrant giant lantern heritage of the Provincial Capital of Pampanga, Philippines.
+              "Saan sa San Fernando?" Discovering the living stories, heroic revolutions, and vibrant giant lantern heritage of the Provincial Capital of Pampanga, Philippines.
             </p>
             <p className="label-compact text-[#ffd580] font-semibold">
               Official Tourism & Heritage Web Platform
@@ -605,7 +603,7 @@ export default function App() {
         </div>
 
         <div className="relative z-20 max-w-7xl mx-auto mt-10 pt-6 border-t border-white/15 flex flex-col sm:flex-row items-center justify-between gap-2 label-compact text-[#ffeaec]/60">
-          <span>Â© {new Date().getFullYear()} City Government of San Fernando, Pampanga. All Rights Reserved.</span>
+          <span>&copy; {new Date().getFullYear()} City Government of San Fernando, Pampanga. All Rights Reserved.</span>
           <span>Home of the Giant Lantern Festival (Ligligan Parul).</span>
         </div>
       </footer>
@@ -654,6 +652,6 @@ export default function App() {
         onSelectSite={handleSelectSite}
         onPlanRoute={() => navigateTo('plan')}
       />
-    </div>{passportOpen && user && <PassportModal onClose={() => setPassportOpen(false)}><Suspense fallback={<p role="status" className="p-6">Loading passportâ€¦</p>}><PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => { setPassportState(null); setPassportRevision(value => value + 1); }} onSite={site => { setPassportOpen(false); handleSelectSite(site); }} /></Suspense></PassportModal>}</>
+    </div>{passportOpen && user && <PassportModal onClose={() => setPassportOpen(false)}><Suspense fallback={<p role="status" className="p-6">Loading passport...</p>}><PassportView user={user} passport={passport} error={passportError} onLogin={() => setIsAuthOpen(true)} onRetry={() => { setPassportState(null); setPassportRevision(value => value + 1); }} onSite={site => { setPassportOpen(false); handleSelectSite(site); }} /></Suspense></PassportModal>}</>
   );
 }

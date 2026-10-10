@@ -92,14 +92,20 @@ export function AdminTravelers() {
         </div>
       ) : (
         <div className="ui-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="min-w-0">
+            <table className="admin-table w-full text-left text-sm">
+              <colgroup>
+                <col style={{ width: '31%' }} />
+                <col style={{ width: '32%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '17%' }} />
+              </colgroup>
               <thead className="bg-gray-50 border-b border-[#e8dfd5] text-gray-600">
                 <tr>
-                  <th className="px-6 py-3.5 font-semibold">Traveler</th>
-                  <th className="px-6 py-3.5 font-semibold">Email Address</th>
-                  <th className="px-6 py-3.5 font-semibold">Login Method</th>
-                  <th className="px-6 py-3.5 font-semibold">Registered Date</th>
+                  <th scope="col" className="px-6 py-3.5 font-semibold">Traveler</th>
+                  <th scope="col" className="px-6 py-3.5 font-semibold">Email Address</th>
+                  <th scope="col" className="px-6 py-3.5 font-semibold">Login Method</th>
+                  <th scope="col" className="px-6 py-3.5 font-semibold">Registered Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -127,7 +133,7 @@ export function AdminTravelers() {
                     <>
                       {filtered.map((traveler) => (
                         <tr key={traveler.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
+                          <td data-label="Traveler" className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               {traveler.avatar ? (
                                 <img
@@ -147,13 +153,13 @@ export function AdminTravelers() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-gray-600">
+                          <td data-label="Email Address" className="px-6 py-4 text-gray-600">
                             <div className="flex items-center gap-1.5">
                               <Mail className="w-3.5 h-3.5 text-gray-400" />
                               <span>{traveler.email}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td data-label="Login Method" className="px-6 py-4">
                             {traveler.loginMethod === 'Google' ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
@@ -171,7 +177,7 @@ export function AdminTravelers() {
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-gray-500 text-xs font-medium">
+                          <td data-label="Registered Date" className="px-6 py-4 text-gray-500 text-xs font-medium">
                             {traveler.createdAt ? new Date(traveler.createdAt).toLocaleDateString(undefined, {
                               year: 'numeric',
                               month: 'short',

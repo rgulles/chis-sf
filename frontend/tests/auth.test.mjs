@@ -66,8 +66,9 @@ function componentHarness(path, exportName, props = {}, overrides = {}) {
   const exports = {};
   vm.runInNewContext(compile(read(path)), {
     exports, console, Error, localStorage: globalThis.localStorage,
-    window: { scrollTo() {} },
+    window: { scrollTo() {}, addEventListener() {}, removeEventListener() {} },
     require(name) {
+      if (name.endsWith('/hooks/useToast')) return { useToast: () => ({ addToast() {} }) };
       if (name.endsWith('/utils/heritageNavigation')) return navigation;
       if (name === 'react') return hooks;
       if (name === 'react/jsx-runtime') return require(name);
@@ -125,7 +126,7 @@ for (const [label, user, allowed] of [['admin', admin, true], ['traveler', trave
     fetch = async (_, options) => {
       assert.equal(options.headers.Accept, 'application/json');
       assert.equal(JSON.parse(options.body).password, ' password with spaces ');
-      return response({ token: 'server-token', user });
+      return response({ access_token: 'server-token', token_type: 'bearer', expires_in: 3600, user });
     };
     const flow = loginHarness();
     await submitLogin(flow.harness, user.email, ' password with spaces ');
@@ -164,7 +165,7 @@ test('server HTML and malformed success responses are never trusted or displayed
   await assert.rejects(api.apiLogin(admin.email, 'password'), /temporarily unavailable/);
   fetch = async () => new Response('<html>private stack trace</html>');
   await assert.rejects(api.apiLogin(admin.email, 'password'), /unexpected response/);
-  fetch = async () => response({ token: 'fake-token', user: { ...admin, id: 'admin-local' } });
+  fetch = async () => response({ access_token: 'fake-token', user: { ...admin, id: 'admin-local' } });
   await assert.rejects(api.apiLogin(admin.email, 'password'), /Invalid authentication response/);
   assert.equal(api.getJwtToken(), null);
 });
@@ -357,7 +358,7 @@ test('pending login responses cannot save a token after logout', async () => {
     ? new Promise((done) => { resolve = done; }) : Promise.resolve(response({}));
   const login = api.apiLogin(admin.email, 'password');
   await api.apiLogout();
-  resolve(response({ token: 'late-token', user: admin }));
+  resolve(response({ access_token: 'late-token', user: admin }));
   await assert.rejects(login, /Sign-in cancelled/);
   assert.equal(api.getJwtToken(), null);
 });
@@ -373,4 +374,140 @@ test('a previous logout request cannot clear a newer login', async () => {
   await logout;
   assert.equal(api.getJwtToken(), 'new-token');
   assert.equal(JSON.parse(localStorage.getItem('sf_user_profile')).role, 'traveler');
+});
+
+test('registration and Google login store the same JWT response in one location', async () => {
+  const requests = [];
+  fetch = async (url, options) => {
+    requests.push(url);
+    assert.equal(options.headers.Authorization, undefined);
+    return response({ access_token: 'jwt-access', token_type: 'bearer', expires_in: 3600, user: traveler });
+  };
+  assert.equal((await api.apiRegister('Visitor', traveler.email, 'password')).token, 'jwt-access');
+  assert.equal((await api.apiGoogleLogin('google-credential')).token, 'jwt-access');
+  assert.deepEqual(requests, ['/api/auth/register', '/api/auth/google']);
+  assert.equal(localStorage.getItem('chis_jwt_token'), 'jwt-access');
+  assert.equal(localStorage.getItem('sf_user_profile'), null);
+});
+
+test('expired current-user JWT refreshes once and verifies with the replacement', async () => {
+  api.setJwtToken('expired-jwt');
+  const requests = [];
+  fetch = async (url, options) => {
+    requests.push([url, new Headers(options.headers).get('Authorization')]);
+    if (url === '/api/auth/refresh') return response({ access_token: 'new-jwt' });
+    return new Headers(options.headers).get('Authorization') === 'Bearer expired-jwt' ? response({}, 401) : response({ user: traveler });
+  };
+  assert.equal((await api.apiFetchCurrentUser()).id, String(traveler.id));
+  assert.equal(api.getJwtToken(), 'new-jwt');
+  assert.deepEqual(requests, [['/api/auth/me', 'Bearer expired-jwt'], ['/api/auth/refresh', 'Bearer expired-jwt'], ['/api/auth/me', 'Bearer new-jwt']]);
+});
+
+test('concurrent protected requests share one refresh and retry at most once', async () => {
+  api.setJwtToken('expired-jwt');
+  let refreshes = 0;
+  let resolveRefresh;
+  const refresh = new Promise(resolve => { resolveRefresh = resolve; });
+  fetch = async (url, options) => {
+    if (url === '/api/auth/refresh') { refreshes++; return refresh; }
+    if (new Headers(options.headers).get('Authorization') === 'Bearer expired-jwt') return response({}, 401);
+    if (url === '/api/auth/me') return response({ user: traveler });
+    return response({ total_points: 0, visited_count: 0, eligible_site_count: 0, visited_eligible_count: 0, visits: [], eligible_sites: [] });
+  };
+  const current = api.apiFetchCurrentUser();
+  const passport = api.apiFetchPassport();
+  await tick();
+  resolveRefresh(response({ access_token: 'new-jwt' }));
+  assert.equal((await current).id, String(traveler.id));
+  assert.equal((await passport).total_points, 0);
+  assert.equal(refreshes, 1);
+});
+
+test('late 401 from the previous JWT uses the completed rotation without refreshing again', async () => {
+  api.setJwtToken('expired-jwt');
+  let resolvePassport;
+  let refreshes = 0;
+  const delayed = new Promise(resolve => { resolvePassport = resolve; });
+  fetch = async (url, options) => {
+    if (url === '/api/auth/refresh') { refreshes++; return response({ access_token: 'new-jwt' }); }
+    if (new Headers(options.headers).get('Authorization') === 'Bearer expired-jwt') return url === '/api/passport' ? delayed : response({}, 401);
+    if (url === '/api/auth/me') return response({ user: traveler });
+    return response({ total_points: 0, visited_count: 0, eligible_site_count: 0, visited_eligible_count: 0, visits: [], eligible_sites: [] });
+  };
+  const passport = api.apiFetchPassport();
+  await api.apiFetchCurrentUser();
+  resolvePassport(response({}, 401));
+  await passport;
+  assert.equal(refreshes, 1);
+});
+
+for (const failure of ['refresh-rejected', 'retry-rejected', 'network', 'malformed']) {
+  test(`JWT ${failure} clears state without retry loops`, async () => {
+    api.setJwtToken('expired-jwt');
+    localStorage.setItem('sf_user_profile', JSON.stringify(admin));
+    let refreshes = 0;
+    let protectedRequests = 0;
+    fetch = async url => {
+      if (url === '/api/auth/refresh') {
+        refreshes++;
+        if (failure === 'network') throw new Error('Offline');
+        if (failure === 'malformed') return response({});
+        return response({ access_token: 'new-jwt' }, failure === 'refresh-rejected' ? 401 : 200);
+      }
+      protectedRequests++;
+      return response({}, 401);
+    };
+    assert.equal(await api.apiFetchCurrentUser(), null);
+    assert.equal(refreshes, 1);
+    assert.equal(protectedRequests, failure === 'retry-rejected' ? 2 : 1);
+    assert.equal(api.getJwtToken(), null);
+    assert.equal(localStorage.getItem('sf_user_profile'), null);
+  });
+}
+
+test('logout during token rotation cannot resurrect the session', async () => {
+  api.setJwtToken('expired-jwt');
+  let resolveRefresh;
+  fetch = async url => url === '/api/auth/refresh'
+    ? new Promise(resolve => { resolveRefresh = resolve; }) : response({}, url === '/api/auth/logout' ? 200 : 401);
+  const pending = api.apiFetchCurrentUser();
+  await tick();
+  await api.apiLogout();
+  resolveRefresh(response({ access_token: 'late-jwt' }));
+  assert.equal(await pending, null);
+  assert.equal(api.getJwtToken(), null);
+});
+
+test('public reads never attach JWT or initiate refresh', async () => {
+  api.setJwtToken('jwt-access');
+  fetch = async (url, options) => {
+    assert.equal(url, '/api/events');
+    assert.equal(new Headers(options.headers).has('Authorization'), false);
+    return response([]);
+  };
+  await api.apiFetchEvents();
+});
+
+test('a role denial never rotates or clears a valid visitor JWT', async () => {
+  api.setJwtToken('visitor-jwt');
+  let requests = 0;
+  fetch = async url => {
+    requests++;
+    assert.equal(url, '/api/admin/travelers');
+    return response({}, 403);
+  };
+  await assert.rejects(api.apiFetchTravelers(), error => error.status === 403);
+  assert.equal(requests, 1);
+  assert.equal(api.getJwtToken(), 'visitor-jwt');
+});
+
+test('cross-tab token replacement cannot return the previous account profile', async () => {
+  api.setJwtToken('old-account-jwt');
+  let resolve;
+  fetch = async () => new Promise(done => { resolve = done; });
+  const current = api.apiFetchCurrentUser();
+  localStorage.setItem('chis_jwt_token', 'other-account-jwt');
+  resolve(response({ user: admin }));
+  assert.equal(await current, null);
+  assert.equal(api.getJwtToken(), 'other-account-jwt');
 });

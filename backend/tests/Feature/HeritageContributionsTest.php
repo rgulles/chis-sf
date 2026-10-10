@@ -63,7 +63,7 @@ class HeritageContributionsTest extends TestCase
     {
         $this->app['auth']->forgetGuards();
 
-        return ['Accept' => 'application/json'] + ($user ? ['Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken] : []);
+        return ['Accept' => 'application/json'] + ($user ? ['Authorization' => 'Bearer '.$this->jwtFor($user)] : []);
     }
 
     private function photo(): UploadedFile

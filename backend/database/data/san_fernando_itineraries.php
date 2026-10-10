@@ -1,0 +1,210 @@
+<?php
+
+// Editorial plans, not operator timetables. Site names are resolved against existing records.
+$station = 'San Fernando Train Station';
+$capitol = 'Pampanga Provincial Capitol';
+$park = 'Arnedo Park';
+$lazatin = 'Lazatin House';
+$consunji = 'Consunji House';
+$henson = 'Henson-Hizon House';
+$hizon = 'Hizon-Singian House';
+$cathedral = 'Metropolitan Cathedral of San Fernando, Pampanga';
+$bridge = 'Baluyut Bridge';
+$market = 'City Market Plaza';
+$cafe = "Everybody's Cafe";
+$lantern = 'City of San Fernando Giant Lantern Center — Sentru da Ring Simpanang Aslag';
+$archdiocese = 'Arzobispado de Pampanga';
+$seminary = 'Mother of Good Counsel Seminary';
+$marker = 'Death March Marker';
+
+return [
+    [
+        'key' => 'discover-historic-san-fernando',
+        'name' => 'Discover Historic San Fernando',
+        'theme' => 'Heritage', 'duration' => 'Half Day', 'start' => '08:00', 'end' => '12:00',
+        'summary' => 'Get an introduction to San Fernando through its railway, civic landmarks, ancestral architecture, and cathedral. Begin at the train station and consider its connection to the Bataan Death March before moving toward the provincial capitol. Compare the public face of government with the exterior details of an ancestral house. Finish with a quiet visit to the cathedral, keeping worship and private property in mind.',
+        'schedule' => [
+            ['08:00', '08:50', $station, 'Read the railway and wartime interpretation available on site; observe the station exterior from permitted areas.'],
+            ['08:50', '09:15', null, 'Walk or arrange a short local ride toward the capitol; allow time for crossings.'],
+            ['09:15', '10:00', $capitol, 'Observe the civic architecture from publicly accessible grounds; do not enter working offices without permission.'],
+            ['10:00', '10:20', null, 'Walk toward V. Tiomico Street, checking the current pedestrian route.'],
+            ['10:20', '11:00', $henson, 'Study the house frontage and nearby Nicolasa Dayrit monument from public space; interior visits require permission.'],
+            ['11:00', '11:15', null, 'Continue on foot to the cathedral and take a short water break.'],
+            ['11:15', '12:00', $cathedral, 'Observe the facade and, if open to visitors, the church interior outside services.'],
+        ],
+        'notes' => 'Start at the station entrance only after confirming site access with the City Tourism Office. This is a downtown route; walking is optional and short rides can reduce heat exposure. Ancestral houses are not assumed to operate as public museums. Wear modest clothing at the cathedral and carry drinking water.',
+    ],
+    [
+        'key' => 'heritage-walking-tour',
+        'name' => 'San Fernando Heritage Walking Tour',
+        'theme' => 'Heritage', 'duration' => 'Half Day', 'start' => '08:00', 'end' => '12:00',
+        'summary' => 'Explore the downtown heritage streets at a walking pace rather than rushing between distant attractions. Look closely at ancestral-house facades along the Consunji and Tiomico streets area, then continue to the cathedral and Baluyut Bridge. The route emphasizes streetscape details and respectful observation from public space. Allow extra time at road crossings and use a short ride if heat or uneven footpaths make walking uncomfortable.',
+        'schedule' => [
+            ['08:00', '08:40', $lazatin, 'Meet on the public roadside near the house without blocking entrances; examine the facade and visible architectural details.'],
+            ['08:40', '08:55', null, 'Walk to the Henson-Hizon frontage using safe crossings.'],
+            ['08:55', '09:35', $henson, 'Compare the frontage with the first house and observe the nearby monument; remain outside private areas.'],
+            ['09:35', '09:55', null, 'Walk along the downtown heritage streets toward Hizon-Singian House.'],
+            ['09:55', '10:40', $hizon, 'Sketch or photograph exterior details without entering gates or disturbing residents.'],
+            ['10:40', '10:55', null, 'Walk to the cathedral; pause for water.'],
+            ['10:55', '11:35', $cathedral, 'Observe religious architecture, with interior access subject to services and visitor permission.'],
+            ['11:35', '11:45', null, 'Walk toward General Hizon Avenue.'],
+            ['11:45', '12:00', $bridge, 'View the bridge from a safe pedestrian position; keep clear of traffic.'],
+        ],
+        'notes' => 'Meet outside Lazatin House on A. Consunji Street, not inside the property. This is an exterior-focused walk; no private-house admission is promised. Sidewalk continuity and accessibility vary, so visitors needing step-free access should arrange transport and check conditions first. Wear walking shoes and bring sun and rain protection.',
+    ],
+    [
+        'key' => 'giant-lanterns-kapampangan-traditions',
+        'name' => 'Giant Lanterns and Kapampangan Traditions',
+        'theme' => 'Culture', 'duration' => 'Full Day', 'start' => '08:00', 'end' => '16:00',
+        'summary' => 'Connect San Fernando’s built heritage with its continuing lantern tradition. Spend the morning at the train station, capitol, an ancestral-house exterior, and the cathedral before taking a market-area lunch break. Travel to the Giant Lantern Center in San Jose for a pre-arranged look at lantern design and craftsmanship. A festival performance or artisan demonstration is not included or guaranteed by this suggested plan.',
+        'schedule' => [
+            ['08:00', '08:45', $station, 'Observe the station and read available historical interpretation.'],
+            ['08:45', '09:10', null, 'Transfer to the capitol area on foot or by a locally arranged ride.'],
+            ['09:10', '09:50', $capitol, 'Look at the public civic frontage and grounds where access is permitted.'],
+            ['09:50', '10:10', null, 'Continue to A. Consunji Street.'],
+            ['10:10', '10:50', $lazatin, 'Compare house details with the civic buildings, viewing from public space.'],
+            ['10:50', '11:10', null, 'Walk or ride to the cathedral.'],
+            ['11:10', '11:50', $cathedral, 'Observe the church respectfully and avoid interrupting services.'],
+            ['11:50', '12:05', null, 'Walk toward the market area.'],
+            ['12:05', '13:05', $market, 'Browse operating stalls and take a self-paid lunch at a visitor-chosen nearby food outlet; ask before photographing vendors.'],
+            ['13:05', '13:30', null, 'Rest, refill water, and meet the arranged transport.'],
+            ['13:30', '14:15', null, 'Travel to the former Paskuhan Village site in San Jose, allowing for traffic.'],
+            ['14:15', '15:30', $lantern, 'During a confirmed visit, study available lantern displays and ask staff about craft processes; demonstrations require separate confirmation.'],
+            ['15:30', '16:00', null, 'Rest and reflect on the craft before onward travel; return transport is outside this plan.'],
+        ],
+        'notes' => 'Confirm the Giant Lantern Center’s visitor access and any maintenance restrictions with the City Tourism Office before setting out. Arrange transport for the San Jose leg; this is not a continuous walking route. Do not assume that the seasonal Giant Lantern Festival runs daily or that an unbooked workshop is available. Food, transport, and any agreed activity charges are separate; ask providers for current rates.',
+    ],
+    [
+        'key' => 'churches-religious-heritage',
+        'name' => 'Churches and Religious Heritage',
+        'theme' => 'Religious', 'duration' => 'Half Day', 'start' => '08:00', 'end' => '12:00',
+        'summary' => 'Consider San Fernando’s religious life through its cathedral, archdiocesan setting, and seminary. Begin with the cathedral’s architecture and a quiet personal reflection, then travel to San Jose and Del Pilar. The later stops are active institutions, so the plan focuses on permitted exterior observation and pre-arranged access. It does not promise a museum tour, campus entry, or participation in a religious service.',
+        'schedule' => [
+            ['08:00', '09:00', $cathedral, 'Meet at the public forecourt; observe architecture and reflect quietly if visitor entry is permitted.'],
+            ['09:00', '09:30', null, 'Arrange a local ride to the archdiocesan premises in San Jose.'],
+            ['09:30', '10:20', $archdiocese, 'Observe the religious setting from authorized areas; chapel or office entry requires advance approval.'],
+            ['10:20', '10:35', null, 'Take a water and rest break without blocking institution entrances.'],
+            ['10:35', '11:00', null, 'Travel to the seminary in Del Pilar.'],
+            ['11:00', '12:00', $seminary, 'During an approved visit, learn about the role of religious formation; otherwise remain in permitted exterior areas.'],
+        ],
+        'notes' => 'Contact the archdiocesan office and seminary before choosing this route; do not enter a closed gate or assume visitor access. If access cannot be confirmed, choose another itinerary rather than turning up unannounced. Dress modestly, keep voices low, and request permission for photographs. Calulut is not included: its church requires a separate, longer journey from this downtown–San Jose–Del Pilar route.',
+    ],
+    [
+        'key' => 'kapampangan-food-culture',
+        'name' => 'Kapampangan Food and Culture Experience',
+        'theme' => 'Food', 'duration' => 'Full Day', 'start' => '08:00', 'end' => '16:00',
+        'summary' => 'Spend a day noticing how food, everyday trade, faith, and craft sit alongside one another in San Fernando. Begin around City Market Plaza and Baluyut Bridge, then visit the cathedral before a leisurely meal at Everybody’s Cafe in Del Pilar. Ask about the Kapampangan dishes actually available that day instead of expecting a fixed tasting menu. End with a confirmed Giant Lantern Center visit to connect the meal experience with another local cultural tradition.',
+        'schedule' => [
+            ['08:00', '09:00', $market, 'Meet at a safe public entrance; browse open stalls and ask vendors about products without obstructing trade.'],
+            ['09:00', '09:15', null, 'Walk toward the nearby bridge using pedestrian space.'],
+            ['09:15', '10:00', $bridge, 'Observe the market-area streetscape and bridge; photograph only from safe public positions.'],
+            ['10:00', '10:15', null, 'Walk to the cathedral.'],
+            ['10:15', '11:00', $cathedral, 'Look at the church architecture outside services; keep food and drinks outside the church.'],
+            ['11:00', '11:45', null, 'Travel to the San Fernando branch of Everybody’s Cafe in Del Pilar.'],
+            ['11:45', '13:00', $cafe, 'Take a self-paid lunch; ask staff about available Kapampangan dishes and disclose dietary restrictions.'],
+            ['13:00', '13:30', null, 'Rest and prepare for the afternoon transfer.'],
+            ['13:30', '14:15', null, 'Travel by arranged vehicle to the Giant Lantern Center in San Jose.'],
+            ['14:15', '15:30', $lantern, 'View displays during a confirmed visit and discuss lantern patterns with staff if available.'],
+            ['15:30', '16:00', null, 'Take a final rest break before onward travel.'],
+        ],
+        'notes' => 'Confirm the cafe’s current opening arrangements and the lantern center appointment before departure. This route uses the Del Pilar, San Fernando cafe, not its Angeles counterpart. No food tasting, menu item, admission price, or demonstration is guaranteed. Meals and transport are paid separately; check ingredients and prices directly with vendors. Arrange a vehicle for Del Pilar and San Jose.',
+    ],
+    [
+        'key' => 'historical-landmarks-tour',
+        'name' => 'San Fernando Historical Landmarks Tour',
+        'theme' => 'Heritage', 'duration' => 'Full Day', 'start' => '08:00', 'end' => '16:00',
+        'summary' => 'Take time to read San Fernando’s landmarks rather than treating them only as photo stops. The station and Death March marker introduce the city’s wartime memory, while the capitol area offers a contrasting civic setting. After a lunch break, look at Lazatin House from public space and finish at the cathedral. Keep memorial visits respectful and distinguish visible evidence from stories that need a guide or a reliable source.',
+        'schedule' => [
+            ['08:00', '09:00', $station, 'Read available railway and wartime interpretation; observe the preserved station from permitted areas.'],
+            ['09:00', '09:30', $marker, 'Walk within the station area to the linked marker, read its inscription, and pause respectfully.'],
+            ['09:30', '09:55', null, 'Transfer to the capitol area.'],
+            ['09:55', '10:55', $capitol, 'Observe civic architecture and any publicly accessible historical markers without entering restricted offices.'],
+            ['10:55', '11:00', null, 'Walk to the adjacent park area.'],
+            ['11:00', '11:45', $park, 'Read available monument inscriptions and compare their commemorative purposes.'],
+            ['11:45', '12:45', null, 'Take a self-paid lunch and shaded rest at a visitor-chosen nearby establishment.'],
+            ['12:45', '13:10', null, 'Travel to Lazatin House on A. Consunji Street.'],
+            ['13:10', '14:10', $lazatin, 'Study the exterior and heritage recognition; enter only with owner or custodian permission.'],
+            ['14:10', '14:30', null, 'Continue toward the cathedral.'],
+            ['14:30', '15:30', $cathedral, 'Observe the facade and permitted interior outside worship services.'],
+            ['15:30', '16:00', null, 'Rest and compare notes before departing from the cathedral area.'],
+        ],
+        'notes' => 'Confirm station and marker access before arrival. The two railway-area records intentionally form adjacent stops; they do not require separate vehicle journeys. The route stays within San Fernando and does not follow the full Death March route to other municipalities. Bring water and arrange short rides as needed; offices and private houses are not open-access attractions.',
+    ],
+    [
+        'key' => 'family-heritage-discovery',
+        'name' => 'Family Heritage Discovery',
+        'theme' => 'Family', 'duration' => 'Half Day', 'start' => '08:00', 'end' => '12:00',
+        'summary' => 'Introduce children and accompanying adults to San Fernando with short observation tasks and a planned rest break. Begin by noticing railway features at the station, then compare the capitol with monuments in Arnedo Park. Finish at the cathedral with a quiet look at shapes, doors, and decorative details. The pace allows questions and water breaks, while adults remain responsible for crossings and access arrangements.',
+        'schedule' => [
+            ['08:00', '08:40', $station, 'Meet near the permitted entrance; identify visible railway features and discuss why buildings are preserved.'],
+            ['08:40', '09:00', null, 'Use an arranged short ride or walk together to the capitol.'],
+            ['09:00', '09:35', $capitol, 'Compare the building’s shape and purpose with the station from public areas.'],
+            ['09:35', '09:40', null, 'Walk together to Arnedo Park.'],
+            ['09:40', '10:30', $park, 'Read selected inscriptions with children and make a simple sketch; this is not a supervised playground activity.'],
+            ['10:30', '10:45', null, 'Take a water and snack break in an appropriate permitted area.'],
+            ['10:45', '11:15', null, 'Travel to the cathedral with time for loading and crossings.'],
+            ['11:15', '12:00', $cathedral, 'Look for architectural details quietly and reflect on differences among the morning’s buildings.'],
+        ],
+        'notes' => 'Confirm station access and check the weather before bringing children. Restrooms, shade, and step-free entry are not guaranteed; ask each venue about current facilities. Keep children close beside roads, supervise snacks, and respect worshippers. A locally arranged ride between clusters is preferable for families uncomfortable with heat or walking distance.',
+    ],
+    [
+        'key' => 'architecture-ancestral-houses',
+        'name' => 'Architecture and Ancestral Houses',
+        'theme' => 'Heritage', 'duration' => 'Half Day', 'start' => '08:30', 'end' => '12:30',
+        'summary' => 'Focus on ancestral-house exteriors in San Fernando’s downtown heritage area. Compare Lazatin, Consunji, Henson-Hizon, and Hizon-Singian houses by looking at proportion, materials, windows, and their relationship to the street. Bring a sketchbook or camera to record visible details without assuming that every house offers an interior tour. This is a slow architectural observation route, not an invitation to enter private residences.',
+        'schedule' => [
+            ['08:30', '09:15', $lazatin, 'Meet on public space near the frontage; sketch the overall facade and visible roofline.'],
+            ['09:15', '09:30', null, 'Walk along A. Consunji Street to the next house.'],
+            ['09:30', '10:15', $consunji, 'Compare visible openings and facade proportions; avoid blocking doors and driveways.'],
+            ['10:15', '10:30', null, 'Continue toward the Henson-Hizon frontage.'],
+            ['10:30', '11:30', $henson, 'Examine exterior details and the nearby monument; take a short water pause within this observation stop.'],
+            ['11:30', '11:45', null, 'Walk through the downtown streets to Hizon-Singian House.'],
+            ['11:45', '12:30', $hizon, 'Compare the final house with earlier sketches and summarize visible similarities and differences.'],
+        ],
+        'notes' => 'All house stops are exterior-only unless owners or custodians grant separate permission. Do not photograph through private windows, climb fences, or infer construction dates from appearance. Current street access and building conditions should be checked with the City Tourism Office; use a short ride if sidewalks are unsuitable. No house admission fees or opening hours are asserted.',
+    ],
+    [
+        'key' => 'photography-cultural-landmarks',
+        'name' => 'Photography and Cultural Landmarks',
+        'theme' => 'Photography', 'duration' => 'Full Day', 'start' => '08:00', 'end' => '16:00',
+        'summary' => 'Build a varied photo story using civic architecture, memorial details, ancestral-house facades, religious architecture, and an urban bridge. Begin in the capitol area before moving south into the downtown heritage streets. A midday meal and image-review break keeps the day from becoming a continuous walk in the heat. Compose from permitted public positions, ask before including identifiable people, and prioritize safety over a particular camera angle.',
+        'schedule' => [
+            ['08:00', '09:00', $capitol, 'Meet at publicly accessible grounds and photograph wide architectural compositions without entering restricted areas.'],
+            ['09:00', '09:05', null, 'Walk to Arnedo Park.'],
+            ['09:05', '09:50', $park, 'Photograph monument details and context respectfully; do not climb monuments.'],
+            ['09:50', '10:15', null, 'Transfer toward A. Consunji Street.'],
+            ['10:15', '11:00', $lazatin, 'Record facade rhythm and street context from public space.'],
+            ['11:00', '11:20', null, 'Walk or ride toward Hizon-Singian House.'],
+            ['11:20', '12:05', $hizon, 'Compare exterior textures and details; avoid photographing private interiors.'],
+            ['12:05', '13:05', null, 'Take a self-paid lunch and review photographs at a visitor-chosen nearby establishment.'],
+            ['13:05', '13:20', null, 'Walk to the cathedral.'],
+            ['13:20', '14:20', $cathedral, 'Photograph exterior architecture; request permission for interior images and stop during services if asked.'],
+            ['14:20', '14:45', null, 'Rest, hydrate, and put equipment away before road crossings.'],
+            ['14:45', '15:00', null, 'Walk to General Hizon Avenue.'],
+            ['15:00', '16:00', $bridge, 'Finish with safe streetscape compositions from pedestrian space; stay off the carriageway.'],
+        ],
+        'notes' => 'No special photographic access, drone permission, or particular light conditions are guaranteed. Request consent for portraits and follow venue rules for tripods and indoor photography. Buildings remain workplaces, worship spaces, or private properties. Carry compact equipment and rain protection; keep cameras secure around traffic and arrange transport if needed.',
+    ],
+    [
+        'key' => 'complete-heritage-experience',
+        'name' => 'The Complete San Fernando Heritage Experience',
+        'theme' => 'Heritage', 'duration' => 'Full Day', 'start' => '08:00', 'end' => '16:00',
+        'summary' => 'Sample San Fernando’s railway memory, civic identity, ancestral architecture, religious heritage, food, and lantern craft in one carefully paced day. The morning follows downtown landmarks from the station and capitol area toward Lazatin House and the cathedral. A lunch at Everybody’s Cafe provides a break before the San Jose lantern-center visit. This broad introduction uses arranged transport and confirmed venue access, rather than promising that every interior or cultural demonstration is available.',
+        'schedule' => [
+            ['08:00', '08:45', $station, 'Meet at the permitted station entrance and read the available historical interpretation.'],
+            ['08:45', '09:05', null, 'Transfer to the provincial capitol.'],
+            ['09:05', '09:45', $capitol, 'Observe civic architecture from authorized public areas.'],
+            ['09:45', '09:50', null, 'Walk to Arnedo Park.'],
+            ['09:50', '10:20', $park, 'Read monument inscriptions and discuss civic commemoration.'],
+            ['10:20', '10:40', null, 'Transfer to Lazatin House.'],
+            ['10:40', '11:15', $lazatin, 'Observe the ancestral-house exterior from public space.'],
+            ['11:15', '11:35', null, 'Continue toward the cathedral.'],
+            ['11:35', '12:15', $cathedral, 'Look at the church architecture without interrupting worship.'],
+            ['12:15', '13:00', null, 'Travel to Everybody’s Cafe in Del Pilar, allowing for midday traffic.'],
+            ['13:00', '14:00', $cafe, 'Take a self-paid lunch and ask about available Kapampangan dishes; this includes time to rest.'],
+            ['14:00', '14:45', null, 'Travel to the Giant Lantern Center at the former Paskuhan Village site in San Jose.'],
+            ['14:45', '16:00', $lantern, 'During a confirmed visit, view lantern displays and learn about design and craftsmanship; onward travel follows the itinerary.'],
+        ],
+        'notes' => 'Arrange a vehicle and confirm the station, restaurant, and lantern-center visit before departure. The afternoon is not a walk from downtown; traffic may require shortening observation time, not rushing across roads. House interiors, festival performances, and craft demonstrations are not included unless separately agreed. Food, transport, and any provider charges are separate; no confirmed admission fees are supplied.',
+    ],
+];

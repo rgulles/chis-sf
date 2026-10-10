@@ -8,7 +8,6 @@ interface AboutViewProps {
 }
 
 export const AboutView: React.FC<AboutViewProps> = ({
-  onExploreClick: _onExploreClick,
   onContactClick
 }) => {
   return (
@@ -32,6 +31,11 @@ export const AboutView: React.FC<AboutViewProps> = ({
         </p>
       </motion.div>
 
+      <section aria-labelledby="about-system-heading" className="space-y-10">
+        <h2 id="about-system-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-[#7e1925]">
+          About the System
+        </h2>
+
       {/* Origin of the Name */}
       <motion.section 
         initial={{ opacity: 0, y: 24 }}
@@ -42,9 +46,9 @@ export const AboutView: React.FC<AboutViewProps> = ({
       >
         <div className="flex items-center gap-2.5 border-b border-[#e8dfd5] pb-3">
           <span className="h-5 w-1.5 rounded-full bg-[#7e1925]" />
-          <h2 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
+          <h3 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
             The Name: “Saan sa San Fernando?”
-          </h2>
+          </h3>
         </div>
 
         <p className="font-sans text-base text-[#1e1b19] leading-relaxed">
@@ -68,9 +72,9 @@ export const AboutView: React.FC<AboutViewProps> = ({
       >
         <div className="flex items-center gap-2.5 border-b border-[#e8dfd5] pb-3">
           <span className="h-5 w-1.5 rounded-full bg-[#b45309]" />
-          <h2 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
+          <h3 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
             A Living Bridge to the Next Generation
-          </h2>
+          </h3>
         </div>
 
         <p className="font-sans text-sm sm:text-base text-[#574141] leading-relaxed font-normal">
@@ -109,9 +113,9 @@ export const AboutView: React.FC<AboutViewProps> = ({
       >
         <div className="flex items-center gap-2.5 border-b border-[#e8dfd5] pb-3">
           <span className="h-5 w-1.5 rounded-full bg-[#7e1925]" />
-          <h2 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
+          <h3 className="font-sans text-xl sm:text-2xl font-bold text-[#1e1b19] tracking-tight">
             Institutional Partners
-          </h2>
+          </h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -169,6 +173,47 @@ export const AboutView: React.FC<AboutViewProps> = ({
           <ArrowRight className="w-4 h-4" />
         </button>
       </motion.div>
+      </section>
+
+      <section aria-labelledby="about-city-heading" className="space-y-8 border-t border-[#e8dfd5] pt-10">
+        <h2 id="about-city-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-[#7e1925]">
+          About the City of San Fernando
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+          <div className="space-y-3">
+            <h3 className="text-lg sm:text-xl font-bold text-[#1e1b19]">VISION 2040</h3>
+            <p className="text-sm sm:text-base text-[#574141] leading-relaxed">
+              The City of San Fernando (P) will be a model city in social development where citizens live in a healthy, safe and sustainable environment with sufficient economic opportunities and rich cultural heritage; with stronger public governance institutions, responsible citizenry and a SMART SUSTAINABLE CITY.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-lg sm:text-xl font-bold text-[#1e1b19]">MISSION</h3>
+            <p className="text-sm sm:text-base text-[#574141] leading-relaxed">
+              We commit to improve the quality of life of Fernandinos, regardless of their gender, age and physical ability, thru the judicious use of government resources, IN PARTNERSHIP WITH THE PRIVATE SECTOR AND THE ACTIVE PARTICIPATION OF THE CITIZENRY.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-lg sm:text-xl font-bold text-[#1e1b19]">CORE VALUES</h3>
+          <p className="text-sm sm:text-base text-[#574141] leading-relaxed">
+            Commitment, honesty and integrity, discipline, social justice, culture of excellence and love of country.
+          </p>
+        </div>
+
+        <div className="space-y-3 border-t border-[#e8dfd5] pt-8">
+          <h3 className="text-lg sm:text-xl font-bold text-[#1e1b19]">ABOUT SAN FERNANDO</h3>
+          <p className="text-base sm:text-lg font-semibold text-[#1e1b19]">The City of San Fernando</p>
+          <div className="space-y-1 text-sm sm:text-base text-[#574141] leading-relaxed">
+            <p>Kapampangan: Lakanbalen ning San Fernando</p>
+            <p>Filipino: Lungsod ng San Fernando</p>
+          </div>
+          <p className="text-sm sm:text-base text-[#574141] leading-relaxed max-w-4xl">
+            is a first class component city in the Philippine province of Pampanga, of which is the provincial capital. The regional centre of Central Luzon (Region III), it has a population of 354,666 people according to the 2020 census.
+          </p>
+        </div>
+      </section>
     </div>
   );
 };

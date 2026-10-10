@@ -1,23 +1,23 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\HeritageSiteController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\SiteImageController;
-use App\Http\Controllers\EventController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\HeritageTimelineController;
-use App\Http\Controllers\ItineraryController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\HeritageCheckinController;
 use App\Http\Controllers\HeritageContributionController;
+use App\Http\Controllers\HeritageSiteController;
+use App\Http\Controllers\HeritageTimelineController;
+use App\Http\Controllers\ItineraryController;
+use App\Http\Controllers\SiteImageController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/heritage-sites/{heritageSite}/contributions', [HeritageContributionController::class, 'index']);
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:api')->group(function () {
     Route::get('/heritage-sites/{heritageSite}/contributions/mine', [HeritageContributionController::class, 'mine']);
     Route::post('/heritage-sites/{heritageSite}/contributions', [HeritageContributionController::class, 'store'])->middleware('throttle:5,1');
 });
-Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+Route::middleware(['auth:api', 'can:admin'])->group(function () {
     Route::get('/admin/dashboard', [DashboardController::class, 'index']);
     Route::get('/admin/contributions', [HeritageContributionController::class, 'adminIndex']);
     Route::patch('/admin/contributions/{contribution}', [HeritageContributionController::class, 'moderate']);
@@ -26,20 +26,22 @@ Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
 
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:sanctum');
+})->middleware('auth:api');
 
 Route::get('/test', function () {
     return response()->json([
-        'message' => 'CHIS Laravel API is working!'
+        'message' => 'CHIS Laravel API is working!',
     ]);
 });
 
+// Refresh validates the JWT itself and permits expired tokens within refresh_ttl.
+Route::post('/auth/refresh', [AuthController::class, 'refresh'])->middleware('throttle:10,1');
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'google'])->middleware('throttle:10,1');
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::get('/heritage-sites/{heritageSite}/check-in', [HeritageCheckinController::class, 'availability']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:api')->group(function () {
     Route::get('/passport', [HeritageCheckinController::class, 'passport']);
     Route::post('/heritage-sites/{heritageSite}/verify-visit', [HeritageCheckinController::class, 'verify'])->middleware('throttle:10,1');
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -54,7 +56,7 @@ Route::apiResource('itineraries', ItineraryController::class)->only(['index', 's
 Route::get('heritage-sites/{heritageSiteId}/timelines', [HeritageTimelineController::class, 'index']);
 Route::apiResource('heritage-timelines', HeritageTimelineController::class)->only('show');
 
-Route::middleware(['auth:sanctum', 'can:admin'])->group(function () {
+Route::middleware(['auth:api', 'can:admin'])->group(function () {
     Route::get('admin/travelers', [AuthController::class, 'travelers']);
     Route::get('admin/check-in-configs', [HeritageCheckinController::class, 'adminIndex']);
     Route::put('admin/heritage-sites/{heritageSite}/check-in', [HeritageCheckinController::class, 'configure']);

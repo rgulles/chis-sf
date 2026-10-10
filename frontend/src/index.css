@@ -236,6 +236,24 @@
 .admin-shell :where(th, td) { padding: 0.875rem 1rem; line-height: 1.5; }
 .admin-shell :where(th) { font-weight: 600; }
 .admin-shell :where(td) { vertical-align: middle; }
+.admin-shell .admin-table { width: 100%; min-width: 0; table-layout: fixed; white-space: normal; font-size: 0.875rem; }
+.admin-shell .admin-table :where(th, td) { padding: 0.75rem 0.5rem; overflow-wrap: anywhere; white-space: normal; }
+.admin-shell .admin-table :where(td > .flex, td > .flex > div) { min-width: 0; }
+.admin-shell .admin-table :where(img, svg) { flex-shrink: 0; }
+.admin-shell .admin-table .truncate:not(.admin-table-caption) { white-space: normal; overflow: visible; text-overflow: clip; }
+.admin-shell .admin-table [data-label="Actions"] > .flex { flex-wrap: wrap; gap: 0.25rem; }
+.admin-shell .admin-table [data-label="Actions"] button { min-width: 2.5rem; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; }
+@media (max-width: 767px) {
+  .admin-shell .admin-table, .admin-shell .admin-table tbody { display: block; }
+  .admin-shell .admin-table colgroup { display: none; }
+  .admin-shell .admin-table thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .admin-shell .admin-table tbody tr { display: block; padding: 0.5rem; }
+  .admin-shell .admin-table td[data-label] { display: grid; grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr); gap: 0.5rem; align-items: center; text-align: left; }
+  .admin-shell .admin-table td[data-label]::before { content: attr(data-label); font-size: 0.75rem; font-weight: 600; color: #574141; }
+  .admin-shell .admin-table td[data-label] > * { grid-column: 2; min-width: 0; }
+  .admin-shell .admin-table td[colspan] { display: block; width: 100%; }
+  .admin-shell .admin-table [data-label="Actions"] > .flex { justify-content: flex-start; }
+}
 .admin-shell :where([role="dialog"]) { padding: 1rem; }
 @media (max-width: 639px) {
   .admin-shell :where([role="dialog"] form) { padding: 1rem; }

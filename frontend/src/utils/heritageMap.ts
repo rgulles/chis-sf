@@ -1,4 +1,5 @@
 import type { HeritageSite } from '../types';
+import { heritageImageUrl, HERITAGE_IMAGE_PLACEHOLDER } from './heritageImages';
 
 // Shared vector shapes for map markers and the legend. Unknown categories stay neutral.
 export const HERITAGE_MARKER_STYLES = {
@@ -20,12 +21,16 @@ export function escapeMapLabel(value: string) {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
 }
 
-export function heritageMarkerHtml(site: Pick<HeritageSite, 'name' | 'category'>, selected: boolean) {
+export function heritageMarkerHtml(site: Pick<HeritageSite, 'name' | 'category'> & Partial<Pick<HeritageSite, 'heroImage' | 'images'>>, selected: boolean) {
   const style = heritageMarkerStyle(site.category);
   const label = escapeMapLabel(site.name);
-  return `<div class="heritage-marker" data-selected="${selected}" data-category-icon="${style.icon}">
-    <div class="heritage-marker-symbol" style="width:${selected ? 38 : 28}px;height:${selected ? 38 : 28}px;background:${style.color};box-shadow:${selected ? '0 0 0 4px #7e192580,0 3px 8px #0005' : '0 1px 4px #0003'}">
-      <svg aria-hidden="true" width="${selected ? 20 : 18}" height="${selected ? 20 : 18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${style.paths.map(path => `<path d="${path}"/>`).join('')}</svg>
+  const usableImage = (url?: string) => url?.trim() && url !== HERITAGE_IMAGE_PLACEHOLDER;
+  const photo = usableImage(site.heroImage) ? site.heroImage
+    : site.images?.find(image => image.isCover && usableImage(image.imageUrl))?.imageUrl
+      || site.images?.find(image => usableImage(image.imageUrl))?.imageUrl;
+  return `<div class="heritage-marker font-sans" data-selected="${selected}" data-category-icon="${style.icon}" style="--heritage-marker-color:${style.color}">
+    <div class="heritage-marker-symbol">
+      <img class="heritage-marker-photo" src="${escapeMapLabel(heritageImageUrl(photo))}" alt="" aria-hidden="true" width="${selected ? 56 : 44}" height="${selected ? 56 : 44}" loading="lazy" decoding="async" fetchpriority="low" />
     </div>
     <span class="heritage-marker-label" aria-hidden="true">${label}</span>
   </div>`;

@@ -44,7 +44,7 @@ class HeritageSiteDeletionTest extends TestCase
     private function site(string $status = 'active'): HeritageSite
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $this->actingAs($admin, 'sanctum');
+        $this->withHeaders(['Authorization' => 'Bearer '.$this->jwtFor($admin)]);
         Storage::fake('public');
 
         return HeritageSite::create(['created_by' => $admin->id, 'name' => 'Test landmark', 'status' => $status,
@@ -111,7 +111,7 @@ class HeritageSiteDeletionTest extends TestCase
             Storage::disk($disk)->assertMissing('heritage-sites/owned.jpg');
             Storage::disk($disk)->assertMissing('visitor-contributions/owned.png');
         }
-        $this->actingAs($children['visitor'], 'sanctum');
+        $this->withHeaders(['Authorization' => 'Bearer '.$this->jwtFor($children['visitor'])]);
         $this->getJson('/api/passport')->assertOk()->assertJsonPath('visits', [])->assertJsonPath('total_points', 0);
     }
 
@@ -228,8 +228,9 @@ class HeritageSiteDeletionTest extends TestCase
         foreach (['active', 'archived'] as $status) {
             $site = $this->site($status);
             $this->app['auth']->forgetGuards();
+            $this->withHeaders(['Authorization' => '']);
             $this->deleteJson('/api/heritage-sites/'.$site->id)->assertUnauthorized();
-            $this->actingAs(User::factory()->create(['role' => 'traveler']), 'sanctum');
+            $this->withHeaders(['Authorization' => 'Bearer '.$this->jwtFor(User::factory()->create(['role' => 'traveler']))]);
             $this->deleteJson('/api/heritage-sites/'.$site->id)->assertForbidden();
             $this->assertDatabaseHas('heritage_sites', ['id' => $site->id, 'status' => $status]);
         }

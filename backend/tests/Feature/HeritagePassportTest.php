@@ -47,7 +47,7 @@ class HeritagePassportTest extends TestCase
     private function headers(string $role = 'traveler'): array
     {
         $this->app['auth']->forgetGuards();
-        return ['Authorization' => 'Bearer '.User::factory()->create(['role' => $role])->createToken('test')->plainTextToken];
+        return ['Authorization' => 'Bearer '.$this->jwtFor(User::factory()->create(['role' => $role]))];
     }
 
     private function config(HeritageSite $site, bool $enabled = true): HeritageCheckinConfig
@@ -108,7 +108,7 @@ class HeritagePassportTest extends TestCase
             $site->images()->create(['image_path' => 'heritage-sites/cover.jpg', 'sort_order' => 9, 'is_cover' => true]);
             HeritageVisit::create(['user_id' => $visitor->id, 'heritage_site_id' => $site->id, 'verified_at' => now(), 'points_awarded' => 100, 'distance_meters' => 0, 'accuracy_meters' => 10, 'verification_method' => 'geofence']);
         }
-        $this->getJson('/api/passport', ['Authorization' => 'Bearer '.$visitor->createToken('test')->plainTextToken])->assertOk()
+        $this->getJson('/api/passport', ['Authorization' => 'Bearer '.$this->jwtFor($visitor)])->assertOk()
             ->assertJsonPath('total_points', 400)->assertJsonCount(4, 'visits')->assertJsonCount(4, 'eligible_sites')
             ->assertJsonPath('visits.0.site.cover_image.image_path', 'heritage-sites/cover.jpg')
             ->assertJsonPath('eligible_sites.0.cover_image.image_path', 'heritage-sites/cover.jpg')
@@ -298,7 +298,7 @@ class HeritagePassportTest extends TestCase
         $this->postJson('/api/auth/register', [...$input, 'role' => 'admin'])->assertUnprocessable();
         $this->postJson('/api/auth/register', [...$input, 'password' => 'short'])->assertUnprocessable();
         $response = $this->postJson('/api/auth/register', [...$input, 'created_by' => 1, 'points' => 999])->assertCreated()->assertJsonPath('user.role', 'traveler')->assertJsonMissingPath('user.password');
-        $this->getJson('/api/auth/me', ['Authorization' => 'Bearer '.$response->json('token')])->assertOk()->assertJsonPath('user.role', 'traveler');
+        $this->getJson('/api/auth/me', ['Authorization' => 'Bearer '.$response->json('access_token')])->assertOk()->assertJsonPath('user.role', 'traveler');
         $this->postJson('/api/auth/register', $input)->assertUnprocessable();
         $this->assertDatabaseHas('users', ['email' => $input['email'], 'role' => 'traveler']);
     }

@@ -73,7 +73,7 @@ class AdminReassignmentTest extends TestCase
                 'caption' => 'Original caption',
             ]);
 
-        return [$record, $target, ['Authorization' => 'Bearer '.$admin->createToken('admin-test')->plainTextToken]];
+        return [$record, $target, ['Authorization' => 'Bearer '.$this->jwtFor($admin)]];
     }
 
     #[DataProvider('resources')]

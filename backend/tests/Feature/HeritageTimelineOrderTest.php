@@ -39,7 +39,7 @@ class HeritageTimelineOrderTest extends TestCase
     {
         $this->assertTrue(Schema::hasColumn('heritage_timelines', 'sort_order'));
         $admin = User::factory()->create(['role' => 'admin']);
-        $headers = ['Authorization' => 'Bearer '.$admin->createToken('test')->plainTextToken];
+        $headers = ['Authorization' => 'Bearer '.$this->jwtFor($admin)];
         $values = ['created_by' => $admin->id, 'name' => 'Site', 'description' => 'Overview', 'history' => 'History', 'address' => 'Address'];
         $site = HeritageSite::create($values);
         $other = HeritageSite::create($values);
@@ -65,7 +65,7 @@ class HeritageTimelineOrderTest extends TestCase
         $this->patchJson('/api/heritage-timelines/'.$second, ['sort_order' => 3])->assertUnauthorized();
         $traveler = User::factory()->create(['role' => 'traveler']);
         $this->app['auth']->forgetGuards();
-        $this->patchJson('/api/heritage-timelines/'.$second, ['sort_order' => 3], ['Authorization' => 'Bearer '.$traveler->createToken('test')->plainTextToken])->assertForbidden();
+        $this->patchJson('/api/heritage-timelines/'.$second, ['sort_order' => 3], ['Authorization' => 'Bearer '.$this->jwtFor($traveler)])->assertForbidden();
         $site->update(['status' => 'archived']);
         $this->getJson('/api/heritage-sites/'.$site->id)->assertNotFound();
         $this->getJson('/api/heritage-sites/'.$site->id.'/timelines')->assertNotFound();

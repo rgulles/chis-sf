@@ -26,7 +26,7 @@ import {
   Minus
 } from 'lucide-react';
 import type { HeritageSite, CategoryType } from '../types';
-import { HERITAGE_CATEGORIES } from '../data/heritageCategories';
+import { HERITAGE_FILTER_CATEGORIES as HERITAGE_CATEGORIES, HERITAGE_CATEGORIES as LEGEND_CATEGORIES, heritageFilterCategory, matchesHeritageCategory } from '../data/heritageCategories';
 import { hasUsableCoordinates } from '../utils/heritageCoordinates';
 import { loadCityBoundary, FALLBACK_CITY_CENTER, FALLBACK_CITY_BOUNDS, type CityBounds } from '../utils/cityBoundary';
 import type { RoadRoute } from '../utils/osrm';
@@ -110,7 +110,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const [showCityBoundary, setShowCityBoundary] = useState(true);
 
   // Sync category with prop if provided
-  const activeCategory = propCategory !== undefined ? propCategory : internalCategory;
+  const activeCategory = heritageFilterCategory(propCategory !== undefined ? propCategory : internalCategory);
   const handleCategorySelect = (cat: CategoryType | 'All') => {
     if (propOnCategoryChange) {
       propOnCategoryChange(cat);
@@ -149,7 +149,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const filteredAndSortedSites = useMemo(() => {
     return sites
       .filter((site) => {
-        const matchesCategory = activeCategory === 'All' || site.category === activeCategory;
+        const matchesCategory = matchesHeritageCategory(site.category, activeCategory);
         return site.status === 'active' && (matchesCategory || site.id === destinationId);
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -281,7 +281,8 @@ export const MapView: React.FC<MapViewProps> = ({
     const createSiteIcon = (site: HeritageSite, isSelected: boolean) => L.divIcon({
       className: 'heritage-custom-marker',
       html: orderedStops ? `<span class="itinerary-map-number">${sites.findIndex(stop => stop.id === site.id) + 1}</span>` : heritageMarkerHtml(site, isSelected),
-      iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20]
+      iconSize: orderedStops ? [40, 40] : [44, 44],
+      iconAnchor: orderedStops ? [20, 20] : [22, 22], popupAnchor: orderedStops ? [0, -20] : [0, -22]
     });
 
     // Clear existing markers
@@ -309,6 +310,8 @@ export const MapView: React.FC<MapViewProps> = ({
       element?.setAttribute('aria-label', `${site.name}, ${site.category}`);
       element?.addEventListener('focus', () => marker.setZIndexOffset(isSelected ? 1000 : 600));
       element?.addEventListener('blur', () => marker.setZIndexOffset(isSelected ? 1000 : 0));
+      const photo = element?.querySelector?.<HTMLImageElement>('.heritage-marker-photo');
+      photo?.addEventListener('error', () => handleHeritageImageError({ currentTarget: photo }));
 
       // Clicking marker selects site and brings up the in-map card in the lower left
       marker.on('click', () => {
@@ -487,7 +490,7 @@ export const MapView: React.FC<MapViewProps> = ({
             className="space-y-5 rounded-2xl border border-[#e8dfd5] bg-white p-5 sm:p-6 shadow-xs"
           >
             {/* Category Filter Chips */}
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 no-scrollbar">
+            <div className="flex flex-wrap min-w-0 max-w-full items-center gap-2.5 pb-1 pt-0.5">
               {HERITAGE_CATEGORIES.map((cat) => {
                 const isSelected = activeCategory === cat;
                 return (
@@ -495,8 +498,8 @@ export const MapView: React.FC<MapViewProps> = ({
                     key={cat}
                     aria-pressed={activeCategory === cat}
                     id={`filter-cat-${cat.replace(/\s+/g, '-').toLowerCase()}`}
-                    onClick={() => handleCategorySelect(cat as CategoryType | 'All')}
-                    className={`flex-shrink-0 rounded-full px-4 py-2 font-sans text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    onClick={() => handleCategorySelect(cat)}
+                    className={`min-h-11 max-w-full whitespace-normal rounded-full px-4 py-2 font-sans text-xs font-bold uppercase tracking-wider transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7e1925] ${
                       isSelected
                         ? 'bg-[#7e1925] text-white border border-[#7e1925] shadow-xs'
                         : 'border border-[#e8dfd5] bg-[#fbf6f1] text-[#1e1b19] hover:border-[#7e1925] hover:bg-white'
@@ -528,7 +531,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </motion.div>
 
           {/* Results Count Bar */}
-          <div className="flex items-center justify-between font-sans text-xs font-semibold text-[#574141] px-1 uppercase tracking-wider">
+          <div className="flex flex-wrap items-center justify-between gap-2 font-sans text-xs font-semibold text-[#574141] px-1 uppercase tracking-wider">
             <span>Showing <strong>{filteredAndSortedSites.length}</strong> heritage destinations</span>
             {activeCategory !== 'All' && (
               <span className="text-[#7e1925]">Category: {activeCategory}</span>
@@ -849,7 +852,7 @@ export const MapView: React.FC<MapViewProps> = ({
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    {HERITAGE_CATEGORIES.filter(category => category !== 'All').map(category => {
+                    {LEGEND_CATEGORIES.filter(category => category !== 'All').map(category => {
                       const style = HERITAGE_MARKER_STYLES[category];
                       return <div key={category} className="flex items-center gap-2">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: style.color }}>
@@ -920,16 +923,14 @@ export const MapView: React.FC<MapViewProps> = ({
                     <div className="space-y-1">
                       {HERITAGE_CATEGORIES.map((cat) => {
                         const isSelected = activeCategory === cat;
-                        const count = cat === 'All'
-                          ? sites.length
-                          : sites.filter(s => s.category === cat).length;
+                        const count = sites.filter(site => site.status === 'active' && matchesHeritageCategory(site.category, cat)).length;
                         return (
                           <button
                             key={cat}
                             aria-pressed={activeCategory === cat}
                             id={`map-filter-option-${cat.toLowerCase().replace(/\s+/g, '-')}`}
                             onClick={() => {
-                              handleCategorySelect(cat as CategoryType | 'All');
+                              handleCategorySelect(cat);
                             }}
                             className={`w-full min-h-11 flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left font-semibold transition-colors cursor-pointer ${
                               isSelected

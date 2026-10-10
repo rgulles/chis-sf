@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use PHPOpenSourceSaver\JWTAuth\Http\Parser\AuthHeaders;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // API credentials are accepted exclusively in Authorization headers, never URLs.
+        $this->app['tymon.jwt.parser']->setChain([
+            new AuthHeaders,
+        ]);
         Gate::define('admin', fn (User $user): bool => $user->role === 'admin');
     }
 }
